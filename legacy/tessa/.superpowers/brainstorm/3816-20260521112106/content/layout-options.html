@@ -1,0 +1,55 @@
+﻿<h2>Выберите компоновку первого экрана</h2>
+<p class="subtitle">Цель: контроль затрат по печати. Исходные данные: апрель 2026, 71 724 задания, 164 886 страниц, 667 пользователей, 159 принтеров.</p>
+
+<div class="cards">
+  <div class="card" data-choice="executive" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:grid;gap:10px;font-size:12px;color:#263238">
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <strong>Затраты за период</strong><span>01-30 апр</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <div style="background:#eef6f3;padding:8px;border-radius:6px"><b>164 886</b><br>страниц</div>
+          <div style="background:#f4f0ff;padding:8px;border-radius:6px"><b>8 910</b><br>цветных</div>
+          <div style="background:#fff2e5;padding:8px;border-radius:6px"><b>45 756</b><br>одностор.</div>
+          <div style="background:#eef3ff;padding:8px;border-radius:6px"><b>667</b><br>польз.</div>
+        </div>
+        <div style="height:44px;background:linear-gradient(90deg,#6aa84f 60%,#f6b26b 60%);border-radius:5px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="background:#f7f7f7;padding:8px;border-radius:5px">Топ пользователей</div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Топ принтеров</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Сводка + причины</h3>
+      <p>Сначала KPI затрат и экономии, затем разбор факторов: цветная печать, односторонняя печать, пользователи, принтеры, документы.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="investigation" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:grid;grid-template-columns:210px 1fr;gap:10px;font-size:12px;color:#263238">
+        <div style="background:#f5f7fa;padding:8px;border-radius:6px;height:150px"><b>Фильтры</b><br><br>Период<br>Пользователь<br>Принтер<br>Цветность<br>Дуплекс</div>
+        <div style="display:grid;gap:7px"><div style="background:#fff2e5;padding:8px;border-radius:5px"><b>Аномальные задания</b></div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Повторяющиеся документы</div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Топ пользователей по перерасходу</div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Детализация заданий</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Расследование перерасхода</h3>
+      <p>Экран сразу отвечает «кто и что печатал слишком много». Хорошо для аудита, но слабее как руководящая сводка.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="printer_ops" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:grid;gap:10px;font-size:12px;color:#263238">
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:8px">
+          <div style="height:92px;background:#eef3ff;border-radius:6px;padding:8px"><b>Нагрузка по дням</b></div>
+          <div style="height:92px;background:#eef6f3;border-radius:6px;padding:8px"><b>Принтеры</b><br>159 устройств</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"><div style="background:#f7f7f7;padding:8px;border-radius:5px">Топ принтеров</div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Дуплекс</div><div style="background:#f7f7f7;padding:8px;border-radius:5px">Цветность</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Эксплуатация принтеров</h3>
+      <p>Лучше показывает загруженность устройств и пики, но меньше помогает считать экономию и управлять расходами.</p>
+    </div>
+  </div>
+</div>

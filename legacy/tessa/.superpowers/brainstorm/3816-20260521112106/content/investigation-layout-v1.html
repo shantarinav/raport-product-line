@@ -1,0 +1,69 @@
+﻿<h2>Уточненный макет: расследование перерасхода</h2>
+<p class="subtitle">Рабочая версия первого экрана: загрузка CSV, индекс риска, топы и детализация заданий.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Dashboard: Print Waste Investigation</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:250px minmax(0,1fr);gap:14px;font-family:Inter,Arial,sans-serif;color:#1f2933">
+      <aside style="background:#f6f7f9;border:1px solid #d9dee7;border-radius:8px;padding:12px;display:grid;gap:12px;align-content:start">
+        <button style="border:0;background:#1f6feb;color:white;border-radius:6px;padding:10px;font-weight:700">Загрузить CSV</button>
+        <div style="font-size:12px;color:#667085">Файл: print.csv<br>Период: 01-30.04.2026</div>
+        <div style="display:grid;gap:7px;font-size:12px">
+          <b>Фильтры</b>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:5px;padding:7px">Период</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:5px;padding:7px">Пользователь</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:5px;padding:7px">Принтер</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:5px;padding:7px">Цветность</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:5px;padding:7px">Дуплекс</div>
+        </div>
+        <div style="font-size:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px"><b>Тарифы</b><br>Ч/б, цветная, односторонняя, двусторонняя</div>
+      </aside>
+
+      <main style="display:grid;gap:12px">
+        <section style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+          <div style="background:#eef6f3;border-radius:7px;padding:10px"><b style="font-size:20px">164 886</b><br><span style="font-size:12px">страниц</span></div>
+          <div style="background:#fff2e5;border-radius:7px;padding:10px"><b style="font-size:20px">63,8%</b><br><span style="font-size:12px">односторонних</span></div>
+          <div style="background:#f4f0ff;border-radius:7px;padding:10px"><b style="font-size:20px">12,7%</b><br><span style="font-size:12px">цветных</span></div>
+          <div style="background:#eef3ff;border-radius:7px;padding:10px"><b style="font-size:20px">667</b><br><span style="font-size:12px">пользователей</span></div>
+        </section>
+
+        <section style="display:grid;grid-template-columns:1.2fr .8fr;gap:12px">
+          <div style="background:white;border:1px solid #d9dee7;border-radius:8px;padding:12px">
+            <b>Задания с высоким индексом риска</b>
+            <div style="margin-top:10px;display:grid;gap:6px;font-size:12px">
+              <div style="display:grid;grid-template-columns:62px 1fr 70px 70px;gap:8px;background:#fff1f2;padding:7px;border-radius:5px"><b>98</b><span>valentina.filipeva · Поименный список ЛПУ 2026.pdf</span><span>3094 стр.</span><span>26 копий</span></div>
+              <div style="display:grid;grid-template-columns:62px 1fr 70px 70px;gap:8px;background:#fff7ed;padding:7px;border-radius:5px"><b>87</b><span>eka-uzhm-nachsmen · Табличный документ</span><span>624 стр.</span><span>624 копии</span></div>
+              <div style="display:grid;grid-template-columns:62px 1fr 70px 70px;gap:8px;background:#f8fafc;padding:7px;border-radius:5px"><b>73</b><span>tatyana.rozum · ЭБ 100.000.00 РЭ.pdf</span><span>609 стр.</span><span>1 копия</span></div>
+            </div>
+          </div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:8px;padding:12px">
+            <b>Причины риска</b>
+            <div style="margin-top:10px;display:grid;gap:7px;font-size:12px">
+              <div>Односторонняя печать <div style="height:8px;background:#f97316;width:64%;border-radius:99px"></div></div>
+              <div>Цветная печать <div style="height:8px;background:#8b5cf6;width:28%;border-radius:99px"></div></div>
+              <div>Много копий <div style="height:8px;background:#0ea5e9;width:42%;border-radius:99px"></div></div>
+              <div>Повторы документов <div style="height:8px;background:#10b981;width:35%;border-radius:99px"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px">
+          <div style="background:white;border:1px solid #d9dee7;border-radius:8px;padding:12px"><b>Топ пользователей</b><br><br>marina.gladysheva<br>m.khomyakov<br>vladlena.uryadova</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:8px;padding:12px"><b>Топ принтеров</b><br><br>Kyocera ECOSYS M2040dn KX<br>HP LaserJet MFP M430-431<br>Kyocera ECOSYS M4125idn</div>
+          <div style="background:white;border:1px solid #d9dee7;border-radius:8px;padding:12px"><b>Повторяющиеся документы</b><br><br>Табличный документ<br>шестириков104.pdf<br>служебные записки</div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>Направление подходит</h3><p>Продолжаем проектировать этот вариант: риск-рейтинг, фильтры, детализация и тарифы.</p></div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">↺</div>
+    <div class="content"><h3>Нужно изменить</h3><p>Напишите в чате, что именно: больше KPI, меньше таблиц, другой акцент или другой порядок блоков.</p></div>
+  </div>
+</div>

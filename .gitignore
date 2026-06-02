@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.tools/
+
+*.log
+*.zip
+
+.env
+.env.*
+!.env.example
