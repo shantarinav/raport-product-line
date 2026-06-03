@@ -377,35 +377,71 @@ export function buildTopUsers(rows: PrintJob[], tariffs: PrintTariffs, sort: key
     .slice(0, limit);
 }
 
+export function calculatePrintAnalytics(rows: PrintJob[]): {
+  paperBars: PrintBarDatum[];
+  docTypeBars: PrintBarDatum[];
+  excessSummary: PrintExcessSummary;
+} {
+  const paperPages = new Map<PaperBucket, number>(PAPER_BUCKETS.map((bucket) => [bucket, 0]));
+  const docTypePages = new Map<DocumentType, number>(DOC_TYPES.map((type) => [type, 0]));
+  const excessCategoryStats = new Map<string, { pages: number; jobs: number }>(EXCESS_CATEGORIES.map((category) => [category, { pages: 0, jobs: 0 }]));
+  const excessUsers = new Set<string>();
+  let excessJobs = 0;
+  let excessPages = 0;
+
+  rows.forEach((row) => {
+    paperPages.set(row.paperBucket, (paperPages.get(row.paperBucket) ?? 0) + row.totalPages);
+    docTypePages.set(row.docType, (docTypePages.get(row.docType) ?? 0) + row.totalPages);
+
+    if (!row.isExcessPrint) return;
+    excessJobs += 1;
+    excessPages += row.totalPages;
+    excessUsers.add(row.user);
+
+    EXCESS_CATEGORIES.forEach((category) => {
+      if (!row.excessCategories.includes(category)) return;
+      const stats = excessCategoryStats.get(category);
+      if (!stats) return;
+      stats.pages += row.totalPages;
+      stats.jobs += 1;
+    });
+  });
+
+  return {
+    paperBars: PAPER_BUCKETS.map((bucket) => ({
+      label: bucket,
+      pages: paperPages.get(bucket) ?? 0,
+    })),
+    docTypeBars: DOC_TYPES.map((type) => ({
+      label: type,
+      pages: docTypePages.get(type) ?? 0,
+    })).filter((item) => item.pages > 0),
+    excessSummary: {
+      jobs: excessJobs,
+      pages: excessPages,
+      users: excessUsers.size,
+      categories: EXCESS_CATEGORIES.map((category) => {
+        const stats = excessCategoryStats.get(category) ?? { pages: 0, jobs: 0 };
+        return {
+          label: category,
+          pages: stats.pages,
+          jobs: stats.jobs,
+        };
+      }),
+    },
+  };
+}
+
 export function buildPaperBars(rows: PrintJob[]): PrintBarDatum[] {
-  return PAPER_BUCKETS.map((bucket) => ({
-    label: bucket,
-    pages: sum(rows.filter((row) => row.paperBucket === bucket), (row) => row.totalPages),
-  }));
+  return calculatePrintAnalytics(rows).paperBars;
 }
 
 export function buildDocTypeBars(rows: PrintJob[]): PrintBarDatum[] {
-  return DOC_TYPES.map((type) => ({
-    label: type,
-    pages: sum(rows.filter((row) => row.docType === type), (row) => row.totalPages),
-  })).filter((item) => item.pages > 0);
+  return calculatePrintAnalytics(rows).docTypeBars;
 }
 
 export function buildExcessSummary(rows: PrintJob[]): PrintExcessSummary {
-  const subset = rows.filter((row) => row.isExcessPrint);
-  return {
-    jobs: subset.length,
-    pages: sum(subset, (row) => row.totalPages),
-    users: new Set(subset.map((row) => row.user)).size,
-    categories: EXCESS_CATEGORIES.map((category) => {
-      const categoryRows = subset.filter((row) => row.excessCategories.includes(category));
-      return {
-        label: category,
-        pages: sum(categoryRows, (row) => row.totalPages),
-        jobs: categoryRows.length,
-      };
-    }),
-  };
+  return calculatePrintAnalytics(rows).excessSummary;
 }
 
 export function buildRiskJobs(rows: PrintJob[], sort: "riskScore" | "totalPages", limit: number): PrintJob[] {

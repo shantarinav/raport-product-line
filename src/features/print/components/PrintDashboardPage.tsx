@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, ChevronDown, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
 import {
@@ -6,7 +6,6 @@ import {
   DashboardHeader,
   DashboardSwitch,
   DataTable,
-  ErrorState,
   FilterPanel,
   FilterStatusBar,
   MetricCard,
@@ -16,16 +15,13 @@ import {
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
-import { readPendingDashboardData, readPendingDashboardFile } from "../../../shared/pendingDashboardFile";
-import { readPrintReportFile } from "../import/readReportFile";
+import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import {
   applyPrintFilters,
-  buildDocTypeBars,
-  buildExcessSummary,
-  buildPaperBars,
   buildPrintFilterOptions,
   buildRiskJobs,
   buildTopUsers,
+  calculatePrintAnalytics,
   calculatePrintKpis,
   DEFAULT_TABLE_LIMITS,
   DEFAULT_TARIFFS,
@@ -135,6 +131,11 @@ function isDate(value: Date | null): value is Date {
   return value instanceof Date;
 }
 
+function formatFilterDate(value: string): string {
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
 function AutocompleteField({
   value,
   onChange,
@@ -149,11 +150,19 @@ function AutocompleteField({
   ariaLabel: string;
 }) {
   const [open, setOpen] = useState(false);
+  const blurTimerRef = useRef<number | null>(null);
   const visibleOptions = useMemo(() => {
     const query = value.trim().toLowerCase();
     const matched = query.length === 0 ? options : options.filter((option) => option.toLowerCase().includes(query));
     return matched.slice(0, 80);
   }, [options, value]);
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current !== null) {
+        window.clearTimeout(blurTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative">
@@ -168,7 +177,15 @@ function AutocompleteField({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        onBlur={() => {
+          if (blurTimerRef.current !== null) {
+            window.clearTimeout(blurTimerRef.current);
+          }
+          blurTimerRef.current = window.setTimeout(() => {
+            setOpen(false);
+            blurTimerRef.current = null;
+          }, 120);
+        }}
       />
       <button
         type="button"
@@ -294,7 +311,7 @@ function RiskJobList({
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--raport-muted)] md:justify-end">
               <span className="tabular-nums text-[var(--raport-text)]">{formatInteger(row.totalPages)} стр.</span>
-              <span>{formatDateTime(row.date)}</span>
+              <time dateTime={row.date?.toISOString()}>{formatDateTime(row.date)}</time>
             </div>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -313,41 +330,16 @@ function RiskJobList({
 
 export function PrintDashboardPage() {
   const navigate = useNavigate();
-  const [report, setReport] = useState<PrintImportResult | null>(() => readPendingDashboardData<PrintImportResult>(REPORT_ROUTE));
+  const [report] = useState<PrintImportResult | null>(() => readPendingDashboardData<PrintImportResult>(REPORT_ROUTE));
   const [filters, setFilters] = useState<PrintFilters | null>(() => (report ? initialPrintFilters(report.jobs) : null));
   const [tariffs, setTariffs] = useState<PrintTariffs>(DEFAULT_TARIFFS);
   const [tableLimits, setTableLimits] = useState<TableLimits>(DEFAULT_TABLE_LIMITS);
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
-  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (report) return;
-    const pendingFile = readPendingDashboardFile(REPORT_ROUTE);
-    if (!pendingFile) {
-      navigate("/", { replace: true, state: { statusNotice: "Данные Print не найдены" } });
-      return;
-    }
-
-    let cancelled = false;
-    readPrintReportFile(pendingFile)
-      .then((nextReport) => {
-        if (cancelled) return;
-        if (nextReport.quality.missingRequiredColumns.length > 0) {
-          setErrorMessage(`В отчете Print не найдены обязательные колонки: ${nextReport.quality.missingRequiredColumns.join(", ")}`);
-          return;
-        }
-        setReport(nextReport);
-        setFilters(initialPrintFilters(nextReport.jobs));
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setErrorMessage(error instanceof Error ? error.message : "Не удалось обработать отчет Print.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    navigate("/", { replace: true, state: { statusNotice: "Данные Print не найдены" } });
   }, [navigate, report]);
 
   useEffect(() => {
@@ -359,12 +351,12 @@ export function PrintDashboardPage() {
   const filteredRows = useMemo(() => (report && filters ? applyPrintFilters(report.jobs, filters) : []), [filters, report]);
   const kpis = useMemo(() => calculatePrintKpis(filteredRows, tariffs), [filteredRows, tariffs]);
   const topUsers = useMemo(() => buildTopUsers(filteredRows, tariffs, userSort, tableLimits.users), [filteredRows, tariffs, userSort, tableLimits.users]);
-  const paperBars = useMemo(() => buildPaperBars(filteredRows), [filteredRows]);
-  const docTypeBars = useMemo(() => buildDocTypeBars(filteredRows), [filteredRows]);
-  const excessSummary = useMemo(() => buildExcessSummary(filteredRows), [filteredRows]);
+  const { paperBars, docTypeBars, excessSummary } = useMemo(() => calculatePrintAnalytics(filteredRows), [filteredRows]);
   const riskJobs = useMemo(() => buildRiskJobs(filteredRows, riskSort, tableLimits.risk), [filteredRows, riskSort, tableLimits.risk]);
 
-  if (!report || !filters) {
+  if (!report) return null;
+
+  if (!filters) {
     return (
       <PageShell>
         <DashboardHeader
@@ -379,7 +371,9 @@ export function PrintDashboardPage() {
             </Link>
           }
         />
-        {errorMessage ? <ErrorState message={errorMessage} /> : <SectionCard title="Загрузка Print" description="Файл обрабатывается локально в браузере."><p className="text-sm text-[var(--raport-muted)]">Пожалуйста, подождите.</p></SectionCard>}
+        <SectionCard title="Подготовка Print" description="Данные отчета подготавливаются к отображению.">
+          <p className="text-sm text-[var(--raport-muted)]">Пожалуйста, подождите.</p>
+        </SectionCard>
       </PageShell>
     );
   }
@@ -421,7 +415,7 @@ export function PrintDashboardPage() {
   }
 
   const chips = [
-    { label: `Период: ${filters.dateFrom || "начало"} - ${filters.dateTo || "конец"}` },
+    { label: `Период: ${filters.dateFrom ? formatFilterDate(filters.dateFrom) : "начало"} - ${filters.dateTo ? formatFilterDate(filters.dateTo) : "конец"}` },
     ...(quickFocus !== "all" ? [{ label: `Фокус: ${quickFocusLabel(quickFocus)}`, onRemove: () => applyQuickFocus("all") }] : []),
     ...(filters.excludePdfPrinter ? [{ label: "PDF-принтер исключен" }] : [{ label: "PDF-принтер включен", tone: "secondary" as const }]),
     ...(filters.user ? [{ label: `Пользователь: ${filters.user}`, onRemove: () => patchFilters({ user: "" }) }] : []),
@@ -467,8 +461,6 @@ export function PrintDashboardPage() {
           </div>
         }
       />
-
-      {errorMessage ? <ErrorState className="mb-4" message={errorMessage} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-3 lg:self-start">
@@ -725,3 +717,8 @@ export function PrintDashboardPage() {
     </PageShell>
   );
 }
+
+
+
+
+

@@ -12,7 +12,6 @@ import {
 import {
   DashboardHeader,
   DashboardSwitch,
-  ErrorState,
   FilterPanel,
   FilterStatusBar,
   MetricCard,
@@ -21,8 +20,7 @@ import {
 } from "../../../shared/ui";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { Input } from "../../../shared/ui/shadcn/input";
-import { readPendingDashboardData, readPendingDashboardFile } from "../../../shared/pendingDashboardFile";
-import { readTessaReportFile } from "../import/readReportFile";
+import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import {
   applyAgreementFilters,
   buildAgreementFacts,
@@ -400,13 +398,10 @@ function DocumentTitle({
 export function TessaDashboardPage() {
   const navigate = useNavigate();
   const [pendingData] = useState<TessaImportResult | null>(() => readPendingDashboardData<TessaImportResult>("/tessa"));
-  const [pendingFile] = useState<File | null>(() => readPendingDashboardFile("/tessa"));
   const [records, setRecords] = useState<NormalizedRecord[]>([]);
   const [quality, setQuality] = useState<QualitySummary | null>(null);
   const [loadedFile, setLoadedFile] = useState<LoadedFile | null>(null);
   const [filters, setFilters] = useState<AgreementFilters>(DEFAULT_FILTERS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [peopleMode, setPeopleMode] = useState<"top" | "all">("top");
   const [visibleProblemsCount, setVisibleProblemsCount] = useState(25);
   const [expandedProblemKeys, setExpandedProblemKeys] = useState<Set<string>>(() => new Set());
@@ -454,35 +449,8 @@ export function TessaDashboardPage() {
       return;
     }
 
-    if (!pendingFile) {
-      navigate("/", { replace: true, state: { statusNotice: "Данные Tessa не найдены" } });
-      return;
-    }
-
-    void (async () => {
-      setIsLoading(true);
-      setErrorMessage("");
-      try {
-        const parsed = await readTessaReportFile(pendingFile);
-        setRecords(parsed.records);
-        setQuality(parsed.quality);
-        setLoadedFile({
-          fileName: pendingFile.name,
-          loadedAt: new Date(),
-          rows: parsed.records.length,
-          duplicateRows: parsed.quality.duplicateRows,
-        });
-        setFilters(DEFAULT_FILTERS);
-        setPeopleMode("top");
-        setVisibleProblemsCount(25);
-        setExpandedProblemKeys(new Set());
-      } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Не удалось обработать файл Tessa.");
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [navigate, pendingData, pendingFile]);
+    navigate("/", { replace: true, state: { statusNotice: "Данные Tessa не найдены" } });
+  }, [navigate, pendingData]);
 
   function patchFilters(next: Partial<AgreementFilters>) {
     setFilters((current) => ({ ...current, ...next }));
@@ -573,14 +541,6 @@ export function TessaDashboardPage() {
           </div>
         }
       />
-
-      {isLoading ? (
-        <SectionCard title="Загрузка Tessa" description="Идет обработка файла.">
-          <p className="text-sm text-[var(--raport-muted)]">Пожалуйста, подождите. Файл обрабатывается локально в браузере.</p>
-        </SectionCard>
-      ) : null}
-
-      {errorMessage ? <ErrorState className="mb-4" message={errorMessage} /> : null}
 
       {hasData ? (
         <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">

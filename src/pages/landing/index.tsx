@@ -10,14 +10,17 @@ import { readTessaReportFile } from "../../features/tessa/import/readReportFile"
 import type { TessaImportResult } from "../../features/tessa/types";
 import { readPrintReportFile } from "../../features/print/import/readReportFile";
 import type { PrintImportResult } from "../../features/print/types";
+import { readSupportReportFile } from "../../features/support/import/readReportFile";
+import type { SupportImportResult } from "../../features/support/supportTypes";
 import { setPendingDashboardData, type DashboardRoute } from "../../shared/pendingDashboardFile";
+import { detectReportType, type DetectedReportType } from "../../shared/reportDetection";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
 const LANDING_FILE_INPUT_ID = "landing-file-input";
 
 type LandingStatus = "idle" | "dragging" | "reading" | "detecting" | "matched" | "ambiguous" | "error";
-type ReportMatch = "ССЗ" | "Tessa" | "Print";
+type ReportMatch = "ССЗ" | "Tessa" | "Print" | "Техподдержка";
 
 type SelectedFileState = {
   name: string;
@@ -39,6 +42,13 @@ function statusText(status: LandingStatus) {
   if (status === "ambiguous") return "Отчет не определен";
   if (status === "error") return "Ошибка";
   return "Ожидание файла";
+}
+
+function reportLabel(type: DetectedReportType): ReportMatch {
+  if (type === "ssz") return "ССЗ";
+  if (type === "tessa") return "Tessa";
+  if (type === "print") return "Print";
+  return "Техподдержка";
 }
 
 export function LandingPage() {
@@ -124,33 +134,52 @@ export function LandingPage() {
     };
 
     try {
-      const tessaParsed = await readTessaReportFile(file);
-      const sszParsed = await readWorkbookFile(file);
-      const printParsed = await readPrintReportFile(file);
+      const detected = await detectReportType(file);
+      if (detected.type === "unknown" || detected.type === "ambiguous") {
+        setStatus("ambiguous");
+        return;
+      }
 
-      const isTessa = tessaParsed.quality.missingRequiredColumns.length === 0;
-      const isSsz = sszParsed.errors.length === 0 && sszParsed.operationRows.length > 0;
-      const isPrint = printParsed.quality.missingRequiredColumns.length === 0 && printParsed.jobs.length > 0;
-
-      if (isTessa && !isSsz && !isPrint) {
+      if (detected.type === "tessa") {
+        const tessaParsed = await readTessaReportFile(file);
+        if (tessaParsed.quality.missingRequiredColumns.length > 0) {
+          setStatus("ambiguous");
+          return;
+        }
         setPendingDashboardData("/tessa", tessaParsed as TessaImportResult);
-        completeMatch("Tessa", "/tessa");
+        completeMatch(reportLabel(detected.type), "/tessa");
         return;
       }
 
-      if (isSsz && !isTessa && !isPrint) {
+      if (detected.type === "ssz") {
+        const sszParsed = await readWorkbookFile(file);
+        if (sszParsed.errors.length > 0 || sszParsed.operationRows.length === 0) {
+          setStatus("ambiguous");
+          return;
+        }
         setPendingDashboardData("/ssz", sszParsed as ImportedReport);
-        completeMatch("ССЗ", "/ssz");
+        completeMatch(reportLabel(detected.type), "/ssz");
         return;
       }
 
-      if (isPrint && !isSsz && !isTessa) {
+      if (detected.type === "print") {
+        const printParsed = await readPrintReportFile(file);
+        if (printParsed.quality.missingRequiredColumns.length > 0 || printParsed.jobs.length === 0) {
+          setStatus("ambiguous");
+          return;
+        }
         setPendingDashboardData("/print", printParsed as PrintImportResult);
-        completeMatch("Print", "/print");
+        completeMatch(reportLabel(detected.type), "/print");
         return;
       }
 
-      setStatus("ambiguous");
+      const supportParsed = await readSupportReportFile(file);
+      if (supportParsed.quality.missingRequiredColumns.length > 0 || supportParsed.tickets.length === 0) {
+        setStatus("ambiguous");
+        return;
+      }
+      setPendingDashboardData("/support", supportParsed as SupportImportResult);
+      completeMatch(reportLabel(detected.type), "/support");
     } catch {
       setStatus("error");
       setErrorMessage("Не удалось обработать файл. Проверьте формат и структуру отчета.");
