@@ -1,11 +1,7 @@
-﻿import { CircleX } from "lucide-react";
+import { CheckCircle2, CircleX } from "lucide-react";
 import { SectionCard } from "../../../shared/ui";
 import type { SupportDataQualitySummary, SupportTicket } from "../supportTypes";
 import { formatSupportDateTime, formatSupportHours } from "../logic/supportMetrics";
-
-function ticketUrl(ticketNumber: string): string {
-  return `https://eka-sd.eka.tmk.group/otrs/index.pl?Action=AgentTicketZoom;TicketID=${encodeURIComponent(ticketNumber)}`;
-}
 
 function AnomalyList({ rows }: { rows: SupportTicket[] }) {
   if (rows.length === 0) {
@@ -17,14 +13,9 @@ function AnomalyList({ rows }: { rows: SupportTicket[] }) {
       {rows.slice(0, 12).map((ticket) => (
         <div key={ticket.id} className="grid gap-1 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-2 py-1 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <a
-              href={ticketUrl(ticket.ticketNumber)}
-              target="_blank"
-              rel="noreferrer"
-              className="truncate font-bold text-[var(--raport-primary)] hover:underline"
-            >
+            <span className="truncate font-bold text-[var(--raport-text)]">
               № {ticket.ticketNumber}
-            </a>
+            </span>
             <span className="shrink-0 text-[var(--raport-muted)]">{formatSupportHours(ticket.overdueHours)}</span>
           </div>
           <span className="truncate text-[var(--raport-text)]" title={ticket.topic}>{ticket.topic}</span>
@@ -43,6 +34,17 @@ export function SupportDataQualityPanel({ summary }: { summary: SupportDataQuali
     { title: "Экстремальные просрочки", rows: summary.extremeOverdue },
     { title: "Закрыто за пределами периода", rows: summary.closedAfterPeriod },
   ];
+  const issueCount = cards.reduce((sum, card) => sum + card.rows.length, 0);
+
+  if (issueCount === 0) {
+    return (
+      <SectionCard title="Аномалии и качество данных" description="Проверка обязательных SLA-полей и экстремальных значений." Icon={CheckCircle2}>
+        <div className="rounded-[var(--raport-radius-control)] border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+          Проблем качества данных не найдено.
+        </div>
+      </SectionCard>
+    );
+  }
 
   return (
     <SectionCard title="Аномалии и качество данных" description="Строки, которые искажают расчет или требуют проверки." Icon={CircleX}>

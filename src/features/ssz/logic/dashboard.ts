@@ -8,6 +8,7 @@ export interface DashboardFilters {
   selectedKit: string;
   selectedDepartment: string;
   selectedMaster: string;
+  selectedOperation: string;
   selectedDateFrom: string;
   selectedDateTo: string;
 }
@@ -65,6 +66,7 @@ export function initialFilters(period?: ReportPeriod): DashboardFilters {
     selectedKit: "",
     selectedDepartment: "",
     selectedMaster: "",
+    selectedOperation: "",
     ...initialDateFilters(period),
   };
 }
@@ -143,12 +145,14 @@ export function filterOperations(operations: OperationRecord[], filters: Dashboa
   const selectedKit = normalizedText(filters.selectedKit);
   const selectedDepartment = normalizedText(filters.selectedDepartment);
   const selectedMaster = normalizedText(filters.selectedMaster);
+  const selectedOperation = normalizedText(filters.selectedOperation);
 
   return operations.filter((operation) => {
     if (selectedOrder && normalizedText(operation.product) !== selectedOrder) return false;
     if (selectedKit && normalizedText(operation.kit) !== selectedKit) return false;
     if (selectedDepartment && normalizedText(operation.department) !== selectedDepartment) return false;
     if (selectedMaster && normalizedText(operation.master) !== selectedMaster) return false;
+    if (selectedOperation && normalizedText(operation.operation) !== selectedOperation) return false;
 
     if (filters.selectedDateFrom || filters.selectedDateTo) {
       const date = operationDateKey(operation.sszDate);
@@ -194,10 +198,12 @@ export function applyOrderSelection(current: DashboardFilters, operations: Opera
     selectedKit: "",
     selectedDepartment: "",
     selectedMaster: "",
+    selectedOperation: "",
   });
 
   const availableDepartments = uniqueSorted(orderOperations.map((operation) => operation.department));
   const availableMasters = uniqueSorted(orderOperations.map((operation) => operation.master));
+  const availableOperations = uniqueSorted(orderOperations.map((operation) => operation.operation));
 
   return {
     ...current,
@@ -206,6 +212,7 @@ export function applyOrderSelection(current: DashboardFilters, operations: Opera
     selectedDepartment:
       current.selectedDepartment && !availableDepartments.includes(current.selectedDepartment) ? "" : current.selectedDepartment,
     selectedMaster: current.selectedMaster && !availableMasters.includes(current.selectedMaster) ? "" : current.selectedMaster,
+    selectedOperation: current.selectedOperation && !availableOperations.includes(current.selectedOperation) ? "" : current.selectedOperation,
   };
 }
 
@@ -235,6 +242,16 @@ export function applyDepartmentSelection(
   );
 
   const nextOrder = current.selectedOrder && !availableOrders.includes(current.selectedOrder) ? "" : current.selectedOrder;
+  const availableOperations = uniqueSorted(
+    filterOperations(operations, {
+      ...current,
+      selectedOrder: nextOrder,
+      selectedKit: nextOrder ? current.selectedKit : "",
+      selectedDepartment: department,
+      selectedMaster: nextMaster,
+      selectedOperation: "",
+    }).map((operation) => operation.operation),
+  );
 
   return {
     ...current,
@@ -242,6 +259,7 @@ export function applyDepartmentSelection(
     selectedMaster: nextMaster,
     selectedOrder: nextOrder,
     selectedKit: nextOrder ? current.selectedKit : "",
+    selectedOperation: current.selectedOperation && !availableOperations.includes(current.selectedOperation) ? "" : current.selectedOperation,
   };
 }
 
@@ -268,6 +286,16 @@ export function applyMasterSelection(current: DashboardFilters, operations: Oper
   );
 
   const nextOrder = current.selectedOrder && !availableOrders.includes(current.selectedOrder) ? "" : current.selectedOrder;
+  const availableOperations = uniqueSorted(
+    filterOperations(operations, {
+      ...current,
+      selectedOrder: nextOrder,
+      selectedKit: nextOrder ? current.selectedKit : "",
+      selectedDepartment: nextDepartment,
+      selectedMaster: master,
+      selectedOperation: "",
+    }).map((operation) => operation.operation),
+  );
 
   return {
     ...current,
@@ -275,5 +303,6 @@ export function applyMasterSelection(current: DashboardFilters, operations: Oper
     selectedDepartment: nextDepartment,
     selectedOrder: nextOrder,
     selectedKit: nextOrder ? current.selectedKit : "",
+    selectedOperation: current.selectedOperation && !availableOperations.includes(current.selectedOperation) ? "" : current.selectedOperation,
   };
 }

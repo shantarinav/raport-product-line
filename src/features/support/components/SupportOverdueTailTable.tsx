@@ -1,17 +1,39 @@
-﻿import { AlertTriangle } from "lucide-react";
-import { DataTable, SectionCard } from "../../../shared/ui";
+import { AlertTriangle } from "lucide-react";
+import { DashboardSwitch, DataTable, SectionCard } from "../../../shared/ui";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { SUPPORT_THRESHOLDS } from "../supportConfig";
 import type { SupportTicket } from "../supportTypes";
 import { formatSupportDateTime, formatSupportHours } from "../logic/supportMetrics";
 
-function ticketUrl(ticketNumber: string): string {
-  return `https://eka-sd.eka.tmk.group/otrs/index.pl?Action=AgentTicketZoom;TicketID=${encodeURIComponent(ticketNumber)}`;
-}
-
-export function SupportOverdueTailTable({ rows }: { rows: SupportTicket[] }) {
+export function SupportOverdueTailTable({
+  rows,
+  limit,
+  onLimitChange,
+}: {
+  rows: SupportTicket[];
+  limit: number;
+  onLimitChange: (value: number) => void;
+}) {
   return (
-    <SectionCard title="Хвост просрочек" description="Топ-10 заявок по размеру просрочки." Icon={AlertTriangle}>
+    <SectionCard
+      title="Хвост просрочек"
+      description={`Самые тяжелые нарушения SLA по времени просрочки. Показано: ${limit}.`}
+      Icon={AlertTriangle}
+      actions={
+        <DashboardSwitch
+          label="Показать"
+          value={String(limit)}
+          onChange={(value) => onLimitChange(Number(value))}
+          options={[
+            { value: "10", label: "10" },
+            { value: "20", label: "20" },
+          ]}
+        />
+      }
+    >
+      <p className="mb-3 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--raport-muted)]">
+        Критично = просрочка выше установленного порога.
+      </p>
       <DataTable
         rows={rows}
         rowKey={(row) => row.id}
@@ -20,16 +42,7 @@ export function SupportOverdueTailTable({ rows }: { rows: SupportTicket[] }) {
           {
             key: "ticketNumber",
             header: "№",
-            cell: (row) => (
-              <a
-                href={ticketUrl(row.ticketNumber)}
-                target="_blank"
-                rel="noreferrer"
-                className="font-bold tabular-nums text-[var(--raport-primary)] hover:underline"
-              >
-                {row.ticketNumber}
-              </a>
-            ),
+            cell: (row) => <span className="font-bold tabular-nums text-[var(--raport-text)]">{row.ticketNumber}</span>,
             className: "whitespace-nowrap",
           },
           {
@@ -37,15 +50,19 @@ export function SupportOverdueTailTable({ rows }: { rows: SupportTicket[] }) {
             header: "Тема",
             cell: (row) => (
               <div className="grid max-w-[320px] gap-1">
-                <span className="truncate font-semibold text-[var(--raport-text)]" title={row.topic}>{row.topic}</span>
-                <span className="truncate text-xs text-[var(--raport-muted)]" title={row.category}>{row.category}</span>
+                <span className="truncate font-semibold text-[var(--raport-text)]" title={row.topic}>
+                  {row.topic}
+                </span>
+                <span className="truncate text-xs text-[var(--raport-muted)]" title={row.category}>
+                  {row.category}
+                </span>
               </div>
             ),
           },
           { key: "createdAt", header: "Создана", cell: (row) => formatSupportDateTime(row.createdAt), className: "whitespace-nowrap text-xs" },
           { key: "plan", header: "SLA_plan", cell: (row) => formatSupportDateTime(row.slaPlan), className: "whitespace-nowrap text-xs" },
           { key: "fact", header: "SLA_fact", cell: (row) => formatSupportDateTime(row.slaFact), className: "whitespace-nowrap text-xs" },
-          { key: "bucket", header: "План", cell: (row) => row.planBucket ?? "нет", className: "whitespace-nowrap" },
+          { key: "bucket", header: "SLA-срок", cell: (row) => row.planBucket ?? "нет", className: "whitespace-nowrap" },
           {
             key: "overdue",
             header: "Просрочка",
@@ -55,7 +72,7 @@ export function SupportOverdueTailTable({ rows }: { rows: SupportTicket[] }) {
                 <strong className="tabular-nums">{formatSupportHours(row.overdueHours)}</strong>
               </div>
             ),
-            className: "text-right whitespace-nowrap",
+            className: "whitespace-nowrap text-right",
           },
         ]}
       />

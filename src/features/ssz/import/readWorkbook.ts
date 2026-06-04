@@ -1,19 +1,9 @@
 import { parseSszRows } from "./parseRows";
 import type { CellValue, ImportedReport } from "./types";
-
-async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
-  if (typeof file.arrayBuffer === "function") return file.arrayBuffer();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
-}
+import { readFileArrayBuffer } from "../../../shared/fileReadCache";
 
 export async function readWorkbookFile(file: File): Promise<ImportedReport> {
-  const data = await fileToArrayBuffer(file);
+  const data = await readFileArrayBuffer(file);
   const XLSX = await import("xlsx");
   const workbook = XLSX.read(data, { type: "array", cellDates: true });
   const sheetName = workbook.SheetNames[0];

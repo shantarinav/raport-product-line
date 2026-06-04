@@ -13,11 +13,13 @@ const QUANTILE_KEYS: Array<{ key: keyof SupportQuantiles; label: string }> = [
 export function SupportDistributionCard({
   title,
   description,
+  explanation,
   quantiles,
   Icon,
 }: {
   title: string;
   description: string;
+  explanation?: string;
   quantiles: SupportQuantiles;
   Icon: LucideIcon;
 }) {
@@ -48,6 +50,11 @@ export function SupportDistributionCard({
           })}
           </svg>
         </div>
+        {explanation ? (
+          <p className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--raport-muted)]">
+            {explanation}
+          </p>
+        ) : null}
         <div className="grid gap-2 sm:grid-cols-4">
           {QUANTILE_KEYS.map((item) => (
             <div key={item.key} className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">

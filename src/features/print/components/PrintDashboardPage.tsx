@@ -26,6 +26,7 @@ import {
   DEFAULT_TABLE_LIMITS,
   DEFAULT_TARIFFS,
   DOC_TYPES,
+  estimateRowCost,
   formatDate,
   formatDateTime,
   formatInteger,
@@ -35,7 +36,7 @@ import {
   PAPER_BUCKETS,
   RISK_REASON_OPTIONS,
 } from "../logic/dashboard";
-import type { PaperBucket, PrintBarDatum, PrintFilters, PrintImportResult, PrintJob, PrintTariffs, PrintUserAggregate } from "../types";
+import type { PaperBucket, PrintBarDatum, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
 
 const REPORT_ROUTE = "/print";
 
@@ -134,6 +135,82 @@ function isDate(value: Date | null): value is Date {
 function formatFilterDate(value: string): string {
   const [year, month, day] = value.split("-");
   return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
+function printDeviationPages(kpis: PrintKpis): number {
+  return Math.min(kpis.totalPages, kpis.simplexPages + kpis.colorPages + kpis.bigPages);
+}
+
+function printDeviationRatio(kpis: PrintKpis): number {
+  return kpis.totalPages > 0 ? (printDeviationPages(kpis) / kpis.totalPages) * 100 : 0;
+}
+
+function hasPrintDeviation(row: PrintJob): boolean {
+  return row.isBigJob || row.isMultiNoDuplex || row.isColor || row.isExcessPrint;
+}
+
+function printDeviationCost(rows: PrintJob[], tariffs: PrintTariffs): number {
+  return rows.filter(hasPrintDeviation).reduce((total, row) => total + estimateRowCost(row, tariffs), 0);
+}
+
+function printInsightStatus(kpis: PrintKpis) {
+  const ratio = printDeviationRatio(kpis);
+  if (kpis.totalPages === 0) {
+    return {
+      label: "Нет данных",
+      className: "border-slate-300 bg-slate-50 text-slate-700",
+    };
+  }
+  if (ratio >= 35 || kpis.bigJobs >= 10) {
+    return {
+      label: "Критично",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+  if (ratio >= 10 || kpis.simplexPages > 0 || kpis.colorPages > 0 || kpis.bigJobs > 0) {
+    return {
+      label: "Контроль",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+  return {
+    label: "Норма",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  };
+}
+
+function dominantPrintDeviation(kpis: PrintKpis, excessSummary: PrintExcessSummary): string {
+  const deviations = [
+    { label: "односторонняя печать", pages: kpis.simplexPages },
+    { label: "цветная печать", pages: kpis.colorPages },
+    { label: "задания от 100 стр.", pages: kpis.bigPages },
+    { label: "потенциально избыточная печать", pages: excessSummary.pages },
+  ].sort((left, right) => right.pages - left.pages);
+  const top = deviations[0];
+  return top && top.pages > 0 ? `Отклонение: ${top.label} — ${formatInteger(top.pages)} стр.` : "Отклонения: критичных объемов не найдено.";
+}
+
+function riskPriorityLabel(score: number): string {
+  if (score >= 80) return "высокий";
+  if (score >= 50) return "средний";
+  return "низкий";
+}
+
+function printRiskInsight(row: PrintJob): string {
+  return `Проверить задание: ${formatInteger(row.totalPages)} стр., ${row.riskReasons.map((reason) => reason.label).join(", ")}. Приоритет проверки — ${riskPriorityLabel(row.riskScore)}, балл ${formatInteger(row.riskScore)}.`;
+}
+
+function printInsightPoints(topUsers: PrintUserAggregate[], riskJobs: PrintJob[], kpis: PrintKpis, excessSummary: PrintExcessSummary): string[] {
+  const topUser = topUsers[0];
+  const riskJob = riskJobs[0];
+
+  return [
+    topUser
+      ? `Пользователь: ${topUser.user} — ${formatInteger(topUser.pages)} стр., оценка ${formatInteger(topUser.cost)} руб.`
+      : "Пользователь: нет данных по текущей выборке.",
+    dominantPrintDeviation(kpis, excessSummary),
+    riskJob ? printRiskInsight(riskJob) : "Риск-задания: критичных отклонений не найдено.",
+  ];
 }
 
 function AutocompleteField({
@@ -353,6 +430,9 @@ export function PrintDashboardPage() {
   const topUsers = useMemo(() => buildTopUsers(filteredRows, tariffs, userSort, tableLimits.users), [filteredRows, tariffs, userSort, tableLimits.users]);
   const { paperBars, docTypeBars, excessSummary } = useMemo(() => calculatePrintAnalytics(filteredRows), [filteredRows]);
   const riskJobs = useMemo(() => buildRiskJobs(filteredRows, riskSort, tableLimits.risk), [filteredRows, riskSort, tableLimits.risk]);
+  const mainInsightStatus = printInsightStatus(kpis);
+  const mainInsightPoints = useMemo(() => printInsightPoints(topUsers, riskJobs, kpis, excessSummary), [topUsers, riskJobs, kpis, excessSummary]);
+  const mainInsightDeviationCost = useMemo(() => printDeviationCost(filteredRows, tariffs), [filteredRows, tariffs]);
 
   if (!report) return null;
 
@@ -625,6 +705,26 @@ export function PrintDashboardPage() {
               </div>
             </div>
           </div>
+
+          <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
+            <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+              <div className={`rounded-[var(--raport-radius-control)] border px-4 py-3 ${mainInsightStatus.className}`}>
+                <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
+                <strong className="mt-2 block text-3xl font-extrabold tabular-nums">{formatPercent(printDeviationRatio(kpis))}</strong>
+                <span className="text-xs font-semibold">страниц с отклонениями</span>
+                <span className="mt-1 block text-xs font-semibold">оценка отклонений: {formatInteger(mainInsightDeviationCost)} руб.</span>
+              </div>
+              <div className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-4 py-3">
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Что проверить в первую очередь</p>
+                {mainInsightPoints.map((point) => (
+                  <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-[var(--raport-text)]">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--raport-primary)]" />
+                    <span>{point}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SectionCard>
 
           {filteredRows.length === 0 ? (
             <SectionCard title="Нет данных" description="По выбранным фильтрам заданий нет.">

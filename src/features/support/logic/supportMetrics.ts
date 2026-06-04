@@ -7,7 +7,7 @@ import type {
   SupportPlanBucketStat,
   SupportQuantiles,
   SupportTicket,
-  SupportTopicStat,
+  SupportTopicSlaStat,
 } from "../supportTypes";
 
 export function formatSupportDateTime(date: Date | null): string {
@@ -55,10 +55,15 @@ export function periodLabel(tickets: SupportTicket[]): string {
   return `${formatSupportDate(min)}–${formatSupportDate(max)}`;
 }
 
-export function initialSupportFilters(): SupportFilters {
+export function initialSupportFilters(tickets: SupportTicket[] = []): SupportFilters {
+  const dates = tickets.flatMap((ticket) => (ticket.createdAt ? [ticket.createdAt] : []));
+  const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((date) => date.getTime()))) : null;
+  const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map((date) => date.getTime()))) : null;
+
   return {
-    dateFrom: "",
-    dateTo: "",
+    dateFrom: dateInputValue(minDate),
+    dateTo: dateInputValue(maxDate),
+    controlPercent: SUPPORT_THRESHOLDS.controlSlaPercent,
     slaStatus: "",
     planBucket: "",
     category: "",
@@ -175,23 +180,35 @@ export function buildDailySla(tickets: SupportTicket[]): SupportDailyPoint[] {
     });
 }
 
-export function buildTopicStats(tickets: SupportTicket[]): SupportTopicStat[] {
-  const totalOverdue = tickets.filter((ticket) => ticket.slaStatus === "Нарушен SLA").length;
-  return SUPPORT_CATEGORY_ORDER.map((category) => {
-    const items = tickets.filter((ticket) => ticket.category === category);
-    const applicable = items.filter((ticket) => ticket.slaApplicable).length;
-    const overdue = items.filter((ticket) => ticket.slaStatus === "Нарушен SLA").length;
-    return {
-      category,
-      total: items.length,
-      applicable,
-      overdue,
-      overdueShare: totalOverdue > 0 ? overdue / totalOverdue : 0,
-      violationRate: applicable > 0 ? overdue / applicable : 0,
-    };
-  })
-    .filter((item) => item.total > 0)
-    .sort((a, b) => b.overdue - a.overdue);
+export function buildTopicSlaStats(tickets: SupportTicket[]): SupportTopicSlaStat[] {
+  const totals = SUPPORT_CATEGORY_ORDER.map((category) => ({
+    category,
+    total: tickets.filter((ticket) => ticket.category === category).length,
+  })).filter((item) => item.total > 0);
+  const maxTotal = Math.max(1, ...totals.map((item) => item.total));
+
+  return totals
+    .map(({ category, total }) => {
+      const items = tickets.filter((ticket) => ticket.category === category);
+      const applicable = items.filter((ticket) => ticket.slaApplicable).length;
+      const overdue = items.filter((ticket) => ticket.slaStatus === "Нарушен SLA").length;
+      const inSla = items.filter((ticket) => ticket.slaStatus === "В SLA").length;
+      const intensityRate = total / maxTotal;
+      const intensity: SupportTopicSlaStat["intensity"] = intensityRate >= 0.67 ? "высокая" : intensityRate >= 0.34 ? "средняя" : "низкая";
+
+      return {
+        category,
+        total,
+        applicable,
+        inSla,
+        overdue,
+        dataProblems: total - applicable,
+        slaRate: applicable > 0 ? inSla / applicable : 0,
+        violationRate: applicable > 0 ? overdue / applicable : 0,
+        intensity,
+      };
+    })
+    .sort((a, b) => b.total - a.total || a.slaRate - b.slaRate || b.overdue - a.overdue);
 }
 
 export function buildPlanBucketStats(tickets: SupportTicket[]): SupportPlanBucketStat[] {
@@ -232,11 +249,9 @@ export function buildDataQualitySummary(tickets: SupportTicket[], filters: Suppo
   };
 }
 
-export function buildMainInsight(kpis: SupportKpis, planStats: SupportPlanBucketStat[], overdue: SupportQuantiles, resolution: SupportQuantiles): string {
+export function buildMainInsight(kpis: SupportKpis, overdue: SupportQuantiles, resolution: SupportQuantiles, controlPercent: number = SUPPORT_THRESHOLDS.controlSlaPercent): string {
   const slaText = formatSupportPercent(kpis.slaRate);
   const medianText = formatSupportHours(resolution.q2);
-  const hotspot = planStats.filter((item) => item.overdue > 0).sort((a, b) => b.overdue - a.overdue || b.violationRate - a.violationRate)[0];
-  const hotspotText = hotspot ? ` Основной вклад дает SLA-срок «${hotspot.bucket}».` : "";
   const hasHeavyTail = overdue.p90 !== null && overdue.q3 !== null && overdue.p90 > overdue.q3 * SUPPORT_THRESHOLDS.heavyTailMultiplier && overdue.p90 - overdue.q3 >= SUPPORT_THRESHOLDS.heavyTailMinGapHours;
   const tailText = hasHeavyTail ? " У просрочек есть тяжелый хвост: P90 заметно выше Q3." : "";
 
@@ -244,13 +259,13 @@ export function buildMainInsight(kpis: SupportKpis, planStats: SupportPlanBucket
     return "В отчете нет заявок, по которым можно рассчитать выполнение SLA: отсутствует SLA_plan или SLA_fact.";
   }
 
-  if (kpis.slaRate < SUPPORT_THRESHOLDS.controlSlaPercent / 100) {
-    return `SLA выполняется только по ${slaText} заявок с планом и фактом. Типовые заявки закрываются за ${medianText}.${hotspotText}${tailText}`;
+  if (kpis.slaRate < controlPercent / 100) {
+    return `SLA выполняется только по ${slaText} заявок с планом и фактом. Медиана времени решения — ${medianText}.${tailText}`;
   }
 
   if (kpis.slaRate < SUPPORT_THRESHOLDS.healthySlaPercent / 100) {
-    return `SLA находится в зоне контроля: выполнено ${slaText} заявок с планом и фактом. Медиана времени решения — ${medianText}.${hotspotText}${tailText}`;
+    return `SLA находится в зоне контроля: выполнено ${slaText} заявок с планом и фактом. Медиана времени решения — ${medianText}.${tailText}`;
   }
 
-  return `SLA выглядит стабильно: выполнено ${slaText} заявок с планом и фактом. Медиана времени решения — ${medianText}.${hotspotText}${tailText}`;
+  return `SLA выглядит стабильно: выполнено ${slaText} заявок с планом и фактом. Медиана времени решения — ${medianText}.${tailText}`;
 }

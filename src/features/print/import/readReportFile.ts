@@ -1,5 +1,6 @@
 import type { PrintImportResult, PrintRawRecord } from "../types";
 import { missingRequiredColumns, normalizePrintRow } from "../logic/dashboard";
+import { readFileArrayBuffer, readFileText } from "../../../shared/fileReadCache";
 
 function detectCsvDelimiter(line: string) {
   const semicolonCount = (line.match(/;/g) ?? []).length;
@@ -70,7 +71,7 @@ function rowsToRecords(rows: unknown[][]): PrintRawRecord[] {
 }
 
 async function readCsvRecords(file: File): Promise<PrintRawRecord[]> {
-  const text = await file.text();
+  const text = await readFileText(file);
   const normalizedText = text.replace(/^\uFEFF/, "");
   const firstLine = normalizedText
     .replace(/\r/g, "")
@@ -82,7 +83,7 @@ async function readCsvRecords(file: File): Promise<PrintRawRecord[]> {
 
 async function readWorkbookRecords(file: File): Promise<PrintRawRecord[]> {
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
+  const workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: false });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheetName], {

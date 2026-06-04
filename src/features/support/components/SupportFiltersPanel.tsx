@@ -4,6 +4,36 @@ import { Select } from "../../../shared/ui/shadcn/select";
 import { SUPPORT_CATEGORY_ORDER, SUPPORT_PLAN_BUCKETS, SUPPORT_SLA_STATUSES } from "../supportConfig";
 import type { SupportFilters } from "../supportTypes";
 
+function ControlTarget({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  function applyValue(nextValue: number) {
+    onChange(Math.max(0, Math.min(95, Math.round(nextValue))));
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <Input
+        type="number"
+        min={0}
+        max={95}
+        value={value}
+        className="min-h-10 w-14 px-1 text-center text-base font-semibold"
+        aria-label="Цель контроля SLA в процентах"
+        onChange={(event) => applyValue(Number(event.currentTarget.value))}
+      />
+      <input
+        type="range"
+        min={0}
+        max={95}
+        step={5}
+        value={value}
+        className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--raport-primary)]"
+        aria-label="Цель контроля SLA"
+        onChange={(event) => applyValue(Number(event.currentTarget.value))}
+      />
+    </div>
+  );
+}
+
 export function SupportFiltersPanel({
   filters,
   onChange,
@@ -16,6 +46,10 @@ export function SupportFiltersPanel({
   return (
     <FilterPanel onReset={onReset}>
       <div className="grid gap-3">
+        <label className="grid gap-1">
+          <span className="text-xs text-[var(--raport-muted)]">Цель контроля</span>
+          <ControlTarget value={filters.controlPercent} onChange={(controlPercent) => onChange({ controlPercent })} />
+        </label>
         <label className="grid gap-1">
           <span className="text-xs text-[var(--raport-muted)]">Период создания с</span>
           <Input type="date" value={filters.dateFrom} onChange={(event) => onChange({ dateFrom: event.target.value })} />

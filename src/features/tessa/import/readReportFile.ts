@@ -1,4 +1,5 @@
 import type { NormalizedRecord, QualitySummary, TessaImportResult } from "../types";
+import { readFileArrayBuffer, readFileText } from "../../../shared/fileReadCache";
 
 const HEADER_KEYS = {
   regNumber: "рег. номер",
@@ -270,11 +271,11 @@ function rowsFromSheet(values: unknown[][]): RawRow[] {
 export async function readTessaReportFile(file: File): Promise<TessaImportResult> {
   const lowerName = file.name.toLowerCase();
   if (lowerName.endsWith(".csv")) {
-    const text = await file.text();
+    const text = await readFileText(file);
     return normalizeRows(parseCsvText(text), file.name);
   }
 
-  const arrayBuffer = await file.arrayBuffer();
+  const arrayBuffer = await readFileArrayBuffer(file);
   const XLSX = await import("xlsx");
   const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: false });
   const firstSheetName = workbook.SheetNames[0];
@@ -286,4 +287,3 @@ export async function readTessaReportFile(file: File): Promise<TessaImportResult
   });
   return normalizeRows(rowsFromSheet(sheetRows), file.name);
 }
-

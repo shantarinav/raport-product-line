@@ -358,6 +358,20 @@ function SszFilterSidebar({
     [filters.selectedDepartment, peopleContextOperations],
   );
 
+  const operationContextOperations = useMemo(
+    () =>
+      filterOperations(operations, {
+        ...filters,
+        selectedOperation: "",
+      }),
+    [operations, filters],
+  );
+
+  const filterOperationsList = useMemo(
+    () => uniqueSorted(operationContextOperations.map((operation) => operation.operation)),
+    [operationContextOperations],
+  );
+
   const visibleDepartments = useMemo(() => {
     const query = filters.selectedDepartment.trim().toLocaleLowerCase("ru");
     if (!query) return departments;
@@ -369,6 +383,12 @@ function SszFilterSidebar({
     if (!query) return masters;
     return masters.filter((master) => master.toLocaleLowerCase("ru").includes(query));
   }, [filters.selectedMaster, masters]);
+
+  const visibleOperations = useMemo(() => {
+    const query = filters.selectedOperation.trim().toLocaleLowerCase("ru");
+    if (!query) return filterOperationsList;
+    return filterOperationsList.filter((operation) => operation.toLocaleLowerCase("ru").includes(query));
+  }, [filters.selectedOperation, filterOperationsList]);
 
   function update(next: Partial<DashboardFilters>) {
     onChange({ ...filters, ...next });
@@ -432,6 +452,17 @@ function SszFilterSidebar({
                 </option>
               ))}
             </Select>
+          </label>
+
+          <label className="grid gap-1">
+            <span className="text-xs text-[var(--raport-muted)]">Операция</span>
+            <AutocompleteField
+              value={filters.selectedOperation}
+              placeholder="Все операции"
+              options={visibleOperations}
+              ariaLabel="Операция"
+              onChange={(value) => update({ selectedOperation: value })}
+            />
           </label>
         </div>
 
@@ -517,6 +548,7 @@ function activeFilterChips(
     filters.selectedKit ? { label: `Комплект: ${filters.selectedKit}`, onRemove: () => update({ selectedKit: "" }) } : null,
     filters.selectedDepartment ? { label: `Цех: ${filters.selectedDepartment}`, onRemove: () => update({ selectedDepartment: "" }) } : null,
     filters.selectedMaster ? { label: `Мастер: ${filters.selectedMaster}`, onRemove: () => update({ selectedMaster: "" }) } : null,
+    filters.selectedOperation ? { label: `Операция: ${filters.selectedOperation}`, onRemove: () => update({ selectedOperation: "" }) } : null,
     periodLabel
       ? {
           label: periodLabel,
@@ -579,6 +611,89 @@ function SszKpiCards({ data, targetPercent }: { data: KpiCardData; targetPercent
       />
     </div>
   );
+}
+
+function insightStatus(ratio: number | null, targetRatio: number) {
+  if (ratio === null) {
+    return {
+      label: "Нет расчета",
+      className: "border-slate-300 bg-slate-50 text-slate-700",
+    };
+  }
+
+  const tone = targetTone(ratio, targetRatio);
+  if (tone === "high") {
+    return {
+      label: "Норма",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    };
+  }
+
+  if (tone === "medium") {
+    return {
+      label: "Контроль",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    };
+  }
+
+  return {
+    label: "Критично",
+    className: "border-red-200 bg-red-50 text-red-700",
+  };
+}
+
+function formatPercentageGap(value: number): string {
+  return `${(value * 100).toLocaleString("ru-RU", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} п.п.`;
+}
+
+function topAttentionRow(rows: ContributionRow[], targetRatio: number): ContributionRow | undefined {
+  return leaderboardRows(
+    rows.filter((row) => (row.ownTechnologyRatio ?? 0) < targetRatio && row.noTechnologyTime > 0),
+    "attention",
+  )[0];
+}
+
+function sszInsightPoints({
+  targetRatio,
+  orderRows,
+  departmentRows,
+  operationRows,
+}: {
+  targetRatio: number;
+  orderRows: ContributionRow[];
+  departmentRows: ContributionRow[];
+  operationRows: ContributionRow[];
+}): string[] {
+  const points: string[] = [];
+
+  const attentionOrder = topAttentionRow(orderRows, targetRatio);
+  if (attentionOrder) {
+    points.push(
+      `Заказ: ${attentionOrder.key} — ${formatHours(attentionOrder.noTechnologyTime)} н-ч без технологии, доля ${formatPercent(attentionOrder.ownNoTechnologyRatio)}.`,
+    );
+  } else {
+    points.push("Заказы: критичных отклонений от цели не видно.");
+  }
+
+  const attentionDepartment = topAttentionRow(departmentRows, targetRatio);
+  if (attentionDepartment) {
+    points.push(
+      `Цех: ${attentionDepartment.key} — ${formatHours(attentionDepartment.noTechnologyTime)} н-ч без технологии, доля ${formatPercent(attentionDepartment.ownNoTechnologyRatio)}.`,
+    );
+  } else {
+    points.push("Цеха: критичных отклонений от цели не видно.");
+  }
+
+  const attentionOperation = topAttentionRow(operationRows, targetRatio);
+  if (attentionOperation) {
+    points.push(
+      `Операция: ${attentionOperation.key} — ${formatHours(attentionOperation.noTechnologyTime)} н-ч без технологии, доля ${formatPercent(attentionOperation.ownNoTechnologyRatio)}.`,
+    );
+  } else {
+    points.push("Операции: критичных отклонений от цели не видно.");
+  }
+
+  return points.slice(0, 3);
 }
 
 function MasterLeaderboardCard({
@@ -878,6 +993,23 @@ function SszDashboard({ report }: { report: ImportedReport }) {
   const masterRows = useMemo(() => groupContributions(filteredOperations, "master"), [filteredOperations]);
   const operationRows = useMemo(() => groupContributions(filteredOperations, "operation"), [filteredOperations]);
   const kpis = useMemo(() => kpiData(filteredRecords, filteredOperations), [filteredRecords, filteredOperations]);
+  const mainInsightStatus = insightStatus(kpis.workTechnologyRatio, targetRatio);
+  const mainInsightGap =
+    kpis.workTechnologyRatio === null
+      ? "отклонение: н/д"
+      : kpis.workTechnologyRatio >= targetRatio
+        ? `выше цели на ${formatPercentageGap(kpis.workTechnologyRatio - targetRatio)}`
+        : `отклонение: ${formatPercentageGap(targetRatio - kpis.workTechnologyRatio)}`;
+  const mainInsightPoints = useMemo(
+    () =>
+      sszInsightPoints({
+        targetRatio,
+        orderRows,
+        departmentRows,
+        operationRows,
+      }),
+    [targetRatio, orderRows, departmentRows, operationRows],
+  );
 
   function selectOrder(order: string) {
     setFilters((current) => applyOrderSelection(current, operations, order));
@@ -889,6 +1021,10 @@ function SszDashboard({ report }: { report: ImportedReport }) {
 
   function selectMaster(master: string) {
     setFilters((current) => applyMasterSelection(current, operations, master));
+  }
+
+  function selectOperation(operation: string) {
+    patchFilters({ selectedOperation: operation });
   }
 
   function resetFilters() {
@@ -909,6 +1045,26 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         <FilterStatusBar chips={activeFilterChips(filters, defaultFilters, patchFilters)} />
 
         <SszKpiCards data={kpis} targetPercent={filters.targetPercent} />
+
+        <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
+          <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className={`rounded-[var(--raport-radius-control)] border px-4 py-3 ${mainInsightStatus.className}`}>
+              <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
+              <strong className="mt-2 block text-3xl font-extrabold tabular-nums">{formatPercent(kpis.workTechnologyRatio)}</strong>
+              <span className="text-xs font-semibold">цель: {filters.targetPercent}%</span>
+              <span className="mt-1 block text-xs font-semibold">{mainInsightGap}</span>
+            </div>
+            <div className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-4 py-3">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Где теряется технология</p>
+              {mainInsightPoints.map((point) => (
+                <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-[var(--raport-text)]">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--raport-primary)]" />
+                  <span>{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <MasterLeaderboardCard
@@ -978,6 +1134,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
                 Icon={Wrench}
                 rows={operationRows}
                 targetRatio={targetRatio}
+                onRowClick={selectOperation}
                 layout="compact-list"
               />
             </div>

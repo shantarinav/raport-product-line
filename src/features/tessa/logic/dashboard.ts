@@ -31,6 +31,7 @@ export const DEADLINE_MODES: Array<{ value: DeadlineMode; label: string }> = [
 ];
 
 const CONTRACT_DOCUMENT_TYPES = new Set(["Договор", "Дополнительное соглашение", "Спецификация"]);
+const FILTER_DIMENSIONS: FilterDimension[] = ["documentType", "contractNumber", "subject", "responsible", "author", "legalEntity"];
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, "ru"));
@@ -40,7 +41,12 @@ function groupBy<T>(items: T[], selectKey: (item: T) => string): Map<string, T[]
   const grouped = new Map<string, T[]>();
   items.forEach((item) => {
     const key = selectKey(item) || "Не указан";
-    grouped.set(key, [...(grouped.get(key) ?? []), item]);
+    const group = grouped.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      grouped.set(key, [item]);
+    }
   });
   return grouped;
 }
@@ -164,21 +170,34 @@ export function applyAgreementFilters(facts: AgreementFact[], filters: Agreement
 }
 
 export function buildAgreementFilterOptions(facts: AgreementFact[], filters: AgreementFilters) {
-  const recordsFor = (except: FilterDimension) =>
-    facts
-      .filter((fact) => fact.isOpen)
-      .filter((fact) => matchesFocusFilter(fact, filters.focusMode))
-      .filter((fact) => matchesDeadlineFilter(fact, filters.deadlineMode))
-      .filter((fact) => matchesDimensionFilters(fact, filters, except))
-      .map((fact) => fact.record);
+  const recordsByDimension: Record<FilterDimension, NormalizedRecord[]> = {
+    documentType: [],
+    contractNumber: [],
+    subject: [],
+    responsible: [],
+    author: [],
+    legalEntity: [],
+  };
+
+  facts.forEach((fact) => {
+    if (!fact.isOpen) return;
+    if (!matchesFocusFilter(fact, filters.focusMode)) return;
+    if (!matchesDeadlineFilter(fact, filters.deadlineMode)) return;
+
+    FILTER_DIMENSIONS.forEach((dimension) => {
+      if (matchesDimensionFilters(fact, filters, dimension)) {
+        recordsByDimension[dimension].push(fact.record);
+      }
+    });
+  });
 
   return {
-    contractNumbers: uniqueSorted(recordsFor("contractNumber").map(rootContractNumber).filter(Boolean)),
-    documentTypes: uniqueSorted(recordsFor("documentType").map((record) => record.documentType)),
-    subjects: uniqueSorted(recordsFor("subject").map((record) => record.subject).filter(Boolean)),
-    responsibles: uniqueSorted(recordsFor("responsible").map((record) => record.responsible)),
-    authors: uniqueSorted(recordsFor("author").map((record) => record.author)),
-    legalEntities: uniqueSorted(recordsFor("legalEntity").map((record) => record.legalEntity).filter(Boolean)),
+    contractNumbers: uniqueSorted(recordsByDimension.contractNumber.map(rootContractNumber).filter(Boolean)),
+    documentTypes: uniqueSorted(recordsByDimension.documentType.map((record) => record.documentType)),
+    subjects: uniqueSorted(recordsByDimension.subject.map((record) => record.subject).filter(Boolean)),
+    responsibles: uniqueSorted(recordsByDimension.responsible.map((record) => record.responsible)),
+    authors: uniqueSorted(recordsByDimension.author.map((record) => record.author)),
+    legalEntities: uniqueSorted(recordsByDimension.legalEntity.map((record) => record.legalEntity).filter(Boolean)),
   };
 }
 
@@ -222,6 +241,82 @@ export function calculateAgreementKpis(facts: AgreementFact[]): AgreementKpis {
     maxStuckDays: stuckFacts.reduce((max, fact) => Math.max(max, fact.stuckDays), 0),
     stuckRate: openFacts.length === 0 ? 0 : (stuckFacts.length / openFacts.length) * 100,
     attentionPeople: buildAttentionPeople(facts).length,
+  };
+}
+
+function calculateAgreementKpisWithAttention(facts: AgreementFact[], attentionPeopleCount: number): AgreementKpis {
+  let open = 0;
+  let stuck = 0;
+  let riskToday = 0;
+  let riskWeek = 0;
+  let criticalOver30 = 0;
+  let maxStuckDays = 0;
+
+  facts.forEach((fact) => {
+    if (!fact.isOpen) return;
+    open += 1;
+    if (fact.isRiskToday) riskToday += 1;
+    if (fact.isRiskWeek) riskWeek += 1;
+    if (!fact.isStuck) return;
+    stuck += 1;
+    if (fact.stuckDays > 30) criticalOver30 += 1;
+    maxStuckDays = Math.max(maxStuckDays, fact.stuckDays);
+  });
+
+  return {
+    open,
+    stuck,
+    riskToday,
+    riskWeek,
+    criticalOver30,
+    maxStuckDays,
+    stuckRate: open === 0 ? 0 : (stuck / open) * 100,
+    attentionPeople: attentionPeopleCount,
+  };
+}
+
+function buildDeadlineCounts(facts: AgreementFact[], filters: AgreementFilters): Record<DeadlineMode, number> {
+  const counts: Record<DeadlineMode, number> = {
+    all: 0,
+    over30: 0,
+    days8to30: 0,
+    days1to7: 0,
+    today: 0,
+    week: 0,
+  };
+
+  facts.forEach((fact) => {
+    if (!fact.isOpen) return;
+    if (!matchesDimensionFilters(fact, filters)) return;
+
+    counts.all += 1;
+    if (matchesDeadlineFilter(fact, "over30")) counts.over30 += 1;
+    if (matchesDeadlineFilter(fact, "days8to30")) counts.days8to30 += 1;
+    if (matchesDeadlineFilter(fact, "days1to7")) counts.days1to7 += 1;
+    if (matchesDeadlineFilter(fact, "today")) counts.today += 1;
+    if (matchesDeadlineFilter(fact, "week")) counts.week += 1;
+  });
+
+  return counts;
+}
+
+export function calculateTessaDashboardAnalytics(facts: AgreementFact[], filters: AgreementFilters) {
+  const contextFacts = applyAgreementFilters(facts, filters, false);
+  const filteredFacts = applyAgreementFilters(facts, filters);
+  const options = buildAgreementFilterOptions(facts, filters);
+  const deadlineCounts = buildDeadlineCounts(facts, filters);
+  const attentionPeople = buildAttentionPeople(contextFacts);
+  const kpis = calculateAgreementKpisWithAttention(contextFacts, attentionPeople.length);
+  const documentProblems = buildDocumentProblems(filteredFacts);
+
+  return {
+    contextFacts,
+    filteredFacts,
+    options,
+    deadlineCounts,
+    kpis,
+    attentionPeople,
+    documentProblems,
   };
 }
 

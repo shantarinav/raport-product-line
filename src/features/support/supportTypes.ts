@@ -51,6 +51,7 @@ export type SupportImportResult = {
 export type SupportFilters = {
   dateFrom: string;
   dateTo: string;
+  controlPercent: number;
   slaStatus: "" | SupportSlaStatus;
   planBucket: "" | SupportPlanBucket;
   category: "" | SupportCategory;
@@ -84,13 +85,16 @@ export type SupportDailyPoint = {
   slaRate: number;
 };
 
-export type SupportTopicStat = {
+export type SupportTopicSlaStat = {
   category: SupportCategory;
   total: number;
   applicable: number;
+  inSla: number;
   overdue: number;
-  overdueShare: number;
+  dataProblems: number;
+  slaRate: number;
   violationRate: number;
+  intensity: "низкая" | "средняя" | "высокая";
 };
 
 export type SupportPlanBucketStat = {

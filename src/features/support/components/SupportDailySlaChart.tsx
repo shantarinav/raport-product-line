@@ -12,12 +12,14 @@ function LegendItem({ className, label }: { className: string; label: string }) 
   );
 }
 
-export function SupportDailySlaChart({ points }: { points: SupportDailyPoint[] }) {
+export function SupportDailySlaChart({ points, controlPercent }: { points: SupportDailyPoint[]; controlPercent: number }) {
   const width = 920;
   const height = 300;
   const padding = { top: 34, right: 82, bottom: 54, left: 54 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+  const controlRatio = controlPercent / 100;
+  const healthyRatio = 0.95;
   const maxTotal = Math.max(1, ...points.map((point) => point.total));
   const slotWidth = points.length > 0 ? innerWidth / points.length : 0;
   const barWidth = points.length > 0 ? Math.max(4, slotWidth - 4) : 0;
@@ -34,14 +36,16 @@ export function SupportDailySlaChart({ points }: { points: SupportDailyPoint[] }
         <p className="text-sm text-[var(--raport-muted)]">Нет данных для построения графика.</p>
       ) : (
         <div className="grid gap-2 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-3">
+          <p className="text-xs font-semibold text-[var(--raport-muted)]">
+            Столбец — сколько заявок создано. Линия — доля выполненных SLA. Цвет столбца — уровень просрочек.
+          </p>
           <div className="flex flex-wrap gap-2">
-            <LegendItem className="bg-slate-400" label="Высота столбца: создано заявок" />
-            <LegendItem className="bg-blue-600" label="Синий: просрочек < 20%" />
-            <LegendItem className="bg-amber-500" label="Желтый: просрочек 20-39%" />
-            <LegendItem className="bg-red-500" label="Красный: просрочек >= 40%" />
-            <LegendItem className="bg-slate-900" label="Черная линия: доля SLA" />
-            <LegendItem className="bg-emerald-500" label="Пунктир: норма 95%" />
-            <LegendItem className="bg-amber-500" label="Пунктир: контроль 80%" />
+            <LegendItem className="bg-blue-600" label="Мало просрочек (<20%)" />
+            <LegendItem className="bg-amber-500" label="Заметно просрочек (20–39%)" />
+            <LegendItem className="bg-red-500" label="Много просрочек (≥40%)" />
+            <LegendItem className="bg-slate-900" label="SLA выполнен" />
+            <LegendItem className="bg-emerald-500" label="Норма 95%" />
+            <LegendItem className="bg-amber-500" label={`Контроль ${controlPercent}%`} />
           </div>
           <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-[var(--raport-radius-control)] bg-white">
             <text x={padding.left} y="18" className="fill-[var(--raport-muted)] text-[11px] font-bold">Заявки</text>
@@ -50,19 +54,19 @@ export function SupportDailySlaChart({ points }: { points: SupportDailyPoint[] }
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerHeight} className="stroke-slate-200" />
             <text x={padding.left - 8} y={padding.top + 4} textAnchor="end" className="fill-[var(--raport-muted)] text-[10px] font-semibold">{maxTotal}</text>
             <text x={padding.left - 8} y={padding.top + innerHeight + 4} textAnchor="end" className="fill-[var(--raport-muted)] text-[10px] font-semibold">0</text>
-            {[0.5, 0.8, 0.95].map((ratio) => (
+            {[0.5, controlRatio, healthyRatio].map((ratio) => (
               <line
                 key={ratio}
                 x1={padding.left}
                 y1={padding.top + innerHeight - ratio * innerHeight}
                 x2={width - padding.right}
                 y2={padding.top + innerHeight - ratio * innerHeight}
-                className={ratio === 0.95 ? "stroke-emerald-500" : ratio === 0.8 ? "stroke-amber-500" : "stroke-slate-200"}
+                className={ratio === healthyRatio ? "stroke-emerald-500" : ratio === controlRatio ? "stroke-amber-500" : "stroke-slate-200"}
                 strokeDasharray="4 4"
               />
             ))}
-            <text x={width - padding.right + 8} y={padding.top + innerHeight - 0.95 * innerHeight + 4} className="fill-emerald-700 text-[10px] font-bold">95% норма</text>
-            <text x={width - padding.right + 8} y={padding.top + innerHeight - 0.8 * innerHeight + 4} className="fill-amber-700 text-[10px] font-bold">80% контроль</text>
+            <text x={width - padding.right + 8} y={padding.top + innerHeight - healthyRatio * innerHeight + 4} className="fill-emerald-700 text-[10px] font-bold">95% норма</text>
+            <text x={width - padding.right + 8} y={padding.top + innerHeight - controlRatio * innerHeight + 4} className="fill-amber-700 text-[10px] font-bold">{controlPercent}% контроль</text>
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + 2;
               const barHeight = (point.total / maxTotal) * innerHeight;

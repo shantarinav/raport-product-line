@@ -22,12 +22,8 @@ import { Button } from "../../../shared/ui/shadcn/button";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import {
-  applyAgreementFilters,
   buildAgreementFacts,
-  buildAgreementFilterOptions,
-  buildAttentionPeople,
-  buildDocumentProblems,
-  calculateAgreementKpis,
+  calculateTessaDashboardAnalytics,
   DEADLINE_MODES,
   declineAgreement,
   declineRisk,
@@ -411,23 +407,10 @@ export function TessaDashboardPage() {
   const period = useMemo(() => getDocumentDatePeriod(records), [records]);
 
   const facts = useMemo(() => buildAgreementFacts(records, analysisDate), [records, analysisDate]);
-  const contextFacts = useMemo(() => applyAgreementFilters(facts, filters, false), [facts, filters]);
-  const filteredFacts = useMemo(() => applyAgreementFilters(facts, filters), [facts, filters]);
-  const options = useMemo(() => buildAgreementFilterOptions(facts, filters), [facts, filters]);
-  const deadlineCounts = useMemo<DeadlineCounts>(() => {
-    const baseFilters = { ...filters, focusMode: "allOpen" as const };
-    return {
-      all: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "all" }).length,
-      over30: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "over30" }).length,
-      days8to30: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "days8to30" }).length,
-      days1to7: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "days1to7" }).length,
-      today: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "today" }).length,
-      week: applyAgreementFilters(facts, { ...baseFilters, deadlineMode: "week" }).length,
-    };
-  }, [facts, filters]);
-  const kpis = useMemo(() => calculateAgreementKpis(contextFacts), [contextFacts]);
-  const attentionPeople = useMemo(() => buildAttentionPeople(contextFacts), [contextFacts]);
-  const documentProblems = useMemo(() => buildDocumentProblems(filteredFacts), [filteredFacts]);
+  const { filteredFacts, options, deadlineCounts, kpis, attentionPeople, documentProblems } = useMemo(
+    () => calculateTessaDashboardAnalytics(facts, filters),
+    [facts, filters],
+  );
   const visiblePeople = peopleMode === "top" ? attentionPeople.slice(0, 5) : attentionPeople;
   const visibleProblems = documentProblems.slice(0, visibleProblemsCount);
   const hasMoreProblems = visibleProblemsCount < documentProblems.length;

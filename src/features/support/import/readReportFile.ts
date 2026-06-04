@@ -1,6 +1,7 @@
-﻿import { classifySupportTopic } from "../logic/supportClassifier";
+import { classifySupportTopic } from "../logic/supportClassifier";
 import { SUPPORT_MAX_PARSE_ROWS, SUPPORT_OVERDUE_BUCKETS, SUPPORT_PLAN_BUCKETS, SUPPORT_REQUIRED_COLUMNS } from "../supportConfig";
 import type { SupportImportResult, SupportOverdueBucket, SupportPlanBucket, SupportRawRecord, SupportSlaStatus, SupportTicket } from "../supportTypes";
+import { readFileArrayBuffer, readFileText } from "../../../shared/fileReadCache";
 
 type HeaderMap = Partial<Record<keyof SupportRawRecord, number>>;
 
@@ -225,13 +226,13 @@ function parseDelimitedRows(text: string, delimiter: string): string[][] {
 
 async function readRows(file: File): Promise<unknown[][]> {
   if (file.name.toLowerCase().endsWith(".csv")) {
-    const text = (await file.text()).replace(/^\uFEFF/, "");
+    const text = (await readFileText(file)).replace(/^\uFEFF/, "");
     const firstLine = text.replace(/\r/g, "").split("\n").find((line) => line.trim().length > 0) ?? "";
     return parseDelimitedRows(text, detectCsvDelimiter(firstLine));
   }
 
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true, sheetRows: SUPPORT_MAX_PARSE_ROWS });
+  const workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: true, sheetRows: SUPPORT_MAX_PARSE_ROWS });
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const worksheet = workbook.Sheets[firstSheetName];

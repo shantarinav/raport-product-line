@@ -1,4 +1,6 @@
-﻿export type DetectedReportType = "ssz" | "tessa" | "print" | "support";
+import { readFileArrayBuffer } from "./fileReadCache";
+
+export type DetectedReportType = "ssz" | "tessa" | "print" | "support";
 
 export type ReportDetectionResult =
   | { type: DetectedReportType; matchedTypes: DetectedReportType[] }
@@ -7,6 +9,7 @@ export type ReportDetectionResult =
 
 const XLSX_DETECTION_ROWS = 120;
 const CSV_DETECTION_BYTES = 256 * 1024;
+
 
 function normalizeText(value: unknown): string {
   return String(value ?? "")
@@ -82,7 +85,7 @@ async function readPreviewRows(file: File): Promise<unknown[][]> {
   }
 
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await file.arrayBuffer(), {
+  const workbook = XLSX.read(await readFileArrayBuffer(file), {
     type: "array",
     cellDates: true,
     sheetRows: XLSX_DETECTION_ROWS,
