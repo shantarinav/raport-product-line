@@ -10,13 +10,13 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3">
       <Input
         type="number"
         min={0}
         max={95}
         value={value}
-        className="min-h-10 w-14 px-1 text-center text-base font-semibold"
+        className="min-h-10 !w-14 px-1 text-center text-base font-semibold"
         aria-label="Цель контроля SLA в процентах"
         onChange={(event) => applyValue(Number(event.currentTarget.value))}
       />
@@ -26,7 +26,7 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
         max={95}
         step={5}
         value={value}
-        className="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--raport-primary)]"
+        className="h-2 w-full min-w-0 cursor-pointer accent-[var(--raport-primary)]"
         aria-label="Цель контроля SLA"
         onChange={(event) => applyValue(Number(event.currentTarget.value))}
       />
