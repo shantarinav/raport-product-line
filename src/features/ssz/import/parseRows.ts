@@ -68,7 +68,7 @@ function finalizeSsz(record: SszRecord): SszRecord {
   };
 }
 
-export function parseSszRows(rows: CellValue[][], sourceName: string): ImportedReport {
+export function parseSszRows(rows: CellValue[][], sourceName: string, sourceRowNumbers?: number[]): ImportedReport {
   const period = findPeriod(rows);
   const id = sourceId(sourceName, period);
   const warnings: ImportedReport["warnings"] = [];
@@ -86,7 +86,7 @@ export function parseSszRows(rows: CellValue[][], sourceName: string): ImportedR
   }
 
   rows.forEach((row, index) => {
-    const rowNumber = index + 1;
+    const rowNumber = sourceRowNumbers?.[index] ?? index + 1;
     const first = text(row[0]);
     if (!first) return;
 

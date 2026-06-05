@@ -207,7 +207,13 @@ export function SupportDashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-3 lg:self-start">
-          <SupportFiltersPanel filters={filters} onChange={patchFilters} onReset={resetFilters} />
+          <SupportFiltersPanel
+            filters={filters}
+            dateMin={defaultFilters.dateFrom}
+            dateMax={defaultFilters.dateTo}
+            onChange={patchFilters}
+            onReset={resetFilters}
+          />
         </div>
 
         <div className="grid gap-4">

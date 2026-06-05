@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, ChevronDown, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -12,10 +12,10 @@ import {
   PageShell,
   SectionCard,
 } from "../../../shared/ui";
-import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
+import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import {
   applyPrintFilters,
   buildPrintFilterOptions,
@@ -28,7 +28,6 @@ import {
   DOC_TYPES,
   estimateRowCost,
   formatDate,
-  formatDateTime,
   formatInteger,
   formatPercent,
   formatShortDateTime,
@@ -36,80 +35,49 @@ import {
   PAPER_BUCKETS,
   RISK_REASON_OPTIONS,
 } from "../logic/dashboard";
-import type { PaperBucket, PrintBarDatum, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
+import type { PaperBucket, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
+import { usePrintHistory } from "../logic/usePrintHistory";
+import {
+  AutocompleteField,
+  QuickFocusPanel,
+  SortToolbar,
+  USER_SORT_OPTIONS,
+  quickFocusFromFilters,
+  quickFocusLabel,
+  type PrintQuickFocus,
+  type UserSort,
+} from "./PrintControls";
+import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
+import { BarList, RiskJobList } from "./PrintWidgets";
 
 const REPORT_ROUTE = "/print";
 
 type TableLimits = typeof DEFAULT_TABLE_LIMITS;
-type UserSort = keyof Pick<PrintUserAggregate, "pages" | "cost" | "noDuplexPages" | "colorPages" | "bigJobs">;
-type PrintQuickFocus = "all" | "simplex" | "color" | "bigJobs" | "pdfIncluded" | "pdfExcluded";
+type PrintViewMode = "manager" | "analyst";
+type MetricDelta = {
+  label: string;
+  variant: "secondary" | "success" | "danger";
+};
 
-const QUICK_FOCUS_OPTIONS: Array<{ value: PrintQuickFocus; label: string; tone?: "neutral" | "warning" | "danger" | "success" }> = [
-  { value: "all", label: "Все" },
-  { value: "simplex", label: "Односторонняя", tone: "warning" },
-  { value: "color", label: "Цветная", tone: "warning" },
-  { value: "bigJobs", label: "100+ стр.", tone: "danger" },
-  { value: "pdfIncluded", label: "PDF включен" },
-  { value: "pdfExcluded", label: "PDF исключен", tone: "success" },
-];
+const PRINT_VIEW_MODE_STORAGE_KEY = "raport:print:viewMode";
 
-const USER_SORT_OPTIONS: Array<{ value: UserSort; label: string }> = [
-  { value: "pages", label: "Страницы" },
-  { value: "cost", label: "Оценка" },
-  { value: "noDuplexPages", label: "Без двуст." },
-  { value: "colorPages", label: "Цвет" },
-  { value: "bigJobs", label: "100+" },
-];
+function readStoredPrintViewMode(): PrintViewMode {
+  if (typeof window === "undefined") return "manager";
 
-function quickFocusLabel(value: PrintQuickFocus): string {
-  return QUICK_FOCUS_OPTIONS.find((option) => option.value === value)?.label ?? "Все";
-}
-
-function quickFocusFromFilters(filters: PrintFilters): PrintQuickFocus {
-  if (filters.riskReason === "big-job") return "bigJobs";
-  if (filters.color === "NOT GRAYSCALE") return "color";
-  if (filters.duplex === "NOT DUPLEX") return "simplex";
-  if (!filters.excludePdfPrinter) return "pdfIncluded";
-  return "all";
-}
-
-function quickFocusButtonClass(active: boolean, tone: "neutral" | "warning" | "danger" | "success" = "neutral") {
-  if (!active) return "border-[var(--raport-border)] bg-white text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]";
-  if (tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
-  if (tone === "warning") return "border-amber-300 bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
-  if (tone === "success") return "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-[inset_0_0_0_1px_rgb(167_243_208)]";
-  return "border-[var(--raport-action-border)] bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
-}
-
-function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatum[]; valueLabel?: string }) {
-  const max = Math.max(1, ...items.map((item) => item.pages));
-  const hasData = items.some((item) => item.pages > 0);
-
-  if (!hasData) {
-    return <p className="rounded-[var(--raport-radius-control)] border border-dashed border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-sm text-[var(--raport-muted)]">Нет данных по выбранным фильтрам.</p>;
+  try {
+    const storedMode = window.localStorage.getItem(PRINT_VIEW_MODE_STORAGE_KEY);
+    return storedMode === "analyst" ? "analyst" : "manager";
+  } catch {
+    return "manager";
   }
+}
 
-  return (
-    <div className="grid gap-2">
-      {items.map((item) => (
-        <div key={item.label} className="grid gap-1">
-          <div className="flex min-h-4 items-center justify-between gap-3 text-xs font-semibold text-[var(--raport-muted)]">
-            <span className="min-w-0 truncate" title={item.label}>
-              {item.label}
-            </span>
-            <span className="shrink-0 tabular-nums text-[var(--raport-text)]">
-              {formatInteger(item.pages)} {valueLabel}
-            </span>
-          </div>
-          <progress
-            max={max}
-            value={item.pages}
-            className="h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-moz-progress-bar]:bg-[var(--raport-primary)] [&::-webkit-progress-value]:bg-[var(--raport-primary)]"
-          />
-        </div>
-      ))}
-    </div>
-  );
+function saveStoredPrintViewMode(mode: PrintViewMode) {
+  try {
+    window.localStorage.setItem(PRINT_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // The dashboard must keep working even if browser settings cannot be persisted.
+  }
 }
 
 function tariffInputValue(value: number) {
@@ -121,13 +89,6 @@ function parseTariffValue(value: string) {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
-function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" | "success" {
-  if (kind === "danger") return "danger";
-  if (kind === "warning") return "warning";
-  if (kind === "success") return "success";
-  return "default";
-}
-
 function isDate(value: Date | null): value is Date {
   return value instanceof Date;
 }
@@ -135,6 +96,68 @@ function isDate(value: Date | null): value is Date {
 function formatFilterDate(value: string): string {
   const [year, month, day] = value.split("-");
   return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
+function clampDateInput(value: string, min: string, max: string): string {
+  if (!value) return value;
+  if (min && value < min) return min;
+  if (max && value > max) return max;
+  return value;
+}
+
+const deltaTextClass: Record<MetricDelta["variant"], string> = {
+  secondary: "text-[var(--raport-muted)]",
+  success: "text-[var(--raport-success)]",
+  danger: "text-[var(--raport-danger)]",
+};
+
+function snapshotMetric(snapshot: { metrics: Record<string, number> } | null, key: string): number | null {
+  const value = snapshot?.metrics[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatSignedNumber(value: number, digits = 0): string {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "±";
+  return `${sign}${Math.abs(value).toLocaleString("ru-RU", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+function metricDelta(currentValue: number, previousSnapshot: { metrics: Record<string, number> } | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (previousValue === null) return null;
+  const delta = currentValue - previousValue;
+
+  return {
+    label: formatSignedNumber(delta),
+    variant: Math.abs(delta) < 0.5 ? "secondary" : delta > 0 ? "danger" : "success",
+  };
+}
+
+function percentMetricDelta(currentValue: number, previousSnapshot: { metrics: Record<string, number> } | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (previousValue === null) return null;
+  const delta = currentValue - previousValue;
+
+  return {
+    label: `${formatSignedNumber(delta, 1)} п.п.`,
+    variant: Math.abs(delta) < 0.05 ? "secondary" : delta > 0 ? "danger" : "success",
+  };
+}
+
+function MetricNote({ label, delta, suffix = "" }: { label: string; delta: MetricDelta | null; suffix?: string }) {
+  return (
+    <div className="grid gap-1">
+      <span>{label}</span>
+      {delta ? (
+        <span className={deltaTextClass[delta.variant]}>
+          к предыдущему периоду: {delta.label}
+          {suffix}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function printDeviationPages(kpis: PrintKpis): number {
@@ -213,198 +236,6 @@ function printInsightPoints(topUsers: PrintUserAggregate[], riskJobs: PrintJob[]
   ];
 }
 
-function AutocompleteField({
-  value,
-  onChange,
-  placeholder,
-  options,
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  options: string[];
-  ariaLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const blurTimerRef = useRef<number | null>(null);
-  const visibleOptions = useMemo(() => {
-    const query = value.trim().toLowerCase();
-    const matched = query.length === 0 ? options : options.filter((option) => option.toLowerCase().includes(query));
-    return matched.slice(0, 80);
-  }, [options, value]);
-  useEffect(() => {
-    return () => {
-      if (blurTimerRef.current !== null) {
-        window.clearTimeout(blurTimerRef.current);
-      }
-    };
-  }, []);
-
-  return (
-    <div className="relative">
-      <Input
-        value={value}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        autoComplete="off"
-        className="pr-9"
-        onChange={(event) => {
-          onChange(event.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          if (blurTimerRef.current !== null) {
-            window.clearTimeout(blurTimerRef.current);
-          }
-          blurTimerRef.current = window.setTimeout(() => {
-            setOpen(false);
-            blurTimerRef.current = null;
-          }, 120);
-        }}
-      />
-      <button
-        type="button"
-        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--raport-radius-control)] text-[var(--raport-muted)] hover:bg-[var(--raport-action-bg)]"
-        aria-label="Показать список"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <ChevronDown className="h-4 w-4" strokeWidth={2} />
-      </button>
-      {open && visibleOptions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white py-1 shadow-[var(--raport-shadow-card)]">
-          {visibleOptions.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="block w-full truncate px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
-              title={option}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onChange(option);
-                setOpen(false);
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function QuickFocusPanel({ value, onChange }: { value: PrintQuickFocus; onChange: (value: PrintQuickFocus) => void }) {
-  return (
-    <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--raport-muted)]">Быстрый фокус</span>
-        <span className="rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--raport-primary)]">
-          {quickFocusLabel(value)}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-1">
-        {QUICK_FOCUS_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={`min-h-8 rounded-[var(--raport-radius-control)] border px-2 py-1 text-xs font-semibold transition-colors ${quickFocusButtonClass(value === option.value, option.tone)}`}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SortToolbar({
-  sortLabel = "Сортировка",
-  sortValue,
-  sortOptions,
-  onSortChange,
-  limitValue,
-  onLimitChange,
-}: {
-  sortLabel?: string;
-  sortValue: string;
-  sortOptions: Array<{ value: string; label: string }>;
-  onSortChange: (value: string) => void;
-  limitValue: string;
-  onLimitChange: (value: string) => void;
-}) {
-  return (
-    <div className="mb-3 flex flex-wrap items-end justify-between gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
-      <DashboardSwitch label={sortLabel} value={sortValue} onChange={onSortChange} options={sortOptions} />
-      <DashboardSwitch
-        label="Показать"
-        value={limitValue}
-        onChange={onLimitChange}
-        options={[
-          { value: "10", label: "10" },
-          { value: "20", label: "20" },
-        ]}
-      />
-    </div>
-  );
-}
-
-function RiskJobList({
-  rows,
-  onUserSelect,
-}: {
-  rows: PrintJob[];
-  onUserSelect: (user: string) => void;
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="rounded-[var(--raport-radius-control)] border border-dashed border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-sm text-[var(--raport-muted)]">
-        Нет заданий с отклонениями по выбранным фильтрам.
-      </p>
-    );
-  }
-
-  return (
-    <div className="grid gap-2">
-      {rows.map((row, index) => (
-        <article
-          key={`${row.dateKey}-${row.user}-${row.documentName}-${index}`}
-          className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2"
-        >
-          <div className="grid min-w-0 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
-            <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 text-xs font-extrabold tabular-nums text-[var(--raport-primary)]">
-              #{index + 1}
-            </span>
-            <div className="min-w-0">
-              <button className="block max-w-full truncate text-left text-sm font-bold text-[var(--raport-primary)] hover:underline" onClick={() => onUserSelect(row.user)}>
-                {row.user}
-              </button>
-              <p className="mt-0.5 truncate text-xs font-semibold text-[var(--raport-text)]" title={row.documentName}>
-                {row.documentName}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--raport-muted)] md:justify-end">
-              <span className="tabular-nums text-[var(--raport-text)]">{formatInteger(row.totalPages)} стр.</span>
-              <time dateTime={row.date?.toISOString()}>{formatDateTime(row.date)}</time>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <Badge variant="danger">Балл риска: {formatInteger(row.riskScore)}</Badge>
-            {row.riskReasons.map((reason) => (
-              <Badge key={`${row.documentName}-${reason.code}`} variant={riskBadgeVariant(reason.kind)}>
-                {reason.label}
-              </Badge>
-            ))}
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-}
-
 export function PrintDashboardPage() {
   const navigate = useNavigate();
   const [report] = useState<PrintImportResult | null>(() => readPendingDashboardData<PrintImportResult>(REPORT_ROUTE));
@@ -413,6 +244,8 @@ export function PrintDashboardPage() {
   const [tableLimits, setTableLimits] = useState<TableLimits>(DEFAULT_TABLE_LIMITS);
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
+  const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
+  const { history: printHistory } = usePrintHistory();
 
   useEffect(() => {
     if (report) return;
@@ -433,6 +266,26 @@ export function PrintDashboardPage() {
   const mainInsightStatus = printInsightStatus(kpis);
   const mainInsightPoints = useMemo(() => printInsightPoints(topUsers, riskJobs, kpis, excessSummary), [topUsers, riskJobs, kpis, excessSummary]);
   const mainInsightDeviationCost = useMemo(() => printDeviationCost(filteredRows, tariffs), [filteredRows, tariffs]);
+  const previousSnapshot = useMemo(
+    () => {
+      if (!filters || !isMonthlyCoverageReady(filters.dateFrom, filters.dateTo)) return null;
+      const comparisonMonthStart = monthStartDateKey(filters.dateFrom);
+      if (!comparisonMonthStart) return null;
+
+      return (
+        printHistory
+          .filter((snapshot) => snapshot.period.from < comparisonMonthStart)
+          .sort((left, right) => right.period.from.localeCompare(left.period.from))[0] ?? null
+      );
+    },
+    [filters, printHistory],
+  );
+  const totalPagesDelta = metricDelta(kpis.totalPages, previousSnapshot, "totalPages");
+  const usersDelta = metricDelta(kpis.usersCount, previousSnapshot, "usersCount");
+  const costDelta = metricDelta(kpis.estimatedCost, previousSnapshot, "estimatedCost");
+  const simplexRatioDelta = percentMetricDelta(kpis.simplexRatio, previousSnapshot, "simplexRatioPercent");
+  const colorRatioDelta = percentMetricDelta(kpis.colorRatio, previousSnapshot, "colorRatioPercent");
+  const bigJobsDelta = metricDelta(kpis.bigJobs, previousSnapshot, "bigJobs");
 
   if (!report) return null;
 
@@ -458,9 +311,12 @@ export function PrintDashboardPage() {
     );
   }
 
-  const resetFilters = () => setFilters(initialPrintFilters(report.jobs));
+  const reportJobs = report.jobs;
+  const printDateBounds = initialPrintFilters(reportJobs);
+  const resetFilters = () => setFilters(printDateBounds);
   const patchFilters = (next: Partial<PrintFilters>) => setFilters((current) => (current ? { ...current, ...next } : current));
-  const reportDates = report.jobs.map((row) => row.date).filter(isDate);
+  const isManagerView = viewMode === "manager";
+  const reportDates = reportJobs.map((row) => row.date).filter(isDate);
   const period = reportDates.length
     ? {
         from: [...reportDates].sort((a, b) => a.getTime() - b.getTime())[0] ?? null,
@@ -492,6 +348,25 @@ export function PrintDashboardPage() {
       return;
     }
     patchFilters({ excludePdfPrinter: true });
+  }
+
+  function changeViewMode(nextMode: PrintViewMode) {
+    setViewMode(nextMode);
+    saveStoredPrintViewMode(nextMode);
+    if (nextMode === "manager") {
+      const defaultPrintFilters = initialPrintFilters(reportJobs);
+      setFilters((current) =>
+        current
+          ? {
+              ...current,
+              computer: "",
+              documentText: "",
+              docType: "",
+              paperBuckets: defaultPrintFilters.paperBuckets,
+            }
+          : current,
+      );
+    }
   }
 
   const chips = [
@@ -548,11 +423,23 @@ export function PrintDashboardPage() {
             <div className="grid gap-3">
               <label className="grid gap-1">
                 <span className="text-xs text-[var(--raport-muted)]">Период с</span>
-                <Input type="date" value={filters.dateFrom} onChange={(event) => patchFilters({ dateFrom: event.target.value })} />
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  min={printDateBounds.dateFrom}
+                  max={printDateBounds.dateTo}
+                  onChange={(event) => patchFilters({ dateFrom: clampDateInput(event.target.value, printDateBounds.dateFrom, printDateBounds.dateTo) })}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs text-[var(--raport-muted)]">Период по</span>
-                <Input type="date" value={filters.dateTo} onChange={(event) => patchFilters({ dateTo: event.target.value })} />
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  min={printDateBounds.dateFrom}
+                  max={printDateBounds.dateTo}
+                  onChange={(event) => patchFilters({ dateTo: clampDateInput(event.target.value, printDateBounds.dateFrom, printDateBounds.dateTo) })}
+                />
               </label>
 
               <label className="grid gap-1">
@@ -566,24 +453,29 @@ export function PrintDashboardPage() {
                 />
               </label>
 
-              <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Компьютер</span>
-                <AutocompleteField
-                  value={filters.computer}
-                  onChange={(value) => patchFilters({ computer: value })}
-                  placeholder="Все компьютеры"
-                  options={options.computers}
-                  ariaLabel="Фильтр по компьютеру"
-                />
-              </label>
+              {!isManagerView ? (
+                <label className="grid gap-1">
+                  <span className="text-xs text-[var(--raport-muted)]">Компьютер</span>
+                  <AutocompleteField
+                    value={filters.computer}
+                    onChange={(value) => patchFilters({ computer: value })}
+                    placeholder="Все компьютеры"
+                    options={options.computers}
+                    ariaLabel="Фильтр по компьютеру"
+                  />
+                </label>
+              ) : null}
 
-              <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Документ</span>
-                <Input value={filters.documentText} placeholder="Фрагмент названия" onChange={(event) => patchFilters({ documentText: event.target.value })} />
-              </label>
+              {!isManagerView ? (
+                <label className="grid gap-1">
+                  <span className="text-xs text-[var(--raport-muted)]">Документ</span>
+                  <Input value={filters.documentText} placeholder="Фрагмент названия" onChange={(event) => patchFilters({ documentText: event.target.value })} />
+                </label>
+              ) : null}
 
               <QuickFocusPanel value={quickFocus} onChange={applyQuickFocus} />
 
+              {!isManagerView ? (
               <details className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
                 <summary className="cursor-pointer select-none text-xs font-semibold text-[var(--raport-muted)]">Дополнительно</summary>
                 <div className="mt-3 grid gap-3">
@@ -657,7 +549,9 @@ export function PrintDashboardPage() {
               </label>
                 </div>
               </details>
+              ) : null}
 
+              {!isManagerView ? (
               <details className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
                 <summary className="cursor-pointer select-none text-xs font-semibold text-[var(--raport-muted)]">Тарифы</summary>
                 <div className="mt-2 grid gap-2">
@@ -680,31 +574,108 @@ export function PrintDashboardPage() {
                   ))}
                 </div>
               </details>
+              ) : null}
             </div>
           </FilterPanel>
         </div>
 
         <div className="grid gap-4">
-          <FilterStatusBar chips={chips} />
+          <FilterStatusBar
+            chips={chips}
+            actions={
+              <DashboardSwitch
+                value={viewMode}
+                onChange={(value) => changeViewMode(value as PrintViewMode)}
+                options={[
+                  { value: "manager", label: "Руководитель" },
+                  { value: "analyst", label: "Аналитик" },
+                ]}
+              />
+            }
+          />
 
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Объем и стоимость</p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Всего страниц" value={formatInteger(kpis.totalPages)} note={`${formatInteger(kpis.totalJobs)} заданий`} Icon={Printer} tone="neutral" />
-                <MetricCard label="Уникальные пользователи" value={formatInteger(kpis.usersCount)} note="в текущей выборке" Icon={Users} tone="neutral" />
-                <MetricCard label="Оценка стоимости" value={formatInteger(kpis.estimatedCost)} note="руб." Icon={Printer} tone="success" />
+          {isManagerView ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              <MetricCard
+                label="Всего страниц"
+                value={formatInteger(kpis.totalPages)}
+                note={<MetricNote label={`${formatInteger(kpis.totalJobs)} заданий`} delta={totalPagesDelta} suffix=" стр." />}
+                Icon={Printer}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Уникальные пользователи"
+                value={formatInteger(kpis.usersCount)}
+                note={<MetricNote label="в текущей выборке" delta={usersDelta} />}
+                Icon={Users}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Оценка стоимости"
+                value={formatInteger(kpis.estimatedCost)}
+                note={<MetricNote label="руб." delta={costDelta} suffix=" руб." />}
+                Icon={Printer}
+                tone="success"
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div className="grid gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Объем и стоимость</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <MetricCard
+                    label="Всего страниц"
+                    value={formatInteger(kpis.totalPages)}
+                    note={<MetricNote label={`${formatInteger(kpis.totalJobs)} заданий`} delta={totalPagesDelta} suffix=" стр." />}
+                    Icon={Printer}
+                    tone="neutral"
+                  />
+                  <MetricCard
+                    label="Уникальные пользователи"
+                    value={formatInteger(kpis.usersCount)}
+                    note={<MetricNote label="в текущей выборке" delta={usersDelta} />}
+                    Icon={Users}
+                    tone="neutral"
+                  />
+                  <MetricCard
+                    label="Оценка стоимости"
+                    value={formatInteger(kpis.estimatedCost)}
+                    note={<MetricNote label="руб." delta={costDelta} suffix=" руб." />}
+                    Icon={Printer}
+                    tone="success"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Отклонения печати</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <MetricCard
+                    label="Односторонняя печать"
+                    value={formatPercent(kpis.simplexRatio)}
+                    note={<MetricNote label={`${formatInteger(kpis.simplexPages)} страниц`} delta={simplexRatioDelta} />}
+                    Icon={FileText}
+                    tone="warning"
+                  />
+                  <MetricCard
+                    label="Цветная печать"
+                    value={formatPercent(kpis.colorRatio)}
+                    note={<MetricNote label={`${formatInteger(kpis.colorPages)} страниц`} delta={colorRatioDelta} />}
+                    Icon={Gauge}
+                    tone="warning"
+                  />
+                  <MetricCard
+                    label="Задания от 100 стр."
+                    value={formatInteger(kpis.bigJobs)}
+                    note={<MetricNote label={`${formatInteger(kpis.bigPages)} страниц`} delta={bigJobsDelta} />}
+                    Icon={AlertTriangle}
+                    tone="danger"
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Отклонения печати</p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Односторонняя печать" value={formatPercent(kpis.simplexRatio)} note={`${formatInteger(kpis.simplexPages)} страниц`} Icon={FileText} tone="warning" />
-                <MetricCard label="Цветная печать" value={formatPercent(kpis.colorRatio)} note={`${formatInteger(kpis.colorPages)} страниц`} Icon={Gauge} tone="warning" />
-                <MetricCard label="Задания от 100 стр." value={formatInteger(kpis.bigJobs)} note={`${formatInteger(kpis.bigPages)} страниц`} Icon={AlertTriangle} tone="danger" />
-              </div>
-            </div>
-          </div>
+          )}
+
+          {viewMode === "analyst" ? <PrintPagesTrendChart data={printHistory} /> : null}
 
           <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -768,32 +739,36 @@ export function PrintDashboardPage() {
             />
           </SectionCard>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ChartCard title="Тип документа" description="Распределение напечатанных страниц по типам документов." Icon={FileText}>
-              <BarList items={docTypeBars} />
-            </ChartCard>
-            <ChartCard title="Формат бумаги" description="Распределение страниц по формату бумаги." Icon={Printer}>
-              <BarList items={paperBars} />
-            </ChartCard>
-          </div>
+          {!isManagerView ? (
+            <>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <ChartCard title="Тип документа" description="Распределение напечатанных страниц по типам документов." Icon={FileText}>
+                  <BarList items={docTypeBars} />
+                </ChartCard>
+                <ChartCard title="Формат бумаги" description="Распределение страниц по формату бумаги." Icon={Printer}>
+                  <BarList items={paperBars} />
+                </ChartCard>
+              </div>
 
-          <SectionCard title="Потенциально избыточная печать" description="Личные тематики, нормативные документы и служебные записки." Icon={AlertTriangle}>
-            <div className="mb-3 grid gap-2 md:grid-cols-3">
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.jobs)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">заданий</span>
-              </div>
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.pages)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">страниц</span>
-              </div>
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.users)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">пользователей</span>
-              </div>
-            </div>
-            <BarList items={excessSummary.categories} />
-          </SectionCard>
+              <SectionCard title="Потенциально избыточная печать" description="Личные тематики, нормативные документы и служебные записки." Icon={AlertTriangle}>
+                <div className="mb-3 grid gap-2 md:grid-cols-3">
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.jobs)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">заданий</span>
+                  </div>
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.pages)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">страниц</span>
+                  </div>
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.users)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">пользователей</span>
+                  </div>
+                </div>
+                <BarList items={excessSummary.categories} />
+              </SectionCard>
+            </>
+          ) : null}
 
           <SectionCard
             title="Топ заданий с отклонениями"

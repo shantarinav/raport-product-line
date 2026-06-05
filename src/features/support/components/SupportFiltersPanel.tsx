@@ -34,12 +34,23 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
   );
 }
 
+function clampDateInput(value: string, min: string, max: string): string {
+  if (!value) return value;
+  if (min && value < min) return min;
+  if (max && value > max) return max;
+  return value;
+}
+
 export function SupportFiltersPanel({
   filters,
+  dateMin,
+  dateMax,
   onChange,
   onReset,
 }: {
   filters: SupportFilters;
+  dateMin: string;
+  dateMax: string;
   onChange: (patch: Partial<SupportFilters>) => void;
   onReset: () => void;
 }) {
@@ -52,11 +63,23 @@ export function SupportFiltersPanel({
         </label>
         <label className="grid gap-1">
           <span className="text-xs text-[var(--raport-muted)]">Период создания с</span>
-          <Input type="date" value={filters.dateFrom} onChange={(event) => onChange({ dateFrom: event.target.value })} />
+          <Input
+            type="date"
+            value={filters.dateFrom}
+            min={dateMin}
+            max={dateMax}
+            onChange={(event) => onChange({ dateFrom: clampDateInput(event.target.value, dateMin, dateMax) })}
+          />
         </label>
         <label className="grid gap-1">
           <span className="text-xs text-[var(--raport-muted)]">Период создания по</span>
-          <Input type="date" value={filters.dateTo} onChange={(event) => onChange({ dateTo: event.target.value })} />
+          <Input
+            type="date"
+            value={filters.dateTo}
+            min={dateMin}
+            max={dateMax}
+            onChange={(event) => onChange({ dateTo: clampDateInput(event.target.value, dateMin, dateMax) })}
+          />
         </label>
         <label className="grid gap-1">
           <span className="text-xs text-[var(--raport-muted)]">SLA-статус</span>
