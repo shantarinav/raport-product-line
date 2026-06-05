@@ -247,7 +247,8 @@ function buildTessaMonthlySnapshots(report: TessaImportResult): DashboardSnapsho
 }
 
 function buildPrintSnapshotMetrics(jobs: PrintJob[]): Record<string, number> {
-  const kpis = calculatePrintKpis(jobs, DEFAULT_TARIFFS);
+  const metricJobs = jobs.filter((job) => !job.isPdfPrinter);
+  const kpis = calculatePrintKpis(metricJobs, DEFAULT_TARIFFS);
 
   return {
     totalPages: kpis.totalPages,
