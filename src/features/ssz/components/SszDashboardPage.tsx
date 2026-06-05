@@ -1,31 +1,18 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ClipboardList,
-  FileSpreadsheet,
-  Factory,
-  Gauge,
-  type LucideIcon,
-  Users,
-  Wrench,
-} from "lucide-react";
+import { Factory, FileSpreadsheet, Gauge, Users, Wrench } from "lucide-react";
+
 import {
   DashboardHeader,
   DashboardSwitch,
-  DataTable,
   FilterPanel,
   FilterStatusBar,
-  MetricCard,
   PageShell,
   SectionCard,
 } from "../../../shared/ui";
-import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
-import type { DashboardSnapshot } from "../../../shared/lib/historyDB";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import { formatImportedAt, formatReportPeriod } from "../import/periodDisplay";
 import type { ImportedReport, OperationRecord } from "../import/types";
@@ -44,14 +31,14 @@ import {
   operationScope,
   type ContributionRow,
   type DashboardFilters,
-  type KpiCardData,
   uniqueSorted,
 } from "../logic/dashboard";
 import { formatHours, formatPercent } from "../logic/format";
 import { useSSZHistory } from "../logic/useSSZHistory";
 import { SSZTrendChart } from "./SSZTrendChart";
+import { MasterLeaderboardCard, SszKpiCards, TechnologyBoardCard, leaderboardRows, targetTone } from "./SszCards";
+import { AutocompleteField, TargetControl } from "./SszControls";
 
-type TechnologyStatusFilter = "all" | "met" | "below";
 type SszViewMode = "manager" | "analyst";
 
 const SSZ_VIEW_MODE_STORAGE_KEY = "raport:ssz:viewMode";
@@ -73,238 +60,6 @@ function saveStoredSszViewMode(mode: SszViewMode) {
   } catch {
     // Ignore storage failures: the dashboard should keep working without persisted UI preferences.
   }
-}
-
-const targetMarkerClassByStep: Record<number, string> = {
-  0: "left-0",
-  5: "left-[5%]",
-  10: "left-[10%]",
-  15: "left-[15%]",
-  20: "left-[20%]",
-  25: "left-[25%]",
-  30: "left-[30%]",
-  35: "left-[35%]",
-  40: "left-[40%]",
-  45: "left-[45%]",
-  50: "left-1/2",
-  55: "left-[55%]",
-  60: "left-[60%]",
-  65: "left-[65%]",
-  70: "left-[70%]",
-  75: "left-3/4",
-  80: "left-[80%]",
-  85: "left-[85%]",
-  90: "left-[90%]",
-  95: "left-[95%]",
-  100: "left-full",
-};
-
-function targetTone(value: number | null, targetRatio: number): "low" | "medium" | "high" {
-  const ratioValue = value ?? 0;
-  if (ratioValue >= targetRatio) return "high";
-  if (targetRatio - ratioValue <= 0.1) return "medium";
-  return "low";
-}
-
-function statusLabel(row: ContributionRow, targetRatio: number): "Цель достигнута" | "Ниже цели" {
-  return (row.ownTechnologyRatio ?? 0) >= targetRatio ? "Цель достигнута" : "Ниже цели";
-}
-
-function filterByTechnologyStatus(
-  rows: ContributionRow[],
-  filter: TechnologyStatusFilter,
-  targetRatio: number,
-): ContributionRow[] {
-  if (filter === "met") return rows.filter((row) => (row.ownTechnologyRatio ?? 0) >= targetRatio);
-  if (filter === "below") return rows.filter((row) => (row.ownTechnologyRatio ?? 0) < targetRatio);
-  return rows;
-}
-
-function leaderboardRows(rows: ContributionRow[], mode: "leaders" | "attention"): ContributionRow[] {
-  return [...rows].sort((left, right) => {
-    const leftRatio = left.ownTechnologyRatio ?? 0;
-    const rightRatio = right.ownTechnologyRatio ?? 0;
-    if (mode === "leaders") {
-      return right.technologyTime - left.technologyTime || right.technologyOperationCount - left.technologyOperationCount || rightRatio - leftRatio;
-    }
-
-    return (
-      right.noTechnologyTime - left.noTechnologyTime ||
-      right.noTechnologyOperationCount - left.noTechnologyOperationCount ||
-      leftRatio - rightRatio
-    );
-  });
-}
-
-function growthSeverity(value: number | null): "critical" | "risk" | "soft" {
-  const ratioValue = value ?? 0;
-  if (ratioValue >= 0.8) return "critical";
-  if (ratioValue >= 0.5) return "risk";
-  return "soft";
-}
-
-function ProgressStrip({
-  value,
-  targetRatio,
-  mode,
-  showTargetMarker = false,
-  spacingClassName = "mt-1.5",
-}: {
-  value: number | null;
-  targetRatio?: number;
-  mode: "technology" | "attention";
-  showTargetMarker?: boolean;
-  spacingClassName?: string;
-}) {
-  const safeValue = Math.max(0, Math.min(100, Math.round((value ?? 0) * 1000) / 10));
-  const markerRatio = mode === "attention" ? 1 - (targetRatio ?? 0.7) : (targetRatio ?? 0.7);
-  const safeTarget = Math.max(0, Math.min(100, Math.round(markerRatio * 100)));
-  const targetStep = Math.round(safeTarget / 5) * 5;
-  const tone =
-    mode === "technology"
-      ? targetTone(value, targetRatio ?? 0.7)
-      : growthSeverity(value) === "critical"
-        ? "low"
-        : "medium";
-
-  const barClass =
-    tone === "high"
-      ? "[&::-moz-progress-bar]:bg-[var(--raport-success)] [&::-webkit-progress-value]:bg-[var(--raport-success)]"
-      : tone === "medium"
-        ? "[&::-moz-progress-bar]:bg-[var(--raport-warning)] [&::-webkit-progress-value]:bg-[var(--raport-warning)]"
-        : "[&::-moz-progress-bar]:bg-[var(--raport-danger)] [&::-webkit-progress-value]:bg-[var(--raport-danger)]";
-
-  return (
-    <div className={spacingClassName}>
-      <div className="relative">
-        <progress
-          max={100}
-          value={safeValue}
-          className={`h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 ${barClass}`}
-        />
-        {showTargetMarker ? (
-          <span
-            className={`absolute top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-slate-500/70 ${targetMarkerClassByStep[targetStep] ?? "left-[70%]"}`}
-            aria-hidden
-          />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function RowNameButton({ text, onClick, className }: { text: string; onClick: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={text}
-      className={`block min-w-0 max-w-full cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap border-0 bg-transparent px-0 py-0 text-left text-[var(--raport-text)] hover:text-[var(--raport-primary)] ${className ?? ""}`}
-    >
-      {text}
-    </button>
-  );
-}
-
-function RankBadge({ rank, tone }: { rank: number; tone: "support" | "danger" | "warning" }) {
-  const toneClass =
-    tone === "support"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : tone === "warning"
-        ? "border-amber-200 bg-amber-50 text-amber-700"
-        : "border-rose-200 bg-rose-50 text-rose-700";
-
-  return (
-    <span
-      className={`inline-flex min-h-4 min-w-8 items-center justify-center rounded-md border px-1.5 py-0 text-[10px] font-semibold leading-4 ${toneClass}`}
-      aria-label={`Рейтинг ${rank}`}
-    >
-      #{rank}
-    </span>
-  );
-}
-
-function AutocompleteField({
-  value,
-  onChange,
-  placeholder,
-  options,
-  onCommit,
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  options: string[];
-  onCommit?: (value: string) => void;
-  ariaLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <Input
-        value={value}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
-        onChange={(event) => {
-          onChange(event.currentTarget.value);
-          setOpen(true);
-        }}
-      />
-      {open && options.length > 0 ? (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white shadow-[var(--raport-shadow-card)]">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onChange(option);
-                onCommit?.(option);
-                setOpen(false);
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function TargetControl({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  function applyValue(nextValue: number) {
-    onChange(Math.max(0, Math.min(100, Math.round(nextValue))));
-  }
-
-  return (
-    <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3">
-      <Input
-        type="number"
-        min={0}
-        max={100}
-        value={value}
-        className="min-h-10 !w-14 px-1 text-center text-base font-semibold"
-        aria-label="Целевая доля по технологии в процентах"
-        onChange={(event) => applyValue(Number(event.currentTarget.value))}
-      />
-      <input
-        type="range"
-        min={0}
-        max={100}
-        step={5}
-        value={value}
-        className="h-2 w-full min-w-0 cursor-pointer accent-[var(--raport-primary)]"
-        aria-label="Целевая доля по технологии"
-        onChange={(event) => applyValue(Number(event.currentTarget.value))}
-      />
-    </div>
-  );
 }
 
 function SszFilterSidebar({
@@ -559,68 +314,11 @@ type ActiveFilterChip = {
   tone?: "default" | "secondary";
   onRemove?: () => void;
 };
-
-type MetricDelta = {
-  label: string;
-  variant: "default" | "secondary" | "success" | "danger";
-};
-
-const deltaTextClass: Record<MetricDelta["variant"], string> = {
-  default: "text-[var(--raport-primary)]",
-  secondary: "text-[var(--raport-muted)]",
-  success: "text-[var(--raport-success)]",
-  danger: "text-[var(--raport-danger)]",
-};
-
-function snapshotMetric(snapshot: DashboardSnapshot | null, key: string): number | null {
-  const value = snapshot?.metrics[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function formatSignedNumber(value: number, digits: number): string {
-  const sign = value > 0 ? "+" : value < 0 ? "-" : "±";
-  return `${sign}${Math.abs(value).toLocaleString("ru-RU", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })}`;
-}
-
 function clampDateInput(value: string, min: string, max: string): string {
   if (!value) return value;
   if (min && value < min) return min;
   if (max && value > max) return max;
   return value;
-}
-
-function percentDelta(currentRatio: number | null, previousSnapshot: DashboardSnapshot | null, metricKey: string): MetricDelta | null {
-  const previousValue = snapshotMetric(previousSnapshot, metricKey);
-  if (currentRatio === null || previousValue === null) return null;
-
-  const delta = currentRatio * 100 - previousValue;
-  return {
-    label: `${formatSignedNumber(delta, 1)} п.п.`,
-    variant: Math.abs(delta) < 0.05 ? "secondary" : delta > 0 ? "success" : "danger",
-  };
-}
-
-function countDelta(currentValue: number, previousSnapshot: DashboardSnapshot | null, metricKey: string): MetricDelta | null {
-  const previousValue = snapshotMetric(previousSnapshot, metricKey);
-  if (previousValue === null) return null;
-  const delta = currentValue - previousValue;
-
-  return {
-    label: formatSignedNumber(delta, 0),
-    variant: "secondary",
-  };
-}
-
-function MetricNote({ label, delta }: { label: string; delta: MetricDelta | null }) {
-  return (
-    <div className="grid gap-1">
-      <span>{label}</span>
-      {delta ? <span className={deltaTextClass[delta.variant]}>к предыдущему месяцу: {delta.label}</span> : null}
-    </div>
-  );
 }
 
 function activeFilterChips(
@@ -678,47 +376,6 @@ function activeFilterChips(
   return [targetChip, ...selectedItems];
 }
 
-function SszKpiCards({
-  data,
-  targetPercent,
-  previousSnapshot,
-}: {
-  data: KpiCardData;
-  targetPercent: number;
-  previousSnapshot: DashboardSnapshot | null;
-}) {
-  const workTone = targetTone(data.workTechnologyRatio, targetPercent / 100);
-  const operationTone = targetTone(data.operationTechnologyRatio, targetPercent / 100);
-  const sszDelta = countDelta(data.sszCount, previousSnapshot, "sszCount");
-  const workDelta = percentDelta(data.workTechnologyRatio, previousSnapshot, "workTechnologyPercent");
-  const operationDelta = percentDelta(data.operationTechnologyRatio, previousSnapshot, "operationTechnologyPercent");
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <MetricCard
-        label="Всего ССЗ"
-        value={data.sszCount.toLocaleString("ru-RU")}
-        note={<MetricNote label="в анализируемом периоде" delta={sszDelta} />}
-        Icon={ClipboardList}
-        tone="neutral"
-      />
-      <MetricCard
-        label="Доля работ по технологии"
-        value={formatPercent(data.workTechnologyRatio)}
-        note={<MetricNote label="по нормо-часам" delta={workDelta} />}
-        Icon={Factory}
-        tone={workTone === "high" ? "success" : workTone === "medium" ? "warning" : "danger"}
-      />
-      <MetricCard
-        label="Доля операций по технологии"
-        value={formatPercent(data.operationTechnologyRatio)}
-        note={<MetricNote label="по количеству операций" delta={operationDelta} />}
-        Icon={Gauge}
-        tone={operationTone === "high" ? "success" : operationTone === "medium" ? "warning" : "danger"}
-      />
-    </div>
-  );
-}
 
 function insightStatus(ratio: number | null, targetRatio: number) {
   if (ratio === null) {
@@ -803,288 +460,7 @@ function sszInsightPoints({
   return points.slice(0, 3);
 }
 
-function MasterLeaderboardCard({
-  title,
-  description,
-  rows,
-  tone,
-  targetRatio,
-  onMasterClick,
-}: {
-  title: string;
-  description: string;
-  rows: ContributionRow[];
-  tone: "support" | "growth";
-  targetRatio: number;
-  onMasterClick: (master: string) => void;
-}) {
-  const [showAll, setShowAll] = useState(false);
 
-  const scopedRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const technologyRatio = row.ownTechnologyRatio ?? 0;
-        return tone === "support"
-          ? technologyRatio >= targetRatio
-          : technologyRatio < targetRatio && (row.noTechnologyTime > 0 || row.noTechnologyOperationCount > 0);
-      }),
-    [rows, targetRatio, tone],
-  );
-
-  const ordered = useMemo(
-    () => leaderboardRows(scopedRows, tone === "support" ? "leaders" : "attention"),
-    [scopedRows, tone],
-  );
-
-  const visibleRows = showAll ? ordered : ordered.slice(0, 5);
-
-  return (
-    <SectionCard
-      title={title}
-      description={description}
-      Icon={tone === "support" ? CheckCircle2 : AlertTriangle}
-      pinActionsRight
-      actions={
-        ordered.length > 5 ? (
-          <DashboardSwitch
-            value={showAll ? "all" : "top"}
-            onChange={(value) => setShowAll(value === "all")}
-            options={[
-              { value: "top", label: "ТОП" },
-              { value: "all", label: "Все" },
-            ]}
-          />
-        ) : undefined
-      }
-    >
-      {visibleRows.length === 0 ? (
-        <p className="text-sm text-[var(--raport-muted)]">Нет данных для текущей выборки.</p>
-      ) : (
-        <div className="divide-y divide-[var(--raport-border)] rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3">
-          {visibleRows.map((row, index) => {
-            const ratio = tone === "support" ? row.ownTechnologyRatio : row.ownNoTechnologyRatio;
-            const hours = tone === "support" ? row.technologyTime : row.noTechnologyTime;
-            const operationCount = tone === "support" ? row.technologyOperationCount : row.noTechnologyOperationCount;
-            const status = tone === "support" ? "Цель достигнута" : "Ниже цели";
-            const rankTone =
-              tone === "support"
-                ? "support"
-                : growthSeverity(row.ownNoTechnologyRatio) === "risk"
-                  ? "warning"
-                  : "danger";
-
-            return (
-              <div key={row.key} className="py-1.5">
-                <div className="grid gap-1">
-                  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_132px] items-center gap-2">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <div className="pt-px">
-                        <RankBadge rank={index + 1} tone={rankTone} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <RowNameButton
-                          text={row.key}
-                          onClick={() => onMasterClick(row.key)}
-                          className="w-full text-sm font-semibold leading-[14px]"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid shrink-0 grid-cols-[44px_88px] items-center gap-1">
-                      <span className="text-right text-xs font-semibold leading-[14px] tabular-nums text-[var(--raport-text)]">
-                        {formatPercent(ratio)}
-                      </span>
-                      <Badge
-                        className="min-h-4 w-[88px] justify-center overflow-hidden text-ellipsis whitespace-nowrap px-1 py-0 text-[9px] leading-4"
-                        variant={status === "Цель достигнута" ? "secondary" : "warning"}
-                      >
-                        {status}
-                      </Badge>
-                    </div>
-                  </div>
-                  <ProgressStrip
-                    value={ratio}
-                    targetRatio={targetRatio}
-                    mode={tone === "support" ? "technology" : "attention"}
-                    showTargetMarker
-                    spacingClassName="mt-0"
-                  />
-                  <div className="flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-[var(--raport-muted)]">
-                    <span>
-                      н-ч всего: {formatHours(row.totalTime)} · {tone === "support" ? "н-ч по тех." : "н-ч без тех."}: {formatHours(hours)} ·{" "}
-                      {tone === "support" ? "опер. по тех." : "опер. без тех."}: {operationCount.toLocaleString("ru-RU")}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </SectionCard>
-  );
-}
-
-function TechnologyBoardCard({
-  title,
-  subtitle,
-  Icon,
-  rows,
-  targetRatio,
-  onRowClick,
-  layout = "table",
-}: {
-  title: string;
-  subtitle: string;
-  Icon: LucideIcon;
-  rows: ContributionRow[];
-  targetRatio: number;
-  onRowClick?: (value: string) => void;
-  layout?: "table" | "compact-list";
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<TechnologyStatusFilter>("all");
-
-  const scopedRows = useMemo(() => filterByTechnologyStatus(rows, statusFilter, targetRatio), [rows, statusFilter, targetRatio]);
-  const visibleRows = showAll ? scopedRows : scopedRows.slice(0, 5);
-
-  return (
-    <SectionCard
-      title={title}
-      description={subtitle}
-      Icon={Icon}
-      pinActionsRight
-      headerClassName="pb-1"
-      actions={
-        scopedRows.length > 5 ? (
-          <DashboardSwitch
-            value={showAll ? "all" : "top"}
-            onChange={(value) => setShowAll(value === "all")}
-            options={[
-              { value: "top", label: "ТОП" },
-              { value: "all", label: "Все" },
-            ]}
-          />
-        ) : undefined
-      }
-    >
-      <div className="mb-2 mt-0 flex justify-center">
-        <DashboardSwitch
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value as TechnologyStatusFilter)}
-          options={[
-            { value: "all", label: "Все" },
-            { value: "met", label: "Цель достигнута" },
-            { value: "below", label: "Ниже цели" },
-          ]}
-        />
-      </div>
-
-      {visibleRows.length === 0 ? (
-        <p className="text-sm text-[var(--raport-muted)]">Нет данных для текущей выборки.</p>
-      ) : (
-        layout === "compact-list" ? (
-          <div className="divide-y divide-[var(--raport-border)] rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3">
-              {visibleRows.map((row) => (
-                <div key={row.key} className="py-1.5">
-                  <div className="grid gap-1">
-                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_132px] items-center gap-2">
-                      <div className="min-w-0">
-                        {onRowClick ? (
-                          <RowNameButton text={row.key} onClick={() => onRowClick(row.key)} className="w-full text-sm font-semibold leading-[14px]" />
-                        ) : (
-                          <span className="block truncate text-sm font-semibold leading-[14px]">{row.key}</span>
-                        )}
-                      </div>
-                      <div className="grid shrink-0 grid-cols-[44px_88px] items-center gap-1">
-                        <span className="text-right text-xs font-semibold leading-[14px] tabular-nums text-[var(--raport-text)]">
-                          {formatPercent(row.ownTechnologyRatio)}
-                        </span>
-                        <Badge
-                          className="min-h-5 w-[88px] justify-center overflow-hidden text-ellipsis whitespace-nowrap px-1 py-0 text-[9px] leading-4"
-                          variant={statusLabel(row, targetRatio) === "Цель достигнута" ? "secondary" : "warning"}
-                        >
-                          {statusLabel(row, targetRatio)}
-                        </Badge>
-                      </div>
-                  </div>
-                  <ProgressStrip
-                    value={row.ownTechnologyRatio}
-                    targetRatio={targetRatio}
-                    mode="technology"
-                    showTargetMarker
-                    spacingClassName="mt-0"
-                  />
-                    <div className="flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-[var(--raport-muted)]">
-                      <span>
-                        н-ч всего: {formatHours(row.totalTime)} · н-ч по тех.: {formatHours(row.technologyTime)} · опер. по тех.:{" "}
-                        {row.technologyOperationCount.toLocaleString("ru-RU")}
-                      </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <DataTable
-            rows={visibleRows}
-            rowKey={(row) => row.key}
-            columns={[
-              {
-                key: "name",
-                header: "Позиция",
-                cell: (row) =>
-                  onRowClick ? (
-                    <div className="min-w-0">
-                      <RowNameButton text={row.key} onClick={() => onRowClick(row.key)} />
-                      <ProgressStrip value={row.ownTechnologyRatio} targetRatio={targetRatio} mode="technology" />
-                    </div>
-                  ) : (
-                    <div className="min-w-0">
-                      <span>{row.key}</span>
-                      <ProgressStrip value={row.ownTechnologyRatio} targetRatio={targetRatio} mode="technology" />
-                    </div>
-                  ),
-              },
-              {
-                key: "ratio",
-                header: "% по тех.",
-                className: "text-right",
-                cell: (row) => formatPercent(row.ownTechnologyRatio),
-              },
-              {
-                key: "time",
-                header: "Всего н-ч",
-                className: "text-right",
-                cell: (row) => formatHours(row.totalTime),
-              },
-              {
-                key: "tech-time",
-                header: "н-ч по тех.",
-                className: "text-right",
-                cell: (row) => formatHours(row.technologyTime),
-              },
-              {
-                key: "operations",
-                header: "Операций",
-                className: "text-right",
-                cell: (row) => row.operationCount.toLocaleString("ru-RU"),
-              },
-              {
-                key: "status",
-                header: "Статус",
-                cell: (row) => (
-                  <Badge variant={statusLabel(row, targetRatio) === "Цель достигнута" ? "success" : "warning"}>
-                    {statusLabel(row, targetRatio)}
-                  </Badge>
-                ),
-              },
-            ]}
-          />
-        )
-      )}
-    </SectionCard>
-  );
-}
 
 function SszDashboard({ report }: { report: ImportedReport }) {
   const defaultFilters = useMemo(() => initialFilters(report.period), [report.period]);
@@ -1359,8 +735,3 @@ export function SszDashboardPage() {
     </PageShell>
   );
 }
-
-
-
-
-

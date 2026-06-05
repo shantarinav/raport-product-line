@@ -234,7 +234,8 @@ export function LandingPage() {
       }
       setPendingDashboardData("/support", supportParsed as SupportImportResult);
       completeMatch(reportLabel(detected.type), "/support", supportParsed as SupportImportResult);
-    } catch {
+    } catch (error) {
+      console.error("Не удалось обработать файл отчета", error);
       setStatus("error");
       setErrorMessage("Не удалось обработать файл. Проверьте формат и структуру отчета.");
     }

@@ -46,7 +46,7 @@ export function useSSZHistory(currentPeriodStart?: string): {
     return () => {
       isMounted = false;
     };
-  }, [currentPeriodStart]);
+  }, []);
 
   const previousSnapshot = useMemo(() => {
     if (!currentPeriodStart) return null;

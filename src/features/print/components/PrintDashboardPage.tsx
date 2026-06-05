@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, ChevronDown, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -12,7 +12,6 @@ import {
   PageShell,
   SectionCard,
 } from "../../../shared/ui";
-import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
@@ -29,7 +28,6 @@ import {
   DOC_TYPES,
   estimateRowCost,
   formatDate,
-  formatDateTime,
   formatInteger,
   formatPercent,
   formatShortDateTime,
@@ -37,15 +35,24 @@ import {
   PAPER_BUCKETS,
   RISK_REASON_OPTIONS,
 } from "../logic/dashboard";
-import type { PaperBucket, PrintBarDatum, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
+import type { PaperBucket, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
 import { usePrintHistory } from "../logic/usePrintHistory";
+import {
+  AutocompleteField,
+  QuickFocusPanel,
+  SortToolbar,
+  USER_SORT_OPTIONS,
+  quickFocusFromFilters,
+  quickFocusLabel,
+  type PrintQuickFocus,
+  type UserSort,
+} from "./PrintControls";
 import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
+import { BarList, RiskJobList } from "./PrintWidgets";
 
 const REPORT_ROUTE = "/print";
 
 type TableLimits = typeof DEFAULT_TABLE_LIMITS;
-type UserSort = keyof Pick<PrintUserAggregate, "pages" | "cost" | "noDuplexPages" | "colorPages" | "bigJobs">;
-type PrintQuickFocus = "all" | "simplex" | "color" | "bigJobs" | "pdfIncluded" | "pdfExcluded";
 type PrintViewMode = "manager" | "analyst";
 type MetricDelta = {
   label: string;
@@ -73,74 +80,6 @@ function saveStoredPrintViewMode(mode: PrintViewMode) {
   }
 }
 
-const QUICK_FOCUS_OPTIONS: Array<{ value: PrintQuickFocus; label: string; tone?: "neutral" | "warning" | "danger" | "success" }> = [
-  { value: "all", label: "Все" },
-  { value: "simplex", label: "Односторонняя", tone: "warning" },
-  { value: "color", label: "Цветная", tone: "warning" },
-  { value: "bigJobs", label: "100+ стр.", tone: "danger" },
-  { value: "pdfIncluded", label: "PDF включен" },
-  { value: "pdfExcluded", label: "PDF исключен", tone: "success" },
-];
-
-const USER_SORT_OPTIONS: Array<{ value: UserSort; label: string }> = [
-  { value: "pages", label: "Страницы" },
-  { value: "cost", label: "Оценка" },
-  { value: "noDuplexPages", label: "Без двуст." },
-  { value: "colorPages", label: "Цвет" },
-  { value: "bigJobs", label: "100+" },
-];
-
-function quickFocusLabel(value: PrintQuickFocus): string {
-  return QUICK_FOCUS_OPTIONS.find((option) => option.value === value)?.label ?? "Все";
-}
-
-function quickFocusFromFilters(filters: PrintFilters): PrintQuickFocus {
-  if (filters.riskReason === "big-job") return "bigJobs";
-  if (filters.color === "NOT GRAYSCALE") return "color";
-  if (filters.duplex === "NOT DUPLEX") return "simplex";
-  if (!filters.excludePdfPrinter) return "pdfIncluded";
-  return "all";
-}
-
-function quickFocusButtonClass(active: boolean, tone: "neutral" | "warning" | "danger" | "success" = "neutral") {
-  if (!active) return "border-[var(--raport-border)] bg-white text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]";
-  if (tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
-  if (tone === "warning") return "border-amber-300 bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
-  if (tone === "success") return "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-[inset_0_0_0_1px_rgb(167_243_208)]";
-  return "border-[var(--raport-action-border)] bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
-}
-
-function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatum[]; valueLabel?: string }) {
-  const max = Math.max(1, ...items.map((item) => item.pages));
-  const hasData = items.some((item) => item.pages > 0);
-
-  if (!hasData) {
-    return <p className="rounded-[var(--raport-radius-control)] border border-dashed border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-sm text-[var(--raport-muted)]">Нет данных по выбранным фильтрам.</p>;
-  }
-
-  return (
-    <div className="grid gap-2">
-      {items.map((item) => (
-        <div key={item.label} className="grid gap-1">
-          <div className="flex min-h-4 items-center justify-between gap-3 text-xs font-semibold text-[var(--raport-muted)]">
-            <span className="min-w-0 truncate" title={item.label}>
-              {item.label}
-            </span>
-            <span className="shrink-0 tabular-nums text-[var(--raport-text)]">
-              {formatInteger(item.pages)} {valueLabel}
-            </span>
-          </div>
-          <progress
-            max={max}
-            value={item.pages}
-            className="h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-moz-progress-bar]:bg-[var(--raport-primary)] [&::-webkit-progress-value]:bg-[var(--raport-primary)]"
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function tariffInputValue(value: number) {
   return Number.isFinite(value) ? String(value) : "0";
 }
@@ -148,12 +87,6 @@ function tariffInputValue(value: number) {
 function parseTariffValue(value: string) {
   const number = Number(value.replace(",", "."));
   return Number.isFinite(number) && number >= 0 ? number : 0;
-}
-
-function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" {
-  if (kind === "danger") return "danger";
-  if (kind === "warning" || kind === "success") return "warning";
-  return "default";
 }
 
 function isDate(value: Date | null): value is Date {
@@ -301,198 +234,6 @@ function printInsightPoints(topUsers: PrintUserAggregate[], riskJobs: PrintJob[]
     dominantPrintDeviation(kpis, excessSummary),
     riskJob ? printRiskInsight(riskJob) : "Риск-задания: критичных отклонений не найдено.",
   ];
-}
-
-function AutocompleteField({
-  value,
-  onChange,
-  placeholder,
-  options,
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  options: string[];
-  ariaLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const blurTimerRef = useRef<number | null>(null);
-  const visibleOptions = useMemo(() => {
-    const query = value.trim().toLowerCase();
-    const matched = query.length === 0 ? options : options.filter((option) => option.toLowerCase().includes(query));
-    return matched.slice(0, 80);
-  }, [options, value]);
-  useEffect(() => {
-    return () => {
-      if (blurTimerRef.current !== null) {
-        window.clearTimeout(blurTimerRef.current);
-      }
-    };
-  }, []);
-
-  return (
-    <div className="relative">
-      <Input
-        value={value}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        autoComplete="off"
-        className="pr-9"
-        onChange={(event) => {
-          onChange(event.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          if (blurTimerRef.current !== null) {
-            window.clearTimeout(blurTimerRef.current);
-          }
-          blurTimerRef.current = window.setTimeout(() => {
-            setOpen(false);
-            blurTimerRef.current = null;
-          }, 120);
-        }}
-      />
-      <button
-        type="button"
-        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--raport-radius-control)] text-[var(--raport-muted)] hover:bg-[var(--raport-action-bg)]"
-        aria-label="Показать список"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <ChevronDown className="h-4 w-4" strokeWidth={2} />
-      </button>
-      {open && visibleOptions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white py-1 shadow-[var(--raport-shadow-card)]">
-          {visibleOptions.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className="block w-full truncate px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
-              title={option}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onChange(option);
-                setOpen(false);
-              }}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function QuickFocusPanel({ value, onChange }: { value: PrintQuickFocus; onChange: (value: PrintQuickFocus) => void }) {
-  return (
-    <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--raport-muted)]">Быстрый фокус</span>
-        <span className="rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--raport-primary)]">
-          {quickFocusLabel(value)}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-1">
-        {QUICK_FOCUS_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={`min-h-8 rounded-[var(--raport-radius-control)] border px-2 py-1 text-xs font-semibold transition-colors ${quickFocusButtonClass(value === option.value, option.tone)}`}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SortToolbar({
-  sortLabel = "Сортировка",
-  sortValue,
-  sortOptions,
-  onSortChange,
-  limitValue,
-  onLimitChange,
-}: {
-  sortLabel?: string;
-  sortValue: string;
-  sortOptions: Array<{ value: string; label: string }>;
-  onSortChange: (value: string) => void;
-  limitValue: string;
-  onLimitChange: (value: string) => void;
-}) {
-  return (
-    <div className="mb-3 flex flex-wrap items-end justify-between gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
-      <DashboardSwitch label={sortLabel} value={sortValue} onChange={onSortChange} options={sortOptions} />
-      <DashboardSwitch
-        label="Показать"
-        value={limitValue}
-        onChange={onLimitChange}
-        options={[
-          { value: "10", label: "10" },
-          { value: "20", label: "20" },
-        ]}
-      />
-    </div>
-  );
-}
-
-function RiskJobList({
-  rows,
-  onUserSelect,
-}: {
-  rows: PrintJob[];
-  onUserSelect: (user: string) => void;
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="rounded-[var(--raport-radius-control)] border border-dashed border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-sm text-[var(--raport-muted)]">
-        Нет заданий с отклонениями по выбранным фильтрам.
-      </p>
-    );
-  }
-
-  return (
-    <div className="grid gap-2">
-      {rows.map((row, index) => (
-        <article
-          key={`${row.dateKey}-${row.user}-${row.documentName}-${index}`}
-          className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2"
-        >
-          <div className="grid min-w-0 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
-            <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 text-xs font-extrabold tabular-nums text-[var(--raport-primary)]">
-              #{index + 1}
-            </span>
-            <div className="min-w-0">
-              <button className="block max-w-full truncate text-left text-sm font-bold text-[var(--raport-primary)] hover:underline" onClick={() => onUserSelect(row.user)}>
-                {row.user}
-              </button>
-              <p className="mt-0.5 truncate text-xs font-semibold text-[var(--raport-text)]" title={row.documentName}>
-                {row.documentName}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--raport-muted)] md:justify-end">
-              <span className="tabular-nums text-[var(--raport-text)]">{formatInteger(row.totalPages)} стр.</span>
-              <time dateTime={row.date?.toISOString()}>{formatDateTime(row.date)}</time>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <Badge variant="danger">Балл риска: {formatInteger(row.riskScore)}</Badge>
-            {row.riskReasons.map((reason) => (
-              <Badge key={`${row.documentName}-${reason.code}`} variant={riskBadgeVariant(reason.kind)}>
-                {reason.label}
-              </Badge>
-            ))}
-          </div>
-        </article>
-      ))}
-    </div>
-  );
 }
 
 export function PrintDashboardPage() {
