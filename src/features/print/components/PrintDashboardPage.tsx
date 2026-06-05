@@ -16,6 +16,7 @@ import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
+import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import {
   applyPrintFilters,
   buildPrintFilterOptions,
@@ -37,12 +38,40 @@ import {
   RISK_REASON_OPTIONS,
 } from "../logic/dashboard";
 import type { PaperBucket, PrintBarDatum, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
+import { usePrintHistory } from "../logic/usePrintHistory";
+import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
 
 const REPORT_ROUTE = "/print";
 
 type TableLimits = typeof DEFAULT_TABLE_LIMITS;
 type UserSort = keyof Pick<PrintUserAggregate, "pages" | "cost" | "noDuplexPages" | "colorPages" | "bigJobs">;
 type PrintQuickFocus = "all" | "simplex" | "color" | "bigJobs" | "pdfIncluded" | "pdfExcluded";
+type PrintViewMode = "manager" | "analyst";
+type MetricDelta = {
+  label: string;
+  variant: "secondary" | "success" | "danger";
+};
+
+const PRINT_VIEW_MODE_STORAGE_KEY = "raport:print:viewMode";
+
+function readStoredPrintViewMode(): PrintViewMode {
+  if (typeof window === "undefined") return "manager";
+
+  try {
+    const storedMode = window.localStorage.getItem(PRINT_VIEW_MODE_STORAGE_KEY);
+    return storedMode === "analyst" ? "analyst" : "manager";
+  } catch {
+    return "manager";
+  }
+}
+
+function saveStoredPrintViewMode(mode: PrintViewMode) {
+  try {
+    window.localStorage.setItem(PRINT_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // The dashboard must keep working even if browser settings cannot be persisted.
+  }
+}
 
 const QUICK_FOCUS_OPTIONS: Array<{ value: PrintQuickFocus; label: string; tone?: "neutral" | "warning" | "danger" | "success" }> = [
   { value: "all", label: "Все" },
@@ -121,10 +150,9 @@ function parseTariffValue(value: string) {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
-function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" | "success" {
+function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" {
   if (kind === "danger") return "danger";
-  if (kind === "warning") return "warning";
-  if (kind === "success") return "success";
+  if (kind === "warning" || kind === "success") return "warning";
   return "default";
 }
 
@@ -135,6 +163,68 @@ function isDate(value: Date | null): value is Date {
 function formatFilterDate(value: string): string {
   const [year, month, day] = value.split("-");
   return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
+function clampDateInput(value: string, min: string, max: string): string {
+  if (!value) return value;
+  if (min && value < min) return min;
+  if (max && value > max) return max;
+  return value;
+}
+
+const deltaTextClass: Record<MetricDelta["variant"], string> = {
+  secondary: "text-[var(--raport-muted)]",
+  success: "text-[var(--raport-success)]",
+  danger: "text-[var(--raport-danger)]",
+};
+
+function snapshotMetric(snapshot: { metrics: Record<string, number> } | null, key: string): number | null {
+  const value = snapshot?.metrics[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatSignedNumber(value: number, digits = 0): string {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "±";
+  return `${sign}${Math.abs(value).toLocaleString("ru-RU", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+function metricDelta(currentValue: number, previousSnapshot: { metrics: Record<string, number> } | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (previousValue === null) return null;
+  const delta = currentValue - previousValue;
+
+  return {
+    label: formatSignedNumber(delta),
+    variant: Math.abs(delta) < 0.5 ? "secondary" : delta > 0 ? "danger" : "success",
+  };
+}
+
+function percentMetricDelta(currentValue: number, previousSnapshot: { metrics: Record<string, number> } | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (previousValue === null) return null;
+  const delta = currentValue - previousValue;
+
+  return {
+    label: `${formatSignedNumber(delta, 1)} п.п.`,
+    variant: Math.abs(delta) < 0.05 ? "secondary" : delta > 0 ? "danger" : "success",
+  };
+}
+
+function MetricNote({ label, delta, suffix = "" }: { label: string; delta: MetricDelta | null; suffix?: string }) {
+  return (
+    <div className="grid gap-1">
+      <span>{label}</span>
+      {delta ? (
+        <span className={deltaTextClass[delta.variant]}>
+          к предыдущему периоду: {delta.label}
+          {suffix}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function printDeviationPages(kpis: PrintKpis): number {
@@ -413,6 +503,8 @@ export function PrintDashboardPage() {
   const [tableLimits, setTableLimits] = useState<TableLimits>(DEFAULT_TABLE_LIMITS);
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
+  const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
+  const { history: printHistory } = usePrintHistory();
 
   useEffect(() => {
     if (report) return;
@@ -433,6 +525,26 @@ export function PrintDashboardPage() {
   const mainInsightStatus = printInsightStatus(kpis);
   const mainInsightPoints = useMemo(() => printInsightPoints(topUsers, riskJobs, kpis, excessSummary), [topUsers, riskJobs, kpis, excessSummary]);
   const mainInsightDeviationCost = useMemo(() => printDeviationCost(filteredRows, tariffs), [filteredRows, tariffs]);
+  const previousSnapshot = useMemo(
+    () => {
+      if (!filters || !isMonthlyCoverageReady(filters.dateFrom, filters.dateTo)) return null;
+      const comparisonMonthStart = monthStartDateKey(filters.dateFrom);
+      if (!comparisonMonthStart) return null;
+
+      return (
+        printHistory
+          .filter((snapshot) => snapshot.period.from < comparisonMonthStart)
+          .sort((left, right) => right.period.from.localeCompare(left.period.from))[0] ?? null
+      );
+    },
+    [filters, printHistory],
+  );
+  const totalPagesDelta = metricDelta(kpis.totalPages, previousSnapshot, "totalPages");
+  const usersDelta = metricDelta(kpis.usersCount, previousSnapshot, "usersCount");
+  const costDelta = metricDelta(kpis.estimatedCost, previousSnapshot, "estimatedCost");
+  const simplexRatioDelta = percentMetricDelta(kpis.simplexRatio, previousSnapshot, "simplexRatioPercent");
+  const colorRatioDelta = percentMetricDelta(kpis.colorRatio, previousSnapshot, "colorRatioPercent");
+  const bigJobsDelta = metricDelta(kpis.bigJobs, previousSnapshot, "bigJobs");
 
   if (!report) return null;
 
@@ -458,9 +570,12 @@ export function PrintDashboardPage() {
     );
   }
 
-  const resetFilters = () => setFilters(initialPrintFilters(report.jobs));
+  const reportJobs = report.jobs;
+  const printDateBounds = initialPrintFilters(reportJobs);
+  const resetFilters = () => setFilters(printDateBounds);
   const patchFilters = (next: Partial<PrintFilters>) => setFilters((current) => (current ? { ...current, ...next } : current));
-  const reportDates = report.jobs.map((row) => row.date).filter(isDate);
+  const isManagerView = viewMode === "manager";
+  const reportDates = reportJobs.map((row) => row.date).filter(isDate);
   const period = reportDates.length
     ? {
         from: [...reportDates].sort((a, b) => a.getTime() - b.getTime())[0] ?? null,
@@ -492,6 +607,25 @@ export function PrintDashboardPage() {
       return;
     }
     patchFilters({ excludePdfPrinter: true });
+  }
+
+  function changeViewMode(nextMode: PrintViewMode) {
+    setViewMode(nextMode);
+    saveStoredPrintViewMode(nextMode);
+    if (nextMode === "manager") {
+      const defaultPrintFilters = initialPrintFilters(reportJobs);
+      setFilters((current) =>
+        current
+          ? {
+              ...current,
+              computer: "",
+              documentText: "",
+              docType: "",
+              paperBuckets: defaultPrintFilters.paperBuckets,
+            }
+          : current,
+      );
+    }
   }
 
   const chips = [
@@ -548,11 +682,23 @@ export function PrintDashboardPage() {
             <div className="grid gap-3">
               <label className="grid gap-1">
                 <span className="text-xs text-[var(--raport-muted)]">Период с</span>
-                <Input type="date" value={filters.dateFrom} onChange={(event) => patchFilters({ dateFrom: event.target.value })} />
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  min={printDateBounds.dateFrom}
+                  max={printDateBounds.dateTo}
+                  onChange={(event) => patchFilters({ dateFrom: clampDateInput(event.target.value, printDateBounds.dateFrom, printDateBounds.dateTo) })}
+                />
               </label>
               <label className="grid gap-1">
                 <span className="text-xs text-[var(--raport-muted)]">Период по</span>
-                <Input type="date" value={filters.dateTo} onChange={(event) => patchFilters({ dateTo: event.target.value })} />
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  min={printDateBounds.dateFrom}
+                  max={printDateBounds.dateTo}
+                  onChange={(event) => patchFilters({ dateTo: clampDateInput(event.target.value, printDateBounds.dateFrom, printDateBounds.dateTo) })}
+                />
               </label>
 
               <label className="grid gap-1">
@@ -566,24 +712,29 @@ export function PrintDashboardPage() {
                 />
               </label>
 
-              <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Компьютер</span>
-                <AutocompleteField
-                  value={filters.computer}
-                  onChange={(value) => patchFilters({ computer: value })}
-                  placeholder="Все компьютеры"
-                  options={options.computers}
-                  ariaLabel="Фильтр по компьютеру"
-                />
-              </label>
+              {!isManagerView ? (
+                <label className="grid gap-1">
+                  <span className="text-xs text-[var(--raport-muted)]">Компьютер</span>
+                  <AutocompleteField
+                    value={filters.computer}
+                    onChange={(value) => patchFilters({ computer: value })}
+                    placeholder="Все компьютеры"
+                    options={options.computers}
+                    ariaLabel="Фильтр по компьютеру"
+                  />
+                </label>
+              ) : null}
 
-              <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Документ</span>
-                <Input value={filters.documentText} placeholder="Фрагмент названия" onChange={(event) => patchFilters({ documentText: event.target.value })} />
-              </label>
+              {!isManagerView ? (
+                <label className="grid gap-1">
+                  <span className="text-xs text-[var(--raport-muted)]">Документ</span>
+                  <Input value={filters.documentText} placeholder="Фрагмент названия" onChange={(event) => patchFilters({ documentText: event.target.value })} />
+                </label>
+              ) : null}
 
               <QuickFocusPanel value={quickFocus} onChange={applyQuickFocus} />
 
+              {!isManagerView ? (
               <details className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
                 <summary className="cursor-pointer select-none text-xs font-semibold text-[var(--raport-muted)]">Дополнительно</summary>
                 <div className="mt-3 grid gap-3">
@@ -657,7 +808,9 @@ export function PrintDashboardPage() {
               </label>
                 </div>
               </details>
+              ) : null}
 
+              {!isManagerView ? (
               <details className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
                 <summary className="cursor-pointer select-none text-xs font-semibold text-[var(--raport-muted)]">Тарифы</summary>
                 <div className="mt-2 grid gap-2">
@@ -680,31 +833,108 @@ export function PrintDashboardPage() {
                   ))}
                 </div>
               </details>
+              ) : null}
             </div>
           </FilterPanel>
         </div>
 
         <div className="grid gap-4">
-          <FilterStatusBar chips={chips} />
+          <FilterStatusBar
+            chips={chips}
+            actions={
+              <DashboardSwitch
+                value={viewMode}
+                onChange={(value) => changeViewMode(value as PrintViewMode)}
+                options={[
+                  { value: "manager", label: "Руководитель" },
+                  { value: "analyst", label: "Аналитик" },
+                ]}
+              />
+            }
+          />
 
-          <div className="grid gap-3">
-            <div className="grid gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Объем и стоимость</p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Всего страниц" value={formatInteger(kpis.totalPages)} note={`${formatInteger(kpis.totalJobs)} заданий`} Icon={Printer} tone="neutral" />
-                <MetricCard label="Уникальные пользователи" value={formatInteger(kpis.usersCount)} note="в текущей выборке" Icon={Users} tone="neutral" />
-                <MetricCard label="Оценка стоимости" value={formatInteger(kpis.estimatedCost)} note="руб." Icon={Printer} tone="success" />
+          {isManagerView ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              <MetricCard
+                label="Всего страниц"
+                value={formatInteger(kpis.totalPages)}
+                note={<MetricNote label={`${formatInteger(kpis.totalJobs)} заданий`} delta={totalPagesDelta} suffix=" стр." />}
+                Icon={Printer}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Уникальные пользователи"
+                value={formatInteger(kpis.usersCount)}
+                note={<MetricNote label="в текущей выборке" delta={usersDelta} />}
+                Icon={Users}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Оценка стоимости"
+                value={formatInteger(kpis.estimatedCost)}
+                note={<MetricNote label="руб." delta={costDelta} suffix=" руб." />}
+                Icon={Printer}
+                tone="success"
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div className="grid gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Объем и стоимость</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <MetricCard
+                    label="Всего страниц"
+                    value={formatInteger(kpis.totalPages)}
+                    note={<MetricNote label={`${formatInteger(kpis.totalJobs)} заданий`} delta={totalPagesDelta} suffix=" стр." />}
+                    Icon={Printer}
+                    tone="neutral"
+                  />
+                  <MetricCard
+                    label="Уникальные пользователи"
+                    value={formatInteger(kpis.usersCount)}
+                    note={<MetricNote label="в текущей выборке" delta={usersDelta} />}
+                    Icon={Users}
+                    tone="neutral"
+                  />
+                  <MetricCard
+                    label="Оценка стоимости"
+                    value={formatInteger(kpis.estimatedCost)}
+                    note={<MetricNote label="руб." delta={costDelta} suffix=" руб." />}
+                    Icon={Printer}
+                    tone="success"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Отклонения печати</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <MetricCard
+                    label="Односторонняя печать"
+                    value={formatPercent(kpis.simplexRatio)}
+                    note={<MetricNote label={`${formatInteger(kpis.simplexPages)} страниц`} delta={simplexRatioDelta} />}
+                    Icon={FileText}
+                    tone="warning"
+                  />
+                  <MetricCard
+                    label="Цветная печать"
+                    value={formatPercent(kpis.colorRatio)}
+                    note={<MetricNote label={`${formatInteger(kpis.colorPages)} страниц`} delta={colorRatioDelta} />}
+                    Icon={Gauge}
+                    tone="warning"
+                  />
+                  <MetricCard
+                    label="Задания от 100 стр."
+                    value={formatInteger(kpis.bigJobs)}
+                    note={<MetricNote label={`${formatInteger(kpis.bigPages)} страниц`} delta={bigJobsDelta} />}
+                    Icon={AlertTriangle}
+                    tone="danger"
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Отклонения печати</p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Односторонняя печать" value={formatPercent(kpis.simplexRatio)} note={`${formatInteger(kpis.simplexPages)} страниц`} Icon={FileText} tone="warning" />
-                <MetricCard label="Цветная печать" value={formatPercent(kpis.colorRatio)} note={`${formatInteger(kpis.colorPages)} страниц`} Icon={Gauge} tone="warning" />
-                <MetricCard label="Задания от 100 стр." value={formatInteger(kpis.bigJobs)} note={`${formatInteger(kpis.bigPages)} страниц`} Icon={AlertTriangle} tone="danger" />
-              </div>
-            </div>
-          </div>
+          )}
+
+          {viewMode === "analyst" ? <PrintPagesTrendChart data={printHistory} /> : null}
 
           <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -768,32 +998,36 @@ export function PrintDashboardPage() {
             />
           </SectionCard>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ChartCard title="Тип документа" description="Распределение напечатанных страниц по типам документов." Icon={FileText}>
-              <BarList items={docTypeBars} />
-            </ChartCard>
-            <ChartCard title="Формат бумаги" description="Распределение страниц по формату бумаги." Icon={Printer}>
-              <BarList items={paperBars} />
-            </ChartCard>
-          </div>
+          {!isManagerView ? (
+            <>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <ChartCard title="Тип документа" description="Распределение напечатанных страниц по типам документов." Icon={FileText}>
+                  <BarList items={docTypeBars} />
+                </ChartCard>
+                <ChartCard title="Формат бумаги" description="Распределение страниц по формату бумаги." Icon={Printer}>
+                  <BarList items={paperBars} />
+                </ChartCard>
+              </div>
 
-          <SectionCard title="Потенциально избыточная печать" description="Личные тематики, нормативные документы и служебные записки." Icon={AlertTriangle}>
-            <div className="mb-3 grid gap-2 md:grid-cols-3">
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.jobs)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">заданий</span>
-              </div>
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.pages)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">страниц</span>
-              </div>
-              <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-                <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.users)}</strong>
-                <span className="text-xs font-semibold text-[var(--raport-muted)]">пользователей</span>
-              </div>
-            </div>
-            <BarList items={excessSummary.categories} />
-          </SectionCard>
+              <SectionCard title="Потенциально избыточная печать" description="Личные тематики, нормативные документы и служебные записки." Icon={AlertTriangle}>
+                <div className="mb-3 grid gap-2 md:grid-cols-3">
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.jobs)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">заданий</span>
+                  </div>
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.pages)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">страниц</span>
+                  </div>
+                  <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
+                    <strong className="block text-xl font-extrabold text-[var(--raport-text)]">{formatInteger(excessSummary.users)}</strong>
+                    <span className="text-xs font-semibold text-[var(--raport-muted)]">пользователей</span>
+                  </div>
+                </div>
+                <BarList items={excessSummary.categories} />
+              </SectionCard>
+            </>
+          ) : null}
 
           <SectionCard
             title="Топ заданий с отклонениями"

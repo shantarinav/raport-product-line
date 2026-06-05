@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck } from "lucide-react";
 import { Button } from "../../shared/ui/shadcn/button";
 import { Badge } from "../../shared/ui/shadcn/badge";
 import { DashboardHeader, ErrorState, FileDropZone, FilterStatusBar, IconLabel, PageShell } from "../../shared/ui";
@@ -14,13 +14,50 @@ import { readSupportReportFile } from "../../features/support/import/readReportF
 import type { SupportImportResult } from "../../features/support/supportTypes";
 import { setPendingDashboardData, type DashboardRoute } from "../../shared/pendingDashboardFile";
 import { detectReportType, type DetectedReportType } from "../../shared/reportDetection";
+import { putSnapshot } from "../../shared/lib/historyDB";
+import { buildSnapshotData, type SnapshotInput, type SnapshotReportMatch } from "../../shared/lib/snapshotBuilder";
+import { HistoryManager } from "./components/HistoryManager";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
 const LANDING_FILE_INPUT_ID = "landing-file-input";
+const SUPPORTED_REPORTS = [
+  {
+    id: "ssz",
+    title: "ССЗ",
+    subtitle: "Качество оформления сменно-суточных заданий",
+    description:
+      "Помогает увидеть, насколько работы оформляются по технологии. Показывает общую долю по нормо-часам, проблемные цеха и операции, а также динамику по месяцам.",
+    Icon: ClipboardList,
+  },
+  {
+    id: "tessa",
+    title: "Tessa",
+    subtitle: "Исполнительская дисциплина",
+    description:
+      "Показывает, где согласования застряли в работе, кто отвечает за просрочки и какие задания требуют внимания в ближайшие дни.",
+    Icon: ClipboardCheck,
+  },
+  {
+    id: "print",
+    title: "Печать",
+    subtitle: "Контроль печати",
+    description:
+      "Помогает контролировать расходы на печать. Находит цветную и одностороннюю печать, избыточные задания, личные материалы и показывает оценку затрат.",
+    Icon: Printer,
+  },
+  {
+    id: "support",
+    title: "Техподдержка",
+    subtitle: "SLA закрытых заявок",
+    description:
+      "Показывает выполнение SLA по закрытым заявкам, темы с наибольшими нарушениями, длинный хвост просрочек и проблемы качества данных.",
+    Icon: Headphones,
+  },
+];
 
 type LandingStatus = "idle" | "dragging" | "reading" | "detecting" | "matched" | "ambiguous" | "error";
-type ReportMatch = "ССЗ" | "Tessa" | "Print" | "Техподдержка";
+type ReportMatch = SnapshotReportMatch;
 
 type SelectedFileState = {
   name: string;
@@ -35,10 +72,10 @@ function fileExtension(fileName: string) {
 }
 
 function statusText(status: LandingStatus) {
-  if (status === "dragging") return "Перетаскивание";
-  if (status === "reading") return "Чтение файла";
-  if (status === "detecting") return "Определение отчета";
-  if (status === "matched") return "Отчет найден";
+  if (status === "dragging") return "Можно отпускать файл";
+  if (status === "reading") return "Читаем файл";
+  if (status === "detecting") return "Определяем тип отчета";
+  if (status === "matched") return "Открываем дашборд";
   if (status === "ambiguous") return "Отчет не определен";
   if (status === "error") return "Ошибка";
   return "Ожидание файла";
@@ -58,7 +95,10 @@ export function LandingPage() {
   const [selectedFile, setSelectedFile] = useState<SelectedFileState | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusNotice, setStatusNotice] = useState("");
+  const [activeReportIndex, setActiveReportIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
+  const activeReport = SUPPORTED_REPORTS[activeReportIndex] ?? SUPPORTED_REPORTS[0];
+  const ActiveReportIcon = activeReport.Icon;
 
   useEffect(() => {
     return () => {
@@ -127,9 +167,23 @@ export function LandingPage() {
     setStatus("reading");
     setStatus("detecting");
 
-    const completeMatch = (nextMatch: ReportMatch, targetPath: DashboardRoute) => {
+    const persistSnapshot = (nextMatch: ReportMatch, parsedData: SnapshotInput) => {
+      void (async () => {
+        try {
+          const snapshots = buildSnapshotData(nextMatch, parsedData);
+          for (const snapshot of snapshots) {
+            await putSnapshot(snapshot);
+          }
+        } catch (error) {
+          console.error("Не удалось сохранить снимок в локальную историю", error);
+        }
+      })();
+    };
+
+    const completeMatch = (nextMatch: ReportMatch, targetPath: DashboardRoute, parsedData: SnapshotInput) => {
       setSelectedFile((current) => (current ? { ...current, match: nextMatch } : current));
       setStatus("matched");
+      persistSnapshot(nextMatch, parsedData);
       timersRef.current = [window.setTimeout(() => navigate(targetPath), 180)];
     };
 
@@ -147,7 +201,7 @@ export function LandingPage() {
           return;
         }
         setPendingDashboardData("/tessa", tessaParsed as TessaImportResult);
-        completeMatch(reportLabel(detected.type), "/tessa");
+        completeMatch(reportLabel(detected.type), "/tessa", tessaParsed as TessaImportResult);
         return;
       }
 
@@ -158,7 +212,7 @@ export function LandingPage() {
           return;
         }
         setPendingDashboardData("/ssz", sszParsed as ImportedReport);
-        completeMatch(reportLabel(detected.type), "/ssz");
+        completeMatch(reportLabel(detected.type), "/ssz", sszParsed as ImportedReport);
         return;
       }
 
@@ -169,7 +223,7 @@ export function LandingPage() {
           return;
         }
         setPendingDashboardData("/print", printParsed as PrintImportResult);
-        completeMatch(reportLabel(detected.type), "/print");
+        completeMatch(reportLabel(detected.type), "/print", printParsed as PrintImportResult);
         return;
       }
 
@@ -179,7 +233,7 @@ export function LandingPage() {
         return;
       }
       setPendingDashboardData("/support", supportParsed as SupportImportResult);
-      completeMatch(reportLabel(detected.type), "/support");
+      completeMatch(reportLabel(detected.type), "/support", supportParsed as SupportImportResult);
     } catch {
       setStatus("error");
       setErrorMessage("Не удалось обработать файл. Проверьте формат и структуру отчета.");
@@ -201,26 +255,27 @@ export function LandingPage() {
             </div>
           </div>
         }
-        description="Загрузите Excel или CSV-отчет — Рапорт построит дашборд и покажет ключевые показатели, отклонения и зоны внимания."
+        description="Загрузите Excel или CSV-отчет — Рапорт определит тип, откроет нужный дашборд и покажет ключевые показатели, отклонения и зоны внимания."
         actions={<Button onClick={openFilePicker}>Загрузить отчет</Button>}
       />
 
       <div className="grid gap-4">
-        <FilterStatusBar title="Текущий статус" chips={statusChips} />
+        <FilterStatusBar title="Готовность" chips={statusChips} />
 
         <FileDropZone
-          title="Загрузите файл отчета"
-          hint="Перетащите CSV/XLS/XLSX сюда."
+          title="Перетащите отчет сюда"
+          hint="Рапорт сам определит тип отчета и откроет нужный дашборд."
           accept=".csv,.xls,.xlsx"
           inputId={LANDING_FILE_INPUT_ID}
           selectedFileName={selectedFile?.name}
           onFileSelect={handleFileSelect}
           onDragStateChange={(isDragging) => setStatus(isDragging ? "dragging" : "idle")}
           showPickButton={false}
-          className="min-h-[280px]"
+          className="min-h-[260px] md:min-h-[320px]"
           footer={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <IconLabel Icon={ShieldCheck}>Файл обрабатывается локально в браузере</IconLabel>
+              <IconLabel Icon={ShieldCheck}>Локально: файл не отправляется на сервер</IconLabel>
+              <IconLabel Icon={SearchCheck}>Автоматически: тип отчета определяется по структуре</IconLabel>
               <Badge variant="secondary">CSV</Badge>
               <Badge variant="secondary">XLS</Badge>
               <Badge variant="secondary">XLSX</Badge>
@@ -228,6 +283,46 @@ export function LandingPage() {
             </div>
           }
         />
+
+        <div className="grid min-w-0 gap-3 overflow-hidden rounded-[var(--raport-radius-card)] border border-[var(--raport-border)] bg-[var(--raport-surface)] p-3 shadow-[var(--raport-shadow-card)] lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
+          <div className="grid content-start gap-3">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white text-[var(--raport-primary)]">
+                <ActiveReportIcon className="h-6 w-6" strokeWidth={2} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Что умеет Рапорт</p>
+                <h2 className="mt-1 text-xl font-extrabold text-[var(--raport-text)]">{activeReport.title}</h2>
+                <p className="mt-1 text-sm font-bold text-[var(--raport-primary)]">{activeReport.subtitle}</p>
+              </div>
+            </div>
+
+            <p className="max-w-3xl text-sm font-semibold leading-6 text-[var(--raport-muted)]">{activeReport.description}</p>
+          </div>
+
+          <div className="grid min-w-0 gap-2 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
+            {SUPPORTED_REPORTS.map(({ id, title, subtitle, Icon }, index) => (
+              <button
+                key={id}
+                type="button"
+                className={`flex min-w-0 items-center gap-3 overflow-hidden rounded-[var(--raport-radius-control)] border px-3 py-2 text-left transition-colors ${
+                  activeReportIndex === index
+                    ? "border-[var(--raport-primary)] bg-white text-[var(--raport-primary)] shadow-sm"
+                    : "border-transparent text-[var(--raport-muted)] hover:bg-white/70 hover:text-[var(--raport-text)]"
+                }`}
+                onClick={() => setActiveReportIndex(index)}
+              >
+                <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <span className="block truncate text-sm font-extrabold">{title}</span>
+                  <span className="block truncate text-xs font-semibold">{subtitle}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <HistoryManager />
 
         {errorMessage ? <ErrorState message={errorMessage} /> : null}
       </div>

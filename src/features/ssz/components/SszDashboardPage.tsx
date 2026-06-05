@@ -25,6 +25,8 @@ import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
+import type { DashboardSnapshot } from "../../../shared/lib/historyDB";
+import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import { formatImportedAt, formatReportPeriod } from "../import/periodDisplay";
 import type { ImportedReport, OperationRecord } from "../import/types";
 import {
@@ -46,8 +48,32 @@ import {
   uniqueSorted,
 } from "../logic/dashboard";
 import { formatHours, formatPercent } from "../logic/format";
+import { useSSZHistory } from "../logic/useSSZHistory";
+import { SSZTrendChart } from "./SSZTrendChart";
 
 type TechnologyStatusFilter = "all" | "met" | "below";
+type SszViewMode = "manager" | "analyst";
+
+const SSZ_VIEW_MODE_STORAGE_KEY = "raport:ssz:viewMode";
+
+function readStoredSszViewMode(): SszViewMode {
+  if (typeof window === "undefined") return "manager";
+
+  try {
+    const storedMode = window.localStorage.getItem(SSZ_VIEW_MODE_STORAGE_KEY);
+    return storedMode === "analyst" ? "analyst" : "manager";
+  } catch {
+    return "manager";
+  }
+}
+
+function saveStoredSszViewMode(mode: SszViewMode) {
+  try {
+    window.localStorage.setItem(SSZ_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Ignore storage failures: the dashboard should keep working without persisted UI preferences.
+  }
+}
 
 const targetMarkerClassByStep: Record<number, string> = {
   0: "left-0",
@@ -284,15 +310,18 @@ function TargetControl({ value, onChange }: { value: number; onChange: (value: n
 function SszFilterSidebar({
   operations,
   filters,
+  viewMode,
   onChange,
   onReset,
 }: {
   operations: OperationRecord[];
   filters: DashboardFilters;
+  viewMode: SszViewMode;
   onChange: (filters: DashboardFilters) => void;
   onReset: () => void;
 }) {
   const bounds = useMemo(() => dateBounds(operations), [operations]);
+  const showOrderFilters = viewMode === "analyst";
 
   const orderContextOperations = useMemo(
     () =>
@@ -425,34 +454,38 @@ function SszFilterSidebar({
 
         <div className="grid gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Область данных</p>
-          <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Заказ</span>
-            <AutocompleteField
-              value={filters.selectedOrder}
-              placeholder="Все заказы"
-              options={visibleOrders}
-              ariaLabel="Номер заказа"
-              onChange={(value) => changeOrder(value)}
-              onCommit={(value) => changeOrder(value, true)}
-            />
-          </label>
+          {showOrderFilters ? (
+            <>
+              <label className="grid gap-1">
+                <span className="text-xs text-[var(--raport-muted)]">Заказ</span>
+                <AutocompleteField
+                  value={filters.selectedOrder}
+                  placeholder="Все заказы"
+                  options={visibleOrders}
+                  ariaLabel="Номер заказа"
+                  onChange={(value) => changeOrder(value)}
+                  onCommit={(value) => changeOrder(value, true)}
+                />
+              </label>
 
-          <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Комплект</span>
-            <Select
-              aria-label="Комплект"
-              value={filters.selectedKit}
-              disabled={!filters.selectedOrder}
-              onChange={(event) => update({ selectedKit: event.currentTarget.value })}
-            >
-              <option value="">{filters.selectedOrder ? "Все комплекты" : "Сначала выберите заказ"}</option>
-              {kits.map((kit) => (
-                <option key={kit} value={kit}>
-                  {kit}
-                </option>
-              ))}
-            </Select>
-          </label>
+              <label className="grid gap-1">
+                <span className="text-xs text-[var(--raport-muted)]">Комплект</span>
+                <Select
+                  aria-label="Комплект"
+                  value={filters.selectedKit}
+                  disabled={!filters.selectedOrder}
+                  onChange={(event) => update({ selectedKit: event.currentTarget.value })}
+                >
+                  <option value="">{filters.selectedOrder ? "Все комплекты" : "Сначала выберите заказ"}</option>
+                  {kits.map((kit) => (
+                    <option key={kit} value={kit}>
+                      {kit}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </>
+          ) : null}
 
           <label className="grid gap-1">
             <span className="text-xs text-[var(--raport-muted)]">Операция</span>
@@ -500,7 +533,7 @@ function SszFilterSidebar({
               value={filters.selectedDateFrom}
               min={bounds.min}
               max={bounds.max}
-              onChange={(event) => update({ selectedDateFrom: event.currentTarget.value })}
+              onChange={(event) => update({ selectedDateFrom: clampDateInput(event.currentTarget.value, bounds.min, bounds.max) })}
             />
           </label>
 
@@ -512,7 +545,7 @@ function SszFilterSidebar({
               value={filters.selectedDateTo}
               min={bounds.min}
               max={bounds.max}
-              onChange={(event) => update({ selectedDateTo: event.currentTarget.value })}
+              onChange={(event) => update({ selectedDateTo: clampDateInput(event.currentTarget.value, bounds.min, bounds.max) })}
             />
           </label>
         </div>
@@ -526,6 +559,69 @@ type ActiveFilterChip = {
   tone?: "default" | "secondary";
   onRemove?: () => void;
 };
+
+type MetricDelta = {
+  label: string;
+  variant: "default" | "secondary" | "success" | "danger";
+};
+
+const deltaTextClass: Record<MetricDelta["variant"], string> = {
+  default: "text-[var(--raport-primary)]",
+  secondary: "text-[var(--raport-muted)]",
+  success: "text-[var(--raport-success)]",
+  danger: "text-[var(--raport-danger)]",
+};
+
+function snapshotMetric(snapshot: DashboardSnapshot | null, key: string): number | null {
+  const value = snapshot?.metrics[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatSignedNumber(value: number, digits: number): string {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "±";
+  return `${sign}${Math.abs(value).toLocaleString("ru-RU", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+function clampDateInput(value: string, min: string, max: string): string {
+  if (!value) return value;
+  if (min && value < min) return min;
+  if (max && value > max) return max;
+  return value;
+}
+
+function percentDelta(currentRatio: number | null, previousSnapshot: DashboardSnapshot | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (currentRatio === null || previousValue === null) return null;
+
+  const delta = currentRatio * 100 - previousValue;
+  return {
+    label: `${formatSignedNumber(delta, 1)} п.п.`,
+    variant: Math.abs(delta) < 0.05 ? "secondary" : delta > 0 ? "success" : "danger",
+  };
+}
+
+function countDelta(currentValue: number, previousSnapshot: DashboardSnapshot | null, metricKey: string): MetricDelta | null {
+  const previousValue = snapshotMetric(previousSnapshot, metricKey);
+  if (previousValue === null) return null;
+  const delta = currentValue - previousValue;
+
+  return {
+    label: formatSignedNumber(delta, 0),
+    variant: "secondary",
+  };
+}
+
+function MetricNote({ label, delta }: { label: string; delta: MetricDelta | null }) {
+  return (
+    <div className="grid gap-1">
+      <span>{label}</span>
+      {delta ? <span className={deltaTextClass[delta.variant]}>к предыдущему месяцу: {delta.label}</span> : null}
+    </div>
+  );
+}
 
 function activeFilterChips(
   filters: DashboardFilters,
@@ -582,30 +678,41 @@ function activeFilterChips(
   return [targetChip, ...selectedItems];
 }
 
-function SszKpiCards({ data, targetPercent }: { data: KpiCardData; targetPercent: number }) {
+function SszKpiCards({
+  data,
+  targetPercent,
+  previousSnapshot,
+}: {
+  data: KpiCardData;
+  targetPercent: number;
+  previousSnapshot: DashboardSnapshot | null;
+}) {
   const workTone = targetTone(data.workTechnologyRatio, targetPercent / 100);
   const operationTone = targetTone(data.operationTechnologyRatio, targetPercent / 100);
+  const sszDelta = countDelta(data.sszCount, previousSnapshot, "sszCount");
+  const workDelta = percentDelta(data.workTechnologyRatio, previousSnapshot, "workTechnologyPercent");
+  const operationDelta = percentDelta(data.operationTechnologyRatio, previousSnapshot, "operationTechnologyPercent");
 
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <MetricCard
         label="Всего ССЗ"
         value={data.sszCount.toLocaleString("ru-RU")}
-        note="в анализируемом периоде"
+        note={<MetricNote label="в анализируемом периоде" delta={sszDelta} />}
         Icon={ClipboardList}
         tone="neutral"
       />
       <MetricCard
         label="Доля работ по технологии"
         value={formatPercent(data.workTechnologyRatio)}
-        note="по нормо-часам"
+        note={<MetricNote label="по нормо-часам" delta={workDelta} />}
         Icon={Factory}
         tone={workTone === "high" ? "success" : workTone === "medium" ? "warning" : "danger"}
       />
       <MetricCard
         label="Доля операций по технологии"
         value={formatPercent(data.operationTechnologyRatio)}
-        note="по количеству операций"
+        note={<MetricNote label="по количеству операций" delta={operationDelta} />}
         Icon={Gauge}
         tone={operationTone === "high" ? "success" : operationTone === "medium" ? "warning" : "danger"}
       />
@@ -982,6 +1089,10 @@ function TechnologyBoardCard({
 function SszDashboard({ report }: { report: ImportedReport }) {
   const defaultFilters = useMemo(() => initialFilters(report.period), [report.period]);
   const [filters, setFilters] = useState<DashboardFilters>(() => initialFilters(report.period));
+  const [viewMode, setViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
+  const historyComparisonStart = monthStartDateKey(filters.selectedDateFrom || report.period.start || "") || undefined;
+  const { history, previousSnapshot } = useSSZHistory(historyComparisonStart);
+  const kpiPreviousSnapshot = isMonthlyCoverageReady(filters.selectedDateFrom, filters.selectedDateTo) ? previousSnapshot : null;
   const targetRatio = filters.targetPercent / 100;
 
   const operations = useMemo(() => operationScope(report.sszRecords), [report.sszRecords]);
@@ -1035,16 +1146,46 @@ function SszDashboard({ report }: { report: ImportedReport }) {
     setFilters((current) => ({ ...current, ...next }));
   }
 
+  function changeViewMode(nextMode: SszViewMode) {
+    setViewMode(nextMode);
+    saveStoredSszViewMode(nextMode);
+    if (nextMode === "manager") {
+      setFilters((current) =>
+        current.selectedOrder || current.selectedKit ? { ...current, selectedOrder: "", selectedKit: "" } : current,
+      );
+    }
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <div className="lg:sticky lg:top-3 lg:self-start">
-        <SszFilterSidebar operations={operations} filters={filters} onChange={setFilters} onReset={resetFilters} />
+        <SszFilterSidebar
+          operations={operations}
+          filters={filters}
+          viewMode={viewMode}
+          onChange={setFilters}
+          onReset={resetFilters}
+        />
       </div>
 
       <div className="grid gap-4">
-        <FilterStatusBar chips={activeFilterChips(filters, defaultFilters, patchFilters)} />
+        <FilterStatusBar
+          chips={activeFilterChips(filters, defaultFilters, patchFilters)}
+          actions={
+            <DashboardSwitch
+              value={viewMode}
+              onChange={(value) => changeViewMode(value as SszViewMode)}
+              options={[
+                { value: "manager", label: "Руководитель" },
+                { value: "analyst", label: "Аналитик" },
+              ]}
+            />
+          }
+        />
 
-        <SszKpiCards data={kpis} targetPercent={filters.targetPercent} />
+        <SszKpiCards data={kpis} targetPercent={filters.targetPercent} previousSnapshot={kpiPreviousSnapshot} />
+
+        {viewMode === "analyst" ? <SSZTrendChart data={history} targetPercent={filters.targetPercent} /> : null}
 
         <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -1066,40 +1207,48 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           </div>
         </SectionCard>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          <MasterLeaderboardCard
-            title="Лидеры по технологии"
-            description="Мастера, достигшие целевой доли по технологии."
-            rows={masterRows}
-            tone="support"
-            targetRatio={targetRatio}
-            onMasterClick={selectMaster}
-          />
-          <MasterLeaderboardCard
-            title="Зона внимания"
-            description="Мастера с наибольшим объемом работ без технологии."
-            rows={masterRows}
-            tone="growth"
-            targetRatio={targetRatio}
-            onMasterClick={selectMaster}
-          />
-        </div>
+        {viewMode === "analyst" ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <MasterLeaderboardCard
+              title="Лидеры по технологии"
+              description="Мастера, достигшие целевой доли по технологии."
+              rows={masterRows}
+              tone="support"
+              targetRatio={targetRatio}
+              onMasterClick={selectMaster}
+            />
+            <MasterLeaderboardCard
+              title="Зона внимания"
+              description="Мастера с наибольшим объемом работ без технологии."
+              rows={masterRows}
+              tone="growth"
+              targetRatio={targetRatio}
+              onMasterClick={selectMaster}
+            />
+          </div>
+        ) : null}
 
         <SectionCard
           title="Срезы по технологии"
-          description="Доля работ по технологии по заказам, цехам, мастерам и операциям."
+          description={
+            viewMode === "manager"
+              ? "Доля работ по технологии по цехам, мастерам и операциям."
+              : "Доля работ по технологии по заказам, цехам, мастерам и операциям."
+          }
           Icon={Gauge}
         >
           <div className="grid gap-4">
-            <TechnologyBoardCard
-              title="Заказы"
-              subtitle="Ранжирование по общему объему нормо-часов."
-              Icon={FileSpreadsheet}
-              rows={orderRows}
-              targetRatio={targetRatio}
-              onRowClick={selectOrder}
-              layout="compact-list"
-            />
+            {viewMode === "analyst" ? (
+              <TechnologyBoardCard
+                title="Заказы"
+                subtitle="Ранжирование по общему объему нормо-часов."
+                Icon={FileSpreadsheet}
+                rows={orderRows}
+                targetRatio={targetRatio}
+                onRowClick={selectOrder}
+                layout="compact-list"
+              />
+            ) : null}
 
             <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
               <TechnologyBoardCard
