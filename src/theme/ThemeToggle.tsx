@@ -1,22 +1,41 @@
 import { Moon, Sun } from "lucide-react";
-import { Button } from "../shared/ui/shadcn/button";
+import { cn } from "../shared/ui/cn";
 import { useTheme } from "./useTheme";
 
 export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      className="min-h-9 shrink-0 rounded-full px-3 text-xs"
-      aria-label={isDark ? "Включить светлую тему" : "Включить темную тему"}
-      aria-pressed={isDark}
-      onClick={toggleTheme}
+    <div
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1"
+      role="group"
+      aria-label="Переключатель темы"
     >
-      {isDark ? <Moon className="h-4 w-4" strokeWidth={2} /> : <Sun className="h-4 w-4" strokeWidth={2} />}
-      <span className="hidden sm:inline">{isDark ? "Темная" : "Светлая"}</span>
-    </Button>
+      <button
+        type="button"
+        className={cn(
+          "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+          !isDark && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+        )}
+        aria-label="Включить светлую тему"
+        aria-pressed={!isDark}
+        onClick={() => setTheme("light")}
+      >
+        <Sun className="h-4 w-4" strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+          isDark && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+        )}
+        aria-label="Включить темную тему"
+        aria-pressed={isDark}
+        onClick={() => setTheme("dark")}
+      >
+        <Moon className="h-4 w-4" strokeWidth={2} />
+      </button>
+    </div>
   );
 }
