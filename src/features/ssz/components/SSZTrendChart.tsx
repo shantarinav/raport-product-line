@@ -181,10 +181,10 @@ export function SSZTrendChart({ data, targetPercent }: { data: DashboardSnapshot
           <polyline
             points={polylinePoints}
             fill="none"
-            className="stroke-slate-700"
+            className="stroke-[var(--raport-primary)]"
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={2.5}
+            strokeWidth={3.5}
           />
           {points.map((point) => (
             <g key={point.id}>

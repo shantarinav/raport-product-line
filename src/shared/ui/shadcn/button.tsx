@@ -10,9 +10,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 const variantClass: Record<ButtonVariant, string> = {
   default:
     "border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]",
-  outline: "border border-[var(--raport-border)] bg-white text-[var(--raport-text)] hover:bg-slate-50",
-  ghost: "border border-transparent bg-transparent text-[var(--raport-muted)] hover:bg-slate-100",
-  destructive: "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+  outline:
+    "border border-[var(--raport-border)] bg-[var(--raport-surface)] text-[var(--raport-text)] hover:bg-[var(--raport-surface-soft)]",
+  ghost: "border border-transparent bg-transparent text-[var(--raport-muted)] hover:bg-[var(--raport-surface-soft)]",
+  destructive: "border border-[var(--raport-danger-border)] bg-[var(--raport-danger-muted)] text-[var(--raport-danger)] hover:brightness-95",
 };
 
 export function Button({ variant = "default", className, type = "button", ...props }: ButtonProps) {

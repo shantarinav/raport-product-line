@@ -5,10 +5,10 @@ type BadgeVariant = "default" | "secondary" | "success" | "warning" | "danger";
 
 const variantClass: Record<BadgeVariant, string> = {
   default: "border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] text-[var(--raport-primary)]",
-  secondary: "border border-slate-200 bg-slate-50 text-slate-600",
-  success: "border border-green-200 bg-green-50 text-green-700",
-  warning: "border border-amber-200 bg-amber-50 text-amber-700",
-  danger: "border border-red-200 bg-red-50 text-red-700",
+  secondary: "border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] text-[var(--raport-muted)]",
+  success: "border border-[var(--raport-success-border)] bg-[var(--raport-success-muted)] text-[var(--raport-success)]",
+  warning: "border border-[var(--raport-warning-border)] bg-[var(--raport-warning-muted)] text-[var(--raport-warning)]",
+  danger: "border border-[var(--raport-danger-border)] bg-[var(--raport-danger-muted)] text-[var(--raport-danger)]",
 };
 
 export function Badge({ className, ...props }: HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant }) {

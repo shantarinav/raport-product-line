@@ -16,7 +16,7 @@ export function ToggleGroup({ value, onValueChange, options, className }: Toggle
   return (
     <div
       className={cn(
-        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-[var(--raport-border)] bg-slate-50 p-1",
+        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1",
         className,
       )}
     >
@@ -28,7 +28,7 @@ export function ToggleGroup({ value, onValueChange, options, className }: Toggle
             type="button"
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "min-h-7 rounded-full px-3 py-1 text-xs font-semibold text-slate-600",
+              "min-h-7 rounded-full px-3 py-1 text-xs font-semibold text-[var(--raport-muted)]",
               isActive && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
             )}
           >

@@ -43,7 +43,7 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
             <LegendItem className="bg-blue-600" label="Мало просрочек (<20%)" />
             <LegendItem className="bg-amber-500" label="Заметно просрочек (20–39%)" />
             <LegendItem className="bg-red-500" label="Много просрочек (≥40%)" />
-            <LegendItem className="bg-slate-900" label="SLA выполнен" />
+            <LegendItem className="bg-[var(--raport-primary)]" label="SLA выполнен" />
             <LegendItem className="bg-emerald-500" label="Норма 95%" />
             <LegendItem className="bg-amber-500" label={`Контроль ${controlPercent}%`} />
           </div>
@@ -96,11 +96,11 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
                 </g>
               );
             })}
-            <polyline points={linePoints.join(" ")} fill="none" className="stroke-slate-900" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={linePoints.join(" ")} fill="none" className="stroke-[var(--raport-primary)]" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + slotWidth / 2;
               const y = padding.top + innerHeight - point.slaRate * innerHeight;
-              return <circle key={`${point.dateKey}-dot`} cx={x} cy={y} r="4" className="fill-slate-900" />;
+              return <circle key={`${point.dateKey}-dot`} cx={x} cy={y} r="4" className="fill-[var(--raport-primary)] stroke-[var(--raport-surface)]" strokeWidth="2" />;
             })}
           </svg>
         </div>
