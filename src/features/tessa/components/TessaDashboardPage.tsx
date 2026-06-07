@@ -251,25 +251,30 @@ export function TessaDashboardPage() {
           </div>
         }
         description="Договорные согласования Tessa: что уже застряло, что истекает сегодня и где зона внимания по ответственным."
-        actions={
-          <div className="flex w-full max-w-[420px] flex-col items-end gap-2">
-            <Link
-              to="/"
-              className="inline-flex min-h-8 items-center rounded-[var(--raport-radius-control)] border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]"
-            >
-              Заменить отчет
-            </Link>
+        actions={(themeToggle) => (
+          <div className="grid w-full min-w-[320px] max-w-[430px] justify-items-end gap-2">
+            <div className="flex w-full items-center justify-end gap-2">
+              <Link
+                to="/"
+                className="inline-flex min-h-8 items-center rounded-[var(--raport-radius-control)] border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]"
+              >
+                Заменить отчет
+              </Link>
+              {themeToggle}
+            </div>
             {loadedFile ? (
               <div className="w-full rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
                 <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={loadedFile.fileName}>
                   {loadedFile.fileName}
                 </p>
-                <p>Период: {period ? `${formatDate(period.from)} - ${formatDate(period.to)}` : "не определен"}</p>
-                <p>Загружен: {formatShortDateTime(loadedFile.loadedAt)}</p>
+                <p className="truncate">
+                  {period ? `${formatDate(period.from)} - ${formatDate(period.to)}` : "Период не определен"} · загружен{" "}
+                  {formatShortDateTime(loadedFile.loadedAt)}
+                </p>
               </div>
             ) : null}
           </div>
-        }
+        )}
       />
 
       {hasData ? (
