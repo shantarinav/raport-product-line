@@ -20,9 +20,9 @@ export function DashboardHeader({ title, slogan, description, actions, className
           {slogan ? <p className="mt-2 text-sm font-bold text-[var(--raport-primary)]">{slogan}</p> : null}
           {description ? <CardDescription className="mt-2 max-w-3xl leading-relaxed">{description}</CardDescription> : null}
         </div>
-        <div className="flex shrink-0 items-start gap-2">
-          <ThemeToggle />
+        <div className="flex shrink-0 items-start justify-end gap-2">
           {actions}
+          <ThemeToggle />
         </div>
       </CardHeader>
     </Card>

@@ -169,12 +169,20 @@ progress[class]::-webkit-progress-bar {
   background-color: var(--raport-success-muted);
 }
 
-.dark .border-green-200 {
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/40 {
+  background-color: var(--raport-success-muted);
+}
+
+.dark .border-green-200,
+.dark .border-emerald-200 {
   border-color: var(--raport-success-border);
 }
 
 .dark .text-green-700,
-.dark .text-green-600 {
+.dark .text-green-600,
+.dark .text-emerald-700,
+.dark .text-emerald-600 {
   color: var(--raport-success);
 }
 
