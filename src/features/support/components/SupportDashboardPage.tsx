@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, BarChart3, CheckCircle2, Clock, FileSpreadsheet, LifeBuoy } from "lucide-react";
 import {
@@ -185,7 +185,7 @@ export function SupportDashboardPage() {
         }
         description="Анализ SLA заявок: где нарушены сроки и какие темы дают основной вклад"
         actions={(themeToggle) => (
-          <div className="grid w-full min-w-[320px] max-w-[430px] justify-items-end gap-2">
+          <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
@@ -195,7 +195,7 @@ export function SupportDashboardPage() {
               </Link>
               {themeToggle}
             </div>
-            <div className="w-full rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
+            <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
               <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={report.file.fileName}>{report.file.fileName}</p>
               <p className="truncate">
                 {periodLabel(report.tickets)} · загружен {formatSupportDateTime(new Date(report.file.loadedAt))}

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -252,7 +252,7 @@ export function TessaDashboardPage() {
         }
         description="Договорные согласования Tessa: что уже застряло, что истекает сегодня и где зона внимания по ответственным."
         actions={(themeToggle) => (
-          <div className="grid w-full min-w-[320px] max-w-[430px] justify-items-end gap-2">
+          <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
@@ -263,7 +263,7 @@ export function TessaDashboardPage() {
               {themeToggle}
             </div>
             {loadedFile ? (
-              <div className="w-full rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
+              <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
                 <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={loadedFile.fileName}>
                   {loadedFile.fileName}
                 </p>
@@ -461,4 +461,3 @@ export function TessaDashboardPage() {
     </PageShell>
   );
 }
-

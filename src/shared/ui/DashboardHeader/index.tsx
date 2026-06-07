@@ -28,7 +28,7 @@ export function DashboardHeader({ title, slogan, description, actions, className
           {slogan ? <p className="mt-2 text-sm font-bold text-[var(--raport-primary)]">{slogan}</p> : null}
           {description ? <CardDescription className="mt-2 max-w-3xl leading-relaxed">{description}</CardDescription> : null}
         </div>
-        <div className="flex w-full shrink-0 items-start justify-end gap-2 sm:w-auto sm:max-w-[620px]">{renderedActions}</div>
+        <div className="flex min-w-0 w-full items-start justify-end gap-2 sm:w-auto sm:max-w-[620px] sm:shrink-0">{renderedActions}</div>
       </CardHeader>
     </Card>
   );

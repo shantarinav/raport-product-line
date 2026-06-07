@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Factory, FileSpreadsheet, Gauge, Users, Wrench } from "lucide-react";
 
@@ -702,7 +702,7 @@ export function SszDashboardPage() {
         }
         description="Качество оформления ССЗ: анализ доли работ по технологии, заказов, цехов, мастеров и операций на данных из файла."
         actions={(themeToggle) => (
-          <div className="grid w-full min-w-[320px] max-w-[430px] justify-items-end gap-2">
+          <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
@@ -713,7 +713,7 @@ export function SszDashboardPage() {
               {themeToggle}
             </div>
             {report ? (
-              <div className="w-full rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
+              <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
                 <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={report.sourceName}>
                   {report.sourceName}
                 </p>
