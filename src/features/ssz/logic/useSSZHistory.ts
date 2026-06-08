@@ -1,5 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSnapshots, type DashboardSnapshot } from "../../../shared/lib/historyDB";
+import { useTrendsEnabled } from "../../../shared/lib/trendSettings";
 
 type SszHistoryState = {
   history: DashboardSnapshot[];
@@ -15,12 +16,18 @@ export function useSSZHistory(currentPeriodStart?: string): {
   previousSnapshot: DashboardSnapshot | null;
   isLoading: boolean;
 } {
+  const [trendsEnabled] = useTrendsEnabled();
   const [state, setState] = useState<SszHistoryState>({
     history: [],
-    isLoading: true,
+    isLoading: false,
   });
 
   useEffect(() => {
+    if (!trendsEnabled) {
+      setState({ history: [], isLoading: false });
+      return;
+    }
+
     let isMounted = true;
 
     setState((current) => ({ ...current, isLoading: true }));
@@ -46,7 +53,7 @@ export function useSSZHistory(currentPeriodStart?: string): {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [trendsEnabled]);
 
   const previousSnapshot = useMemo(() => {
     if (!currentPeriodStart) return null;

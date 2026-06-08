@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { History, RefreshCcw, Trash2, X } from "lucide-react";
+import { CircleOff, History, RefreshCcw, Trash2, TrendingUp, X } from "lucide-react";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/shadcn/card";
@@ -10,6 +10,7 @@ import {
   type DashboardSnapshot,
   type DashboardType,
 } from "../../../shared/lib/historyDB";
+import { useTrendsEnabled } from "../../../shared/lib/trendSettings";
 import { cn } from "../../../shared/ui/cn";
 
 const DASHBOARD_TYPES: DashboardType[] = ["ssz", "tessa", "print", "support"];
@@ -72,6 +73,7 @@ export function HistoryManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeType, setActiveType] = useState<DashboardType>("ssz");
   const [state, setState] = useState<HistoryState>({ snapshots: [], isLoading: false, error: "" });
+  const [trendsEnabled, setTrendsEnabled] = useTrendsEnabled();
 
   const grouped = useMemo(() => groupByDashboard(state.snapshots), [state.snapshots]);
   const activeSnapshots = grouped[activeType];
@@ -129,14 +131,53 @@ export function HistoryManager() {
 
   return (
     <>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface)] px-3 py-2 text-sm shadow-[var(--raport-shadow-card)]">
+        <div className="min-w-0 flex-1 text-[var(--raport-muted)]">
+          <span className="font-bold text-[var(--raport-text)]">История и тренды:</span>{" "}
+          {trendsEnabled
+            ? "включены, Рапорт сохраняет только месячные KPI."
+            : "выключены, отчеты открываются без сохранения KPI."}
+        </div>
+        <div
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1"
+          role="group"
+          aria-label="Переключатель сбора трендов"
+          title={trendsEnabled ? "Тренды включены: сохраняются только месячные KPI" : "Тренды выключены: KPI не сохраняются"}
+        >
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+              !trendsEnabled &&
+                "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+            )}
+            aria-label="Выключить сбор трендов"
+            aria-pressed={!trendsEnabled}
+            onClick={() => setTrendsEnabled(false)}
+          >
+            <CircleOff className="h-4 w-4" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+              trendsEnabled &&
+                "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+            )}
+            aria-label="Включить сбор трендов"
+            aria-pressed={trendsEnabled}
+            onClick={() => setTrendsEnabled(true)}
+          >
+            <TrendingUp className="h-4 w-4" strokeWidth={2} />
+          </button>
+        </div>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-action-bg)] hover:text-[var(--raport-primary)]"
+          className="inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-action-bg)] hover:text-[var(--raport-primary)]"
           onClick={() => setIsOpen(true)}
         >
           <History className="h-4 w-4" strokeWidth={2} />
-          История и тренды
+          Управлять историей
         </button>
       </div>
 
@@ -156,7 +197,9 @@ export function HistoryManager() {
                   Локальная история и тренды
                 </CardTitle>
                 <p className="mt-1 text-sm text-[var(--raport-muted)]">
-                  Месячные снимки KPI хранятся в этом браузере и используются для динамики показателей. Сырые отчеты не сохраняются.
+                  {trendsEnabled
+                    ? "Месячные снимки KPI сохраняются в этом браузере и используются для динамики показателей. Сырые отчеты не сохраняются."
+                    : "Сбор новых снимков KPI выключен. Уже сохраненную историю можно посмотреть или очистить вручную."}
                 </p>
               </div>
               <Button variant="ghost" className="h-8 w-8 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>

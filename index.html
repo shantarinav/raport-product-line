@@ -8,6 +8,17 @@
       content="Рапорт — легкие фронтенд-дашборды для анализа Excel и CSV-отчетов. Файлы обрабатываются локально в браузере."
     />
     <meta name="theme-color" content="#0f172a" />
+    <script>
+      (function () {
+        try {
+          var theme = window.localStorage.getItem("raport-theme") === "dark" ? "dark" : "light";
+          document.documentElement.classList.toggle("dark", theme === "dark");
+          document.documentElement.dataset.theme = theme;
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
     <meta property="og:title" content="Рапорт" />
     <meta property="og:description" content="Excel докладывает главное: локальный анализ CSV/XLS/XLSX-отчетов в браузере." />
     <meta property="og:type" content="website" />

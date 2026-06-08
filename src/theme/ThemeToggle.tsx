@@ -11,6 +11,7 @@ export function ThemeToggle() {
       className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1"
       role="group"
       aria-label="Переключатель темы"
+      title={isDark ? "Сейчас включена темная тема" : "Сейчас включена светлая тема"}
     >
       <button
         type="button"
@@ -20,6 +21,7 @@ export function ThemeToggle() {
         )}
         aria-label="Включить светлую тему"
         aria-pressed={!isDark}
+        title="Включить светлую тему"
         onClick={() => setTheme("light")}
       >
         <Sun className="h-4 w-4" strokeWidth={2} />
@@ -32,6 +34,7 @@ export function ThemeToggle() {
         )}
         aria-label="Включить темную тему"
         aria-pressed={isDark}
+        title="Включить темную тему"
         onClick={() => setTheme("dark")}
       >
         <Moon className="h-4 w-4" strokeWidth={2} />

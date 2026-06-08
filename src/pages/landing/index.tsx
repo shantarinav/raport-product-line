@@ -16,6 +16,7 @@ import { setPendingDashboardData, type DashboardRoute } from "../../shared/pendi
 import { detectReportType, type DetectedReportType } from "../../shared/reportDetection";
 import { putSnapshot } from "../../shared/lib/historyDB";
 import { buildSnapshotData, type SnapshotInput, type SnapshotReportMatch } from "../../shared/lib/snapshotBuilder";
+import { areTrendsEnabled } from "../../shared/lib/trendSettings";
 import { HistoryManager } from "./components/HistoryManager";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
@@ -168,6 +169,8 @@ export function LandingPage() {
     setStatus("detecting");
 
     const persistSnapshot = (nextMatch: ReportMatch, parsedData: SnapshotInput) => {
+      if (!areTrendsEnabled()) return;
+
       void (async () => {
         try {
           const snapshots = buildSnapshotData(nextMatch, parsedData);
