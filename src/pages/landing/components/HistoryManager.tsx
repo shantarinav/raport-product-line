@@ -131,53 +131,14 @@ export function HistoryManager() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-end gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface)] px-3 py-2 text-sm shadow-[var(--raport-shadow-card)]">
-        <div className="min-w-0 flex-1 text-[var(--raport-muted)]">
-          <span className="font-bold text-[var(--raport-text)]">История и тренды:</span>{" "}
-          {trendsEnabled
-            ? "включены, Рапорт сохраняет только месячные KPI."
-            : "выключены, отчеты открываются без сохранения KPI."}
-        </div>
-        <div
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1"
-          role="group"
-          aria-label="Переключатель сбора трендов"
-          title={trendsEnabled ? "Тренды включены: сохраняются только месячные KPI" : "Тренды выключены: KPI не сохраняются"}
-        >
-          <button
-            type="button"
-            className={cn(
-              "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
-              !trendsEnabled &&
-                "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-            )}
-            aria-label="Выключить сбор трендов"
-            aria-pressed={!trendsEnabled}
-            onClick={() => setTrendsEnabled(false)}
-          >
-            <CircleOff className="h-4 w-4" strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
-              trendsEnabled &&
-                "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-            )}
-            aria-label="Включить сбор трендов"
-            aria-pressed={trendsEnabled}
-            onClick={() => setTrendsEnabled(true)}
-          >
-            <TrendingUp className="h-4 w-4" strokeWidth={2} />
-          </button>
-        </div>
+      <div className="flex justify-end">
         <button
           type="button"
           className="inline-flex min-h-8 items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-action-bg)] hover:text-[var(--raport-primary)]"
           onClick={() => setIsOpen(true)}
         >
           <History className="h-4 w-4" strokeWidth={2} />
-          Управлять историей
+          Управлять локальной историей
         </button>
       </div>
 
@@ -209,6 +170,50 @@ export function HistoryManager() {
 
             <CardContent className="max-h-[calc(86vh-92px)] overflow-auto p-4">
               <div className="grid gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-[var(--raport-text)]">Сбор трендов</p>
+                    <p className="mt-1 text-xs font-semibold text-[var(--raport-muted)]">
+                      {trendsEnabled
+                        ? "Включено: Рапорт сохраняет только месячные KPI. Сырые отчеты не сохраняются."
+                        : "Выключено по умолчанию: отчеты открываются без сохранения KPI."}
+                    </p>
+                  </div>
+                  <div
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface)] p-1"
+                    role="group"
+                    aria-label="Переключатель сбора трендов"
+                    title={trendsEnabled ? "Тренды включены: сохраняются только месячные KPI" : "Тренды выключены: KPI не сохраняются"}
+                  >
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+                        !trendsEnabled &&
+                          "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+                      )}
+                      aria-label="Выключить сбор трендов"
+                      aria-pressed={!trendsEnabled}
+                      onClick={() => setTrendsEnabled(false)}
+                    >
+                      <CircleOff className="h-4 w-4" strokeWidth={2} />
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
+                        trendsEnabled &&
+                          "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+                      )}
+                      aria-label="Включить сбор трендов"
+                      aria-pressed={trendsEnabled}
+                      onClick={() => setTrendsEnabled(true)}
+                    >
+                      <TrendingUp className="h-4 w-4" strokeWidth={2} />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="inline-flex flex-wrap gap-1 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1">
                     {DASHBOARD_TYPES.map((dashboardType) => (
