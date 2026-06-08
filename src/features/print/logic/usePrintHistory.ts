@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSnapshots, type DashboardSnapshot } from "../../../shared/lib/historyDB";
+import { useTrendsEnabled } from "../../../shared/lib/trendSettings";
 
 type PrintHistoryState = {
   history: DashboardSnapshot[];
@@ -11,12 +12,18 @@ function isPrintTrendSnapshot(snapshot: DashboardSnapshot): boolean {
 }
 
 export function usePrintHistory(): PrintHistoryState {
+  const [trendsEnabled] = useTrendsEnabled();
   const [state, setState] = useState<PrintHistoryState>({
     history: [],
-    isLoading: true,
+    isLoading: false,
   });
 
   useEffect(() => {
+    if (!trendsEnabled) {
+      setState({ history: [], isLoading: false });
+      return;
+    }
+
     let isMounted = true;
 
     setState((current) => ({ ...current, isLoading: true }));
@@ -40,7 +47,7 @@ export function usePrintHistory(): PrintHistoryState {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [trendsEnabled]);
 
   return state;
 }
