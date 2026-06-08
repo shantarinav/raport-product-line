@@ -275,7 +275,7 @@ export function LandingPage() {
           onFileSelect={handleFileSelect}
           onDragStateChange={(isDragging) => setStatus(isDragging ? "dragging" : "idle")}
           showPickButton={false}
-          className="min-h-[260px] md:min-h-[320px]"
+          className="flex min-h-[340px] flex-col justify-center p-8 md:min-h-[400px] md:p-10 [&>h2]:text-2xl md:[&>h2]:text-3xl [&>p]:mx-auto [&>p]:max-w-2xl [&>svg:first-of-type]:mb-4 [&>svg:first-of-type]:h-14 [&>svg:first-of-type]:w-14"
           footer={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <IconLabel Icon={ShieldCheck}>Локально: файл не отправляется на сервер</IconLabel>
