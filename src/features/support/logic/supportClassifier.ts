@@ -1,4 +1,4 @@
-﻿import { SUPPORT_CATEGORY_ORDER } from "../supportConfig";
+import { SUPPORT_CATEGORY_ORDER } from "../supportConfig";
 import type { SupportCategory } from "../supportTypes";
 
 const CATEGORY_KEYWORDS: Array<{ category: SupportCategory; keywords: string[] }> = [

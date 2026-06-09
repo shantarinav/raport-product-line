@@ -8,7 +8,7 @@ export function ThemeToggle() {
 
   return (
     <div
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface-soft p-1"
       role="group"
       aria-label="Переключатель темы"
       title={isDark ? "Сейчас включена темная тема" : "Сейчас включена светлая тема"}
@@ -16,8 +16,8 @@ export function ThemeToggle() {
       <button
         type="button"
         className={cn(
-          "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
-          !isDark && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+          "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
+          !isDark && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
         )}
         aria-label="Включить светлую тему"
         aria-pressed={!isDark}
@@ -29,8 +29,8 @@ export function ThemeToggle() {
       <button
         type="button"
         className={cn(
-          "inline-flex h-7 w-8 items-center justify-center rounded-full text-[var(--raport-muted)] transition-colors hover:bg-[var(--raport-surface-elevated)] hover:text-[var(--raport-text)]",
-          isDark && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+          "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
+          isDark && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
         )}
         aria-label="Включить темную тему"
         aria-pressed={isDark}

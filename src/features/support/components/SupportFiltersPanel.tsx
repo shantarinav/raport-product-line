@@ -1,4 +1,4 @@
-﻿import { FilterPanel } from "../../../shared/ui";
+import { FilterPanel } from "../../../shared/ui";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { SUPPORT_CATEGORY_ORDER, SUPPORT_PLAN_BUCKETS, SUPPORT_SLA_STATUSES } from "../supportConfig";
@@ -26,7 +26,7 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
         max={95}
         step={5}
         value={value}
-        className="h-2 w-full min-w-0 cursor-pointer accent-[var(--raport-primary)]"
+        className="h-2 w-full min-w-0 cursor-pointer accent-raport-primary"
         aria-label="Цель контроля SLA"
         onChange={(event) => applyValue(Number(event.currentTarget.value))}
       />
@@ -47,22 +47,24 @@ export function SupportFiltersPanel({
   dateMax,
   onChange,
   onReset,
+  showAdvancedFilters = true,
 }: {
   filters: SupportFilters;
   dateMin: string;
   dateMax: string;
   onChange: (patch: Partial<SupportFilters>) => void;
   onReset: () => void;
+  showAdvancedFilters?: boolean;
 }) {
   return (
     <FilterPanel onReset={onReset}>
       <div className="grid gap-3">
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Цель контроля</span>
+          <span className="text-xs text-raport-muted">Цель контроля</span>
           <ControlTarget value={filters.controlPercent} onChange={(controlPercent) => onChange({ controlPercent })} />
         </label>
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Период создания с</span>
+          <span className="text-xs text-raport-muted">Период создания с</span>
           <Input
             type="date"
             value={filters.dateFrom}
@@ -72,7 +74,7 @@ export function SupportFiltersPanel({
           />
         </label>
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Период создания по</span>
+          <span className="text-xs text-raport-muted">Период создания по</span>
           <Input
             type="date"
             value={filters.dateTo}
@@ -82,7 +84,7 @@ export function SupportFiltersPanel({
           />
         </label>
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">SLA-статус</span>
+          <span className="text-xs text-raport-muted">SLA-статус</span>
           <Select value={filters.slaStatus} onChange={(event) => onChange({ slaStatus: event.target.value as SupportFilters["slaStatus"] })}>
             <option value="">Все</option>
             {SUPPORT_SLA_STATUSES.map((status) => (
@@ -91,16 +93,7 @@ export function SupportFiltersPanel({
           </Select>
         </label>
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Плановый срок SLA</span>
-          <Select value={filters.planBucket} onChange={(event) => onChange({ planBucket: event.target.value as SupportFilters["planBucket"] })}>
-            <option value="">Все сроки</option>
-            {SUPPORT_PLAN_BUCKETS.map((bucket) => (
-              <option key={bucket.value} value={bucket.value}>{bucket.value}</option>
-            ))}
-          </Select>
-        </label>
-        <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Тема обращения</span>
+          <span className="text-xs text-raport-muted">Тема обращения</span>
           <Select value={filters.category} onChange={(event) => onChange({ category: event.target.value as SupportFilters["category"] })}>
             <option value="">Все темы</option>
             {SUPPORT_CATEGORY_ORDER.map((category) => (
@@ -108,10 +101,23 @@ export function SupportFiltersPanel({
             ))}
           </Select>
         </label>
-        <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Поиск</span>
-          <Input value={filters.query} placeholder="№ заявки или текст темы" onChange={(event) => onChange({ query: event.target.value })} />
-        </label>
+        {showAdvancedFilters ? (
+          <>
+            <label className="grid gap-1">
+              <span className="text-xs text-raport-muted">Плановый срок SLA</span>
+              <Select value={filters.planBucket} onChange={(event) => onChange({ planBucket: event.target.value as SupportFilters["planBucket"] })}>
+                <option value="">Все сроки</option>
+                {SUPPORT_PLAN_BUCKETS.map((bucket) => (
+                  <option key={bucket.value} value={bucket.value}>{bucket.value}</option>
+                ))}
+              </Select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs text-raport-muted">Поиск</span>
+              <Input value={filters.query} placeholder="№ заявки или текст темы" onChange={(event) => onChange({ query: event.target.value })} />
+            </label>
+          </>
+        ) : null}
       </div>
     </FilterPanel>
   );

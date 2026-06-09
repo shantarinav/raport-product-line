@@ -1,4 +1,4 @@
-﻿import { kpiData, operationDateKey } from "../../features/ssz/logic/dashboard";
+import { kpiData, operationDateKey } from "../../features/ssz/logic/dashboard";
 import type { ImportedReport, OperationRecord, SszRecord } from "../../features/ssz/import/types";
 import { buildAgreementFacts, calculateAgreementKpis } from "../../features/tessa/logic/dashboard";
 import type { NormalizedRecord, TessaImportResult } from "../../features/tessa/types";

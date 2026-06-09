@@ -8,6 +8,7 @@ import {
   MetricCard,
   PageShell,
   SectionCard,
+  DashboardSwitch,
 } from "../../../shared/ui";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import type { SupportFilters, SupportImportResult } from "../supportTypes";
@@ -34,7 +35,29 @@ import { SupportDataQualityPanel } from "./SupportDataQualityPanel";
 import { SupportFiltersPanel } from "./SupportFiltersPanel";
 import { SUPPORT_THRESHOLDS } from "../supportConfig";
 
+import { motion, AnimatePresence } from "motion/react";
+
 const REPORT_ROUTE = "/support";
+
+type SupportViewMode = "manager" | "analyst";
+const SUPPORT_VIEW_MODE_STORAGE_KEY = "raport:support:viewMode";
+
+function readStoredSupportViewMode(): SupportViewMode {
+  if (typeof window === "undefined") return "manager";
+
+  try {
+    const stored = window.localStorage.getItem(SUPPORT_VIEW_MODE_STORAGE_KEY);
+    return stored === "analyst" ? "analyst" : "manager";
+  } catch {
+    return "manager";
+  }
+}
+
+function saveStoredSupportViewMode(mode: SupportViewMode) {
+  try {
+    window.localStorage.setItem(SUPPORT_VIEW_MODE_STORAGE_KEY, mode);
+  } catch {}
+}
 
 function formatInteger(value: number): string {
   return value.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
@@ -92,6 +115,7 @@ export function SupportDashboardPage() {
   const [report] = useState<SupportImportResult | null>(() => readPendingDashboardData<SupportImportResult>(REPORT_ROUTE));
   const [filters, setFilters] = useState<SupportFilters>(() => initialSupportFilters(report?.tickets ?? []));
   const [overdueTailLimit, setOverdueTailLimit] = useState(10);
+  const [viewMode, setViewMode] = useState<SupportViewMode>(() => readStoredSupportViewMode());
 
   useEffect(() => {
     if (report) return;
@@ -130,6 +154,11 @@ export function SupportDashboardPage() {
 
   function resetFilters() {
     setFilters(defaultFilters);
+  }
+
+  function changeViewMode(mode: SupportViewMode) {
+    setViewMode(mode);
+    saveStoredSupportViewMode(mode);
   }
 
   const activePeriodLabel =
@@ -179,7 +208,7 @@ export function SupportDashboardPage() {
             </span>
             <div className="min-w-0">
               <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
-              <span className="mt-1 block text-sm font-bold text-[var(--raport-primary)]">Excel докладывает главное</span>
+              <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
         }
@@ -189,14 +218,14 @@ export function SupportDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-[var(--raport-radius-control)] border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]"
+                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
               >
                 Заменить отчет
               </Link>
               {themeToggle}
             </div>
-            <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
-              <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={report.file.fileName}>{report.file.fileName}</p>
+            <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
+              <p className="mb-1 truncate font-semibold text-raport-text" title={report.file.fileName}>{report.file.fileName}</p>
               <p className="truncate">
                 {periodLabel(report.tickets)} · загружен {formatSupportDateTime(new Date(report.file.loadedAt))}
               </p>
@@ -217,11 +246,25 @@ export function SupportDashboardPage() {
             dateMax={defaultFilters.dateTo}
             onChange={patchFilters}
             onReset={resetFilters}
+            showAdvancedFilters={viewMode === "analyst"}
           />
         </div>
 
         <div className="grid gap-4">
-          <FilterStatusBar title="Активные фильтры" chips={chips.length > 0 ? chips : [{ label: "Все заявки", tone: "secondary" }]} />
+          <FilterStatusBar
+            title="Активные фильтры"
+            chips={chips.length > 0 ? chips : [{ label: "Все заявки", tone: "secondary" }]}
+            actions={
+              <DashboardSwitch
+                value={viewMode}
+                onChange={(value) => changeViewMode(value as SupportViewMode)}
+                options={[
+                  { value: "manager", label: "Руководитель" },
+                  { value: "analyst", label: "Аналитик" },
+                ]}
+              />
+            }
+          />
 
           <div className="grid gap-4 md:grid-cols-3">
             <MetricCard
@@ -235,44 +278,57 @@ export function SupportDashboardPage() {
             <MetricCard label="Просрочено" value={formatInteger(kpis.overdueTickets)} note={formatSupportPercent(kpis.overdueRate)} Icon={AlertTriangle} tone="danger" />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <SupportDistributionCard
-              title="Время решения заявок"
-              description="Квартили времени решения по текущим фильтрам."
-              explanation="Медиана показывает типовое время решения, P90 — тяжелый хвост самых долгих заявок."
-              quantiles={resolution}
-              Icon={Clock}
-            />
-            <SupportDistributionCard
-              title="Размер просрочки"
-              description="Квартили просрочки среди нарушенных SLA."
-              explanation="P90 показывает 10% самых тяжелых нарушений и помогает увидеть хвост просрочек."
-              quantiles={overdue}
-              Icon={BarChart3}
-            />
-          </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {viewMode === "analyst" ? (
+              <motion.div
+                key="analyst-distributions"
+                layout
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <SupportDistributionCard
+                    title="Время решения заявок"
+                    description="Квартили времени решения по текущим фильтрам."
+                    explanation="Медиана показывает типовое время решения, P90 — тяжелый хвост самых долгих заявок."
+                    quantiles={resolution}
+                    Icon={Clock}
+                  />
+                  <SupportDistributionCard
+                    title="Размер просрочки"
+                    description="Квартили просрочки среди нарушенных SLA."
+                    explanation="P90 показывает 10% самых тяжелых нарушений и помогает увидеть хвост просрочек."
+                    quantiles={overdue}
+                    Icon={BarChart3}
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
-          <div className="grid gap-4">
+          <motion.div layout className="grid gap-4">
             <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
-                <div className={`rounded-[var(--raport-radius-control)] border px-4 py-3 ${mainInsightStatus.className}`}>
+                <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
                   <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
                   <strong className="mt-2 block text-3xl font-extrabold tabular-nums">{formatSupportPercent(kpis.slaRate)}</strong>
                   <span className="text-xs font-semibold">выполнение SLA</span>
                   <span className="mt-2 block text-xs font-semibold">цель контроля: {filters.controlPercent}%</span>
                   <span className="mt-1 block text-xs font-semibold">{mainInsightGap}</span>
                 </div>
-                <div className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-4 py-3">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Фокус контроля SLA</p>
+                <div className="grid gap-2 rounded-control border border-raport-border bg-white px-4 py-3">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Фокус контроля SLA</p>
                   {mainInsightPoints.map((point) => (
-                    <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-[var(--raport-text)]">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--raport-primary)]" />
+                    <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-raport-primary" />
                       <span>{point}</span>
                     </div>
                   ))}
                   {attentionTopic ? (
-                    <div className="flex gap-2 text-sm font-semibold leading-relaxed text-[var(--raport-text)]">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--raport-primary)]" />
+                    <div className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-raport-primary" />
                       <span>
                         Смотрите SLA по темам: зона внимания — {attentionTopic.category}, SLA {formatSupportPercent(attentionTopic.slaRate)}.
                       </span>
@@ -285,10 +341,24 @@ export function SupportDashboardPage() {
             <SupportDailySlaChart points={daily} controlPercent={filters.controlPercent} />
 
             <SupportTopicSlaMatrix rows={topicSla} controlPercent={filters.controlPercent} onCategorySelect={(category) => patchFilters({ category })} />
+          </motion.div>
 
-            <SupportOverdueTailTable rows={overdueTail} limit={overdueTailLimit} onLimitChange={setOverdueTailLimit} />
-            <SupportDataQualityPanel summary={dataQuality} />
-          </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {viewMode === "analyst" ? (
+              <motion.div
+                key="analyst-tables"
+                layout
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="grid gap-4"
+              >
+                <SupportOverdueTailTable rows={overdueTail} limit={overdueTailLimit} onLimitChange={setOverdueTailLimit} />
+                <SupportDataQualityPanel summary={dataQuality} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
     </PageShell>

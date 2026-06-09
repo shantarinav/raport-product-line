@@ -1,4 +1,6 @@
-﻿import { cn } from "../cn";
+import { useId } from "react";
+import { cn } from "../cn";
+import { motion } from "motion/react";
 
 type ToggleOption = {
   value: string;
@@ -13,29 +15,39 @@ type ToggleGroupProps = {
 };
 
 export function ToggleGroup({ value, onValueChange, options, className }: ToggleGroupProps) {
+  const switchId = useId();
   return (
-    <div
+    <motion.div
+      layout
       className={cn(
-        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-1",
+        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-full border border-raport-border bg-raport-surface-soft p-1",
         className,
       )}
     >
       {options.map((option) => {
         const isActive = option.value === value;
         return (
-          <button
+          <motion.button
+            layout
             key={option.value}
             type="button"
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "min-h-7 rounded-full px-3 py-1 text-xs font-semibold text-[var(--raport-muted)]",
-              isActive && "bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+              "relative min-h-7 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+              isActive ? "text-raport-primary" : "text-raport-muted hover:text-raport-text hover:bg-black/5 dark:hover:bg-white/5",
             )}
           >
-            {option.label}
-          </button>
+            {isActive && (
+              <motion.div
+                layoutId={`toggleHighlight-${switchId}`}
+                className="absolute inset-0 rounded-full bg-raport-action-bg-active shadow-[inset_0_0_0_1px_var(--raport-action-border)]"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <span className="relative z-10">{option.label}</span>
+          </motion.button>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "../shadcn/table";
 
 type DataTableColumn<T> = {
@@ -19,7 +19,7 @@ type DataTableProps<T> = {
 export function DataTable<T>({ columns, rows, rowKey, emptyText = "Нет данных", className }: DataTableProps<T>) {
   return (
     <div className={className}>
-      <div className="overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)]">
+      <div className="overflow-hidden rounded-control border border-raport-border">
         <Table>
           <TableHead>
             <TableRow>
@@ -33,7 +33,7 @@ export function DataTable<T>({ columns, rows, rowKey, emptyText = "Нет дан
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-[var(--raport-muted)]">
+                <TableCell colSpan={columns.length} className="text-center text-raport-muted">
                   {emptyText}
                 </TableCell>
               </TableRow>

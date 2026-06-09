@@ -1,4 +1,4 @@
-﻿import type { CellValue, ImportedReport, OperationRecord, ReportPeriod, SszRecord } from "./types";
+import type { CellValue, ImportedReport, OperationRecord, ReportPeriod, SszRecord } from "./types";
 
 const SSZ_PATTERN = /^Сменно-суточное задание\s+(\d+)\s+от\s+(.+)$/i;
 const HEADER_WORDS = new Set(["Параметры:", "Подразделение", "Мастер смены", "Сменно-суточное задание", "Продукция"]);
@@ -33,9 +33,10 @@ function findPeriod(rows: CellValue[][]): ReportPeriod {
   let end: string | null = null;
 
   for (const row of rows.slice(0, 12)) {
-    const cells = row.map(text);
+    const cells = Array.from(row, text);
     for (let index = 0; index < cells.length; index += 1) {
       const cell = cells[index];
+      if (!cell) continue;
       if (cell.includes("Начало периода")) start = toDateOnly(cell) ?? toDateOnly(cells[index + 1] ?? "");
       if (cell.includes("Конец периода")) end = toDateOnly(cell) ?? toDateOnly(cells[index + 1] ?? "");
     }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { Factory, FileSpreadsheet, Gauge, Users, Wrench } from "lucide-react";
 
 import {
@@ -200,19 +201,19 @@ function SszFilterSidebar({
     <FilterPanel onReset={onReset}>
       <div className="grid gap-4">
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Цель</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-raport-muted">Цель</p>
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Целевая доля по технологии</span>
+            <span className="text-xs text-raport-muted">Целевая доля по технологии</span>
             <TargetControl value={filters.targetPercent} onChange={(targetPercent) => update({ targetPercent })} />
           </label>
         </div>
 
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Область данных</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-raport-muted">Область данных</p>
           {showOrderFilters ? (
             <>
               <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Заказ</span>
+                <span className="text-xs text-raport-muted">Заказ</span>
                 <AutocompleteField
                   value={filters.selectedOrder}
                   placeholder="Все заказы"
@@ -224,7 +225,7 @@ function SszFilterSidebar({
               </label>
 
               <label className="grid gap-1">
-                <span className="text-xs text-[var(--raport-muted)]">Комплект</span>
+                <span className="text-xs text-raport-muted">Комплект</span>
                 <Select
                   aria-label="Комплект"
                   value={filters.selectedKit}
@@ -243,7 +244,7 @@ function SszFilterSidebar({
           ) : null}
 
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Операция</span>
+            <span className="text-xs text-raport-muted">Операция</span>
             <AutocompleteField
               value={filters.selectedOperation}
               placeholder="Все операции"
@@ -255,9 +256,9 @@ function SszFilterSidebar({
         </div>
 
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Ответственные</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-raport-muted">Ответственные</p>
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Цех</span>
+            <span className="text-xs text-raport-muted">Цех</span>
             <AutocompleteField
               value={filters.selectedDepartment}
               placeholder={filters.selectedMaster ? "Все цеха мастера" : "Все цеха"}
@@ -267,7 +268,7 @@ function SszFilterSidebar({
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Мастер</span>
+            <span className="text-xs text-raport-muted">Мастер</span>
             <AutocompleteField
               value={filters.selectedMaster}
               placeholder={filters.selectedDepartment ? "Все мастера цеха" : "Все мастера"}
@@ -279,9 +280,9 @@ function SszFilterSidebar({
         </div>
 
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Период</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-raport-muted">Период</p>
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Дата с</span>
+            <span className="text-xs text-raport-muted">Дата с</span>
             <Input
               type="date"
               aria-label="Дата с"
@@ -293,7 +294,7 @@ function SszFilterSidebar({
           </label>
 
           <label className="grid gap-1">
-            <span className="text-xs text-[var(--raport-muted)]">Дата по</span>
+            <span className="text-xs text-raport-muted">Дата по</span>
             <Input
               type="date"
               aria-label="Дата по"
@@ -470,6 +471,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
   const { history, previousSnapshot } = useSSZHistory(historyComparisonStart);
   const kpiPreviousSnapshot = isMonthlyCoverageReady(filters.selectedDateFrom, filters.selectedDateTo) ? previousSnapshot : null;
   const targetRatio = filters.targetPercent / 100;
+  const hasTrendData = history.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.workTechnologyPercent === "number" && Number.isFinite(snapshot.metrics.workTechnologyPercent)).length >= 2;
 
   const operations = useMemo(() => operationScope(report.sszRecords), [report.sszRecords]);
   const filteredRecords = useMemo(() => filterRecords(report.sszRecords, filters), [report.sszRecords, filters]);
@@ -559,72 +561,111 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           }
         />
 
-        <SszKpiCards data={kpis} targetPercent={filters.targetPercent} previousSnapshot={kpiPreviousSnapshot} />
+        <motion.div layout>
+          <SszKpiCards data={kpis} targetPercent={filters.targetPercent} previousSnapshot={kpiPreviousSnapshot} />
+        </motion.div>
 
-        {viewMode === "analyst" ? <SSZTrendChart data={history} targetPercent={filters.targetPercent} /> : null}
-
-        <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
+        <motion.div layout>
+          <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
-            <div className={`rounded-[var(--raport-radius-control)] border px-4 py-3 ${mainInsightStatus.className}`}>
+            <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
               <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
               <strong className="mt-2 block text-3xl font-extrabold tabular-nums">{formatPercent(kpis.workTechnologyRatio)}</strong>
               <span className="text-xs font-semibold">цель: {filters.targetPercent}%</span>
               <span className="mt-1 block text-xs font-semibold">{mainInsightGap}</span>
             </div>
-            <div className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-4 py-3">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Где теряется технология</p>
+            <div className="grid gap-2 rounded-control border border-raport-border bg-white px-4 py-3">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Где теряется технология</p>
               {mainInsightPoints.map((point) => (
-                <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-[var(--raport-text)]">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--raport-primary)]" />
+                <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-raport-primary" />
                   <span>{point}</span>
                 </div>
               ))}
             </div>
           </div>
         </SectionCard>
+        </motion.div>
 
-        {viewMode === "analyst" ? (
-          <div className="grid gap-4 xl:grid-cols-2">
-            <MasterLeaderboardCard
-              title="Лидеры по технологии"
-              description="Мастера, достигшие целевой доли по технологии."
-              rows={masterRows}
-              tone="support"
-              targetRatio={targetRatio}
-              onMasterClick={selectMaster}
-            />
-            <MasterLeaderboardCard
-              title="Зона внимания"
-              description="Мастера с наибольшим объемом работ без технологии."
-              rows={masterRows}
-              tone="growth"
-              targetRatio={targetRatio}
-              onMasterClick={selectMaster}
-            />
-          </div>
-        ) : null}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {viewMode === "analyst" && hasTrendData ? (
+            <motion.div
+              key="analyst-trend-chart"
+              layout
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+              transition={{ duration: 0.3 }}
+            >
+              <SSZTrendChart data={history} targetPercent={filters.targetPercent} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-        <SectionCard
-          title="Срезы по технологии"
-          description={
-            viewMode === "manager"
-              ? "Доля работ по технологии по цехам, мастерам и операциям."
-              : "Доля работ по технологии по заказам, цехам, мастерам и операциям."
-          }
-          Icon={Gauge}
-        >
-          <div className="grid gap-4">
-            {viewMode === "analyst" ? (
-              <TechnologyBoardCard
-                title="Заказы"
-                subtitle="Ранжирование по общему объему нормо-часов."
-                Icon={FileSpreadsheet}
-                rows={orderRows}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {viewMode === "analyst" ? (
+            <motion.div
+              key="analyst-leaderboards"
+              layout
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+              transition={{ duration: 0.3 }}
+              className="grid gap-4 xl:grid-cols-2"
+            >
+              <MasterLeaderboardCard
+                title="Лидеры по технологии"
+                description="Мастера, достигшие целевой доли по технологии."
+                rows={masterRows}
+                tone="support"
                 targetRatio={targetRatio}
-                onRowClick={selectOrder}
-                layout="compact-list"
+                onMasterClick={selectMaster}
               />
-            ) : null}
+              <MasterLeaderboardCard
+                title="Зона внимания"
+                description="Мастера с наибольшим объемом работ без технологии."
+                rows={masterRows}
+                tone="growth"
+                targetRatio={targetRatio}
+                onMasterClick={selectMaster}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <motion.div layout>
+          <SectionCard
+            title="Срезы по технологии"
+            description={
+              viewMode === "manager"
+                ? "Доля работ по технологии по цехам, мастерам и операциям."
+                : "Доля работ по технологии по заказам, цехам, мастерам и операциям."
+            }
+            Icon={Gauge}
+          >
+          <div className="grid gap-4">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {viewMode === "analyst" ? (
+                <motion.div
+                  key="analyst-tech-board-orders"
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <TechnologyBoardCard
+                    title="Заказы"
+                    subtitle="Ранжирование по общему объему нормо-часов."
+                    Icon={FileSpreadsheet}
+                    rows={orderRows}
+                    targetRatio={targetRatio}
+                    onRowClick={selectOrder}
+                    layout="compact-list"
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
               <TechnologyBoardCard
@@ -665,6 +706,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
             </div>
           </div>
         </SectionCard>
+        </motion.div>
       </div>
     </div>
   );
@@ -696,7 +738,7 @@ export function SszDashboardPage() {
             </span>
             <div className="min-w-0">
               <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
-              <span className="mt-1 block text-sm font-bold text-[var(--raport-primary)]">Excel докладывает главное</span>
+              <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
         }
@@ -706,15 +748,15 @@ export function SszDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-[var(--raport-radius-control)] border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]"
+                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
               >
                 Заменить отчет
               </Link>
               {themeToggle}
             </div>
             {report ? (
-              <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
-                <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={report.sourceName}>
+              <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
+                <p className="mb-1 truncate font-semibold text-raport-text" title={report.sourceName}>
                   {report.sourceName}
                 </p>
                 <p className="truncate">{formatReportPeriod(report.period)} · загружен {formatImportedAt(report.importedAt)}</p>

@@ -5,24 +5,24 @@ import { formatSupportDateTime, formatSupportHours } from "../logic/supportMetri
 
 function AnomalyList({ rows }: { rows: SupportTicket[] }) {
   if (rows.length === 0) {
-    return <p className="text-xs font-semibold text-[var(--raport-muted)]">Заявок нет.</p>;
+    return <p className="text-xs font-semibold text-raport-muted">Заявок нет.</p>;
   }
 
   return (
     <div className="grid gap-1">
       {rows.slice(0, 12).map((ticket) => (
-        <div key={ticket.id} className="grid gap-1 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-2 py-1 text-xs">
+        <div key={ticket.id} className="grid gap-1 rounded-control border border-raport-border bg-white px-2 py-1 text-xs">
           <div className="flex items-center justify-between gap-2">
-            <span className="truncate font-bold text-[var(--raport-text)]">
+            <span className="truncate font-bold text-raport-text">
               № {ticket.ticketNumber}
             </span>
-            <span className="shrink-0 text-[var(--raport-muted)]">{formatSupportHours(ticket.overdueHours)}</span>
+            <span className="shrink-0 text-raport-muted">{formatSupportHours(ticket.overdueHours)}</span>
           </div>
-          <span className="truncate text-[var(--raport-text)]" title={ticket.topic}>{ticket.topic}</span>
-          <span className="text-[var(--raport-muted)]">создана: {formatSupportDateTime(ticket.createdAt)}</span>
+          <span className="truncate text-raport-text" title={ticket.topic}>{ticket.topic}</span>
+          <span className="text-raport-muted">создана: {formatSupportDateTime(ticket.createdAt)}</span>
         </div>
       ))}
-      {rows.length > 12 ? <p className="text-xs font-semibold text-[var(--raport-muted)]">Показано 12 из {rows.length}.</p> : null}
+      {rows.length > 12 ? <p className="text-xs font-semibold text-raport-muted">Показано 12 из {rows.length}.</p> : null}
     </div>
   );
 }
@@ -39,7 +39,7 @@ export function SupportDataQualityPanel({ summary }: { summary: SupportDataQuali
   if (issueCount === 0) {
     return (
       <SectionCard title="Аномалии и качество данных" description="Проверка обязательных SLA-полей и экстремальных значений." Icon={CheckCircle2}>
-        <div className="rounded-[var(--raport-radius-control)] border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+        <div className="rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
           Проблем качества данных не найдено.
         </div>
       </SectionCard>
@@ -50,18 +50,18 @@ export function SupportDataQualityPanel({ summary }: { summary: SupportDataQuali
     <SectionCard title="Аномалии и качество данных" description="Строки, которые искажают расчет или требуют проверки." Icon={CircleX}>
       <div className="grid gap-3 md:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.title} className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-            <strong className="block text-2xl font-extrabold text-[var(--raport-text)]">{card.rows.length}</strong>
-            <span className="text-xs font-semibold text-[var(--raport-muted)]">{card.title}</span>
+          <div key={card.title} className="rounded-control border border-raport-border bg-white px-3 py-2">
+            <strong className="block text-2xl font-extrabold text-raport-text">{card.rows.length}</strong>
+            <span className="text-xs font-semibold text-raport-muted">{card.title}</span>
           </div>
         ))}
       </div>
-      <details className="mt-3 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
-        <summary className="cursor-pointer select-none text-xs font-semibold text-[var(--raport-muted)]">Показать заявки с аномалиями</summary>
+      <details className="mt-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
+        <summary className="cursor-pointer select-none text-xs font-semibold text-raport-muted">Показать заявки с аномалиями</summary>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {cards.map((card) => (
             <div key={`${card.title}-list`} className="grid gap-2">
-              <strong className="text-sm text-[var(--raport-text)]">{card.title}</strong>
+              <strong className="text-sm text-raport-text">{card.title}</strong>
               <AnomalyList rows={card.rows} />
             </div>
           ))}

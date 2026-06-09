@@ -7,7 +7,7 @@ export function RowNameButton({ text, onClick, className }: { text: string; onCl
       type="button"
       onClick={onClick}
       title={text}
-      className={`block min-w-0 max-w-full cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap border-0 bg-transparent px-0 py-0 text-left text-[var(--raport-text)] hover:text-[var(--raport-primary)] ${className ?? ""}`}
+      className={`block min-w-0 max-w-full cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap border-0 bg-transparent px-0 py-0 text-left text-raport-text hover:text-raport-primary ${className ?? ""}`}
     >
       {text}
     </button>
@@ -80,12 +80,12 @@ export function AutocompleteField({
         }}
       />
       {open && options.length > 0 ? (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white shadow-[var(--raport-shadow-card)]">
+        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-white shadow-card">
           {options.map((option) => (
             <button
               key={option}
               type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
+              className="block w-full px-3 py-2 text-left text-sm text-raport-text hover:bg-raport-action-bg"
               onMouseDown={(event) => {
                 event.preventDefault();
                 onChange(option);
@@ -124,7 +124,7 @@ export function TargetControl({ value, onChange }: { value: number; onChange: (v
         max={100}
         step={5}
         value={value}
-        className="h-2 w-full min-w-0 cursor-pointer accent-[var(--raport-primary)]"
+        className="h-2 w-full min-w-0 cursor-pointer accent-raport-primary"
         aria-label="Целевая доля по технологии"
         onChange={(event) => applyValue(Number(event.currentTarget.value))}
       />

@@ -74,10 +74,10 @@ function AutocompleteField({
         }}
       />
       {open ? (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white shadow-[var(--raport-shadow-card)]">
+        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-white shadow-card">
           <button
             type="button"
-            className="block w-full px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
+            className="block w-full px-3 py-2 text-left text-sm text-raport-text hover:bg-raport-action-bg"
             onMouseDown={(event) => {
               event.preventDefault();
               onChange("");
@@ -90,7 +90,7 @@ function AutocompleteField({
             <button
               key={option}
               type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
+              className="block w-full px-3 py-2 text-left text-sm text-raport-text hover:bg-raport-action-bg"
               onMouseDown={(event) => {
                 event.preventDefault();
                 onChange(option);
@@ -129,8 +129,8 @@ function DeadlineFocusControl({
     const active = value === optionValue;
     if (active && tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
     if (active && tone === "warning") return "border-amber-300 bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
-    if (active) return "border-[var(--raport-action-border)] bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
-    return "border-[var(--raport-border)] bg-white text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]";
+    if (active) return "border-raport-action-border bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
+    return "border-raport-border bg-white text-raport-text hover:bg-raport-action-bg";
   };
 
   const renderOption = (option: { value: DeadlineMode; label: string; tone: "danger" | "warning" | "primary" }) => (
@@ -138,7 +138,7 @@ function DeadlineFocusControl({
       key={option.value}
       type="button"
       onClick={() => onChange(option.value)}
-      className={`flex min-h-8 items-center justify-between gap-2 rounded-[var(--raport-radius-control)] border px-2 py-1 text-xs font-semibold transition-colors ${optionClass(option.value, option.tone)}`}
+      className={`flex min-h-8 items-center justify-between gap-2 rounded-control border px-2 py-1 text-xs font-semibold transition-colors ${optionClass(option.value, option.tone)}`}
     >
       <span>{option.label}</span>
       <span className="tabular-nums opacity-75">{formatInteger(counts[option.value])}</span>
@@ -146,16 +146,16 @@ function DeadlineFocusControl({
   );
 
   return (
-    <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
+    <div className="rounded-control border border-raport-border bg-raport-surface-soft p-2">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--raport-muted)]">Быстрый фокус</span>
+        <span className="text-xs font-semibold text-raport-muted">Быстрый фокус</span>
         <button
           type="button"
           onClick={() => onChange("all")}
           className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${
             value === "all"
-              ? "border-[var(--raport-action-border)] bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)]"
-              : "border-[var(--raport-border)] bg-white text-[var(--raport-muted)] hover:bg-[var(--raport-action-bg)]"
+              ? "border-raport-action-border bg-raport-action-bg-active text-raport-primary"
+              : "border-raport-border bg-white text-raport-muted hover:bg-raport-action-bg"
           }`}
         >
           Все задания
@@ -163,11 +163,11 @@ function DeadlineFocusControl({
       </div>
       <div className="grid gap-2">
         <div className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Просрочка</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-raport-muted">Просрочка</span>
           <div className="grid grid-cols-3 gap-1">{overdueOptions.map(renderOption)}</div>
         </div>
         <div className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--raport-muted)]">Дедлайн</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-raport-muted">Дедлайн</span>
           <div className="grid grid-cols-2 gap-1">{deadlineOptions.map(renderOption)}</div>
         </div>
       </div>
@@ -201,7 +201,7 @@ export function TessaFilterSidebar({
         <DeadlineFocusControl value={filters.deadlineMode} counts={deadlineCounts} onChange={changeDeadlineMode} />
 
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Договор</span>
+          <span className="text-xs text-raport-muted">Договор</span>
           <AutocompleteField
             value={filters.contractNumber}
             onChange={(value) => onChange({ contractNumber: value })}
@@ -212,7 +212,7 @@ export function TessaFilterSidebar({
         </label>
 
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Ответственный</span>
+          <span className="text-xs text-raport-muted">Ответственный</span>
           <AutocompleteField
             value={filters.responsible}
             onChange={(value) => onChange({ responsible: value })}
@@ -223,7 +223,7 @@ export function TessaFilterSidebar({
         </label>
 
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Вид</span>
+          <span className="text-xs text-raport-muted">Вид</span>
           <AutocompleteField
             value={filters.subject}
             onChange={(value) => onChange({ subject: value })}
@@ -234,7 +234,7 @@ export function TessaFilterSidebar({
         </label>
 
         <label className="grid gap-1">
-          <span className="text-xs text-[var(--raport-muted)]">Автор</span>
+          <span className="text-xs text-raport-muted">Автор</span>
           <AutocompleteField
             value={filters.author}
             onChange={(value) => onChange({ author: value })}
@@ -244,11 +244,11 @@ export function TessaFilterSidebar({
           />
         </label>
 
-        <details className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
-          <summary className="cursor-pointer text-xs font-semibold text-[var(--raport-muted)]">Дополнительно</summary>
+        <details className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
+          <summary className="cursor-pointer text-xs font-semibold text-raport-muted">Дополнительно</summary>
           <div className="mt-2 grid gap-2">
             <label className="grid gap-1">
-              <span className="text-xs text-[var(--raport-muted)]">Тип документа</span>
+              <span className="text-xs text-raport-muted">Тип документа</span>
               <AutocompleteField
                 value={filters.documentType}
                 onChange={(value) => onChange({ documentType: value })}
@@ -258,7 +258,7 @@ export function TessaFilterSidebar({
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs text-[var(--raport-muted)]">Юр. лицо</span>
+              <span className="text-xs text-raport-muted">Юр. лицо</span>
               <AutocompleteField
                 value={filters.legalEntity}
                 onChange={(value) => onChange({ legalEntity: value })}

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { SectionCard } from "../SectionCard";
 
@@ -14,7 +14,7 @@ type ChartCardProps = {
 export function ChartCard({ title, description, Icon, children, emptyText = "Нет данных для отображения", className }: ChartCardProps) {
   return (
     <SectionCard title={title} description={description} Icon={Icon} className={className}>
-      {children ?? <p className="text-sm text-[var(--raport-muted)]">{emptyText}</p>}
+      {children ?? <p className="text-sm text-raport-muted">{emptyText}</p>}
     </SectionCard>
   );
 }

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Filter, RefreshCcw } from "lucide-react";
 import { Button } from "../shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../shadcn/card";
@@ -23,7 +23,7 @@ export function FilterPanel({
       <CardHeader className="flex-col items-stretch gap-2">
         <div className="flex w-full items-start justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Filter className="h-4 w-4 text-[var(--raport-primary)]" strokeWidth={2} />
+            <Filter className="h-4 w-4 text-raport-primary" strokeWidth={2} />
             {title}
           </CardTitle>
           {onReset ? (
@@ -33,7 +33,7 @@ export function FilterPanel({
             </Button>
           ) : null}
         </div>
-        <p className="text-xs text-[var(--raport-muted)]">{subtitle}</p>
+        <p className="text-xs text-raport-muted">{subtitle}</p>
       </CardHeader>
       <CardContent className="pt-0">{children}</CardContent>
     </Card>

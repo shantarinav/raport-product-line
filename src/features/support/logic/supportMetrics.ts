@@ -1,4 +1,4 @@
-﻿import { SUPPORT_CATEGORY_ORDER, SUPPORT_PLAN_BUCKETS, SUPPORT_THRESHOLDS } from "../supportConfig";
+import { SUPPORT_CATEGORY_ORDER, SUPPORT_PLAN_BUCKETS, SUPPORT_THRESHOLDS } from "../supportConfig";
 import type {
   SupportDailyPoint,
   SupportDataQualitySummary,

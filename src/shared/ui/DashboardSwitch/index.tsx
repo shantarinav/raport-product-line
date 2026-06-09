@@ -1,4 +1,4 @@
-﻿import { ToggleGroup } from "../shadcn/toggle-group";
+import { ToggleGroup } from "../shadcn/toggle-group";
 
 type DashboardSwitchOption = {
   value: string;
@@ -16,7 +16,7 @@ type DashboardSwitchProps = {
 export function DashboardSwitch({ label, value, options, onChange, className }: DashboardSwitchProps) {
   return (
     <div className={className}>
-      {label ? <p className="mb-1 text-xs font-semibold text-[var(--raport-muted)]">{label}</p> : null}
+      {label ? <p className="mb-1 text-xs font-semibold text-raport-muted">{label}</p> : null}
       <ToggleGroup value={value} onValueChange={onChange} options={options} />
     </div>
   );

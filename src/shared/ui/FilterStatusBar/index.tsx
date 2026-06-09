@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { Badge } from "../shadcn/badge";
 import { Card, CardContent } from "../shadcn/card";
@@ -21,7 +21,7 @@ export function FilterStatusBar({ title = "Активные фильтры", chi
     <Card className={className}>
       <CardContent className="flex min-h-12 flex-wrap items-center justify-between gap-3 !px-4 !py-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <strong className="mr-1 text-xs font-semibold text-[var(--raport-text)]">{title}</strong>
+          <strong className="mr-1 text-xs font-semibold text-raport-text">{title}</strong>
           {chips.map((chip) => (
             <Badge key={chip.label} variant={chip.tone === "secondary" ? "secondary" : "default"}>
               {chip.label}

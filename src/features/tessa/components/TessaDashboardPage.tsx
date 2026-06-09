@@ -53,11 +53,11 @@ function rowToneClass(rating: number, riskTodayCount: number): string {
 }
 
 function priorityStripClass(rating: number, riskTodayCount: number): string {
-  if (riskTodayCount > 0) return "bg-[var(--raport-warning)]";
+  if (riskTodayCount > 0) return "bg-raport-warning";
   const tone = toneByRating(rating);
-  if (tone === "error") return "bg-[var(--raport-danger)]";
-  if (tone === "warn") return "bg-[var(--raport-warning)]";
-  return "bg-[var(--raport-success)]";
+  if (tone === "error") return "bg-raport-danger";
+  if (tone === "warn") return "bg-raport-warning";
+  return "bg-raport-success";
 }
 
 function priorityBadgeClass(rating: number, riskTodayCount: number): string {
@@ -78,10 +78,10 @@ function PersonLoadStrip({ value }: { value: number }) {
   const safeValue = Math.max(0, Math.min(100, Math.round(value)));
   const toneClass =
     safeValue >= 60
-      ? "[&::-moz-progress-bar]:bg-[var(--raport-danger)] [&::-webkit-progress-value]:bg-[var(--raport-danger)]"
+      ? "[&::-moz-progress-bar]:bg-raport-danger [&::-webkit-progress-value]:bg-raport-danger"
       : safeValue >= 25
-        ? "[&::-moz-progress-bar]:bg-[var(--raport-warning)] [&::-webkit-progress-value]:bg-[var(--raport-warning)]"
-        : "[&::-moz-progress-bar]:bg-[var(--raport-success)] [&::-webkit-progress-value]:bg-[var(--raport-success)]";
+        ? "[&::-moz-progress-bar]:bg-raport-warning [&::-webkit-progress-value]:bg-raport-warning"
+        : "[&::-moz-progress-bar]:bg-raport-success [&::-webkit-progress-value]:bg-raport-success";
 
   return (
     <progress
@@ -109,7 +109,7 @@ function DocumentTitle({
     <button
       type="button"
       onClick={() => onSelectContract(rootContractNumber)}
-      className="font-semibold text-[var(--raport-primary)] hover:underline"
+      className="font-semibold text-raport-primary hover:underline"
     >
       {label}
     </button>
@@ -246,7 +246,7 @@ export function TessaDashboardPage() {
             </span>
             <div className="min-w-0">
               <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
-              <span className="mt-1 block text-sm font-bold text-[var(--raport-primary)]">Excel докладывает главное</span>
+              <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
         }
@@ -256,15 +256,15 @@ export function TessaDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-[var(--raport-radius-control)] border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]"
+                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
               >
                 Заменить отчет
               </Link>
               {themeToggle}
             </div>
             {loadedFile ? (
-              <div className="w-full min-w-0 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs text-[var(--raport-muted)]">
-                <p className="mb-1 truncate font-semibold text-[var(--raport-text)]" title={loadedFile.fileName}>
+              <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
+                <p className="mb-1 truncate font-semibold text-raport-text" title={loadedFile.fileName}>
                   {loadedFile.fileName}
                 </p>
                 <p className="truncate">
@@ -322,7 +322,7 @@ export function TessaDashboardPage() {
               }
             >
               {visiblePeople.length === 0 ? (
-                <div className="rounded-[var(--raport-radius-control)] border border-dashed border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-sm text-[var(--raport-muted)]">
+                <div className="rounded-control border border-dashed border-raport-border bg-raport-surface-soft px-3 py-2 text-sm text-raport-muted">
                   {peopleEmptyMessage}
                 </div>
               ) : (
@@ -332,17 +332,17 @@ export function TessaDashboardPage() {
                     key={person.name}
                     type="button"
                     onClick={() => patchFilters({ responsible: person.name })}
-                    className="grid gap-1 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2 text-left hover:bg-[var(--raport-action-bg)]"
+                    className="grid gap-1 rounded-control border border-raport-border bg-white px-3 py-2 text-left hover:bg-raport-action-bg"
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
                       <span className="inline-flex min-h-5 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-1.5 text-[11px] font-semibold text-slate-600">
                         #{index + 1}
                       </span>
-                      <span className="min-w-0 truncate text-sm font-semibold text-[var(--raport-primary)]">{person.name}</span>
-                      <span className="text-xs font-bold tabular-nums text-[var(--raport-text)]">{formatInteger(person.stuck)} / {formatInteger(person.open)}</span>
+                      <span className="min-w-0 truncate text-sm font-semibold text-raport-primary">{person.name}</span>
+                      <span className="text-xs font-bold tabular-nums text-raport-text">{formatInteger(person.stuck)} / {formatInteger(person.open)}</span>
                     </div>
                     <PersonLoadStrip value={person.stuckRate} />
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[var(--raport-muted)]">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
                       <span>{formatPercent(person.stuckRate)} просрочено</span>
                       <span>максимум {formatNumber(person.maxStuckDays)} дн.</span>
                       {person.riskToday > 0 ? <span className="text-amber-700">{formatInteger(person.riskToday)} сегодня</span> : null}
@@ -355,7 +355,7 @@ export function TessaDashboardPage() {
 
             {quality && quality.invalidDeadlines + quality.invalidDocumentDates > 0 ? (
               <SectionCard title="Качество данных" description="Часть строк содержит некорректные даты.">
-                <p className="text-sm text-[var(--raport-muted)]">
+                <p className="text-sm text-raport-muted">
                   Строк с проблемными датами: {formatInteger(quality.invalidDeadlines + quality.invalidDocumentDates)}
                 </p>
               </SectionCard>
@@ -378,12 +378,12 @@ export function TessaDashboardPage() {
                   return (
                     <article
                       key={problem.key}
-                      className={`relative overflow-hidden rounded-[var(--raport-radius-control)] border px-3 py-2 pl-4 ${rowToneClass(problem.rating, problem.riskTodayCount)}`}
+                      className={`relative overflow-hidden rounded-control border px-3 py-2 pl-4 ${rowToneClass(problem.rating, problem.riskTodayCount)}`}
                     >
                       <span className={`absolute left-0 top-0 h-full w-1 ${priorityStripClass(problem.rating, problem.riskTodayCount)}`} aria-hidden />
                       <div className="grid gap-1.5">
                         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                          <div className="min-w-0 truncate text-sm text-[var(--raport-text)]">
+                          <div className="min-w-0 truncate text-sm text-raport-text">
                             <DocumentTitle
                               documentType={problem.documentType}
                               regNumber={problem.regNumber}
@@ -403,14 +403,14 @@ export function TessaDashboardPage() {
                               type="button"
                               onClick={() => toggleProblem(problem.key)}
                               aria-expanded={isExpanded}
-                              className="inline-flex min-h-7 items-center gap-1 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white/70 px-2 py-1 text-xs font-semibold text-[var(--raport-muted)] hover:bg-white"
+                              className="inline-flex min-h-7 items-center gap-1 rounded-control border border-raport-border bg-white/70 px-2 py-1 text-xs font-semibold text-raport-muted hover:bg-white"
                             >
                               Детали
                               <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} strokeWidth={2} />
                             </button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-[var(--raport-muted)]">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
                           <span>{formatInteger(problem.stuckCount)} {declineAgreement(problem.stuckCount)}</span>
                           <span>ответственные: {problem.responsibles}</span>
                           {problem.riskTodayCount > 0 ? (
@@ -418,25 +418,25 @@ export function TessaDashboardPage() {
                           ) : null}
                         </div>
                         {isExpanded ? (
-                          <div className="mt-2 grid gap-2 border-t border-[var(--raport-border)] pt-2">
-                            <p className="text-xs text-[var(--raport-muted)]">
+                          <div className="mt-2 grid gap-2 border-t border-raport-border pt-2">
+                            <p className="text-xs text-raport-muted">
                               Вид: {problem.subject} · Автор: {problem.authors}
                             </p>
                             <div className="grid gap-1">
                               {problem.records.slice(0, 6).map((record) => (
                                 <div
                                   key={record.id}
-                                  className="grid gap-1 rounded-[var(--raport-radius-control)] bg-white/70 px-2 py-1.5 text-xs text-[var(--raport-muted)] md:grid-cols-[minmax(0,1fr)_auto]"
+                                  className="grid gap-1 rounded-control bg-white/70 px-2 py-1.5 text-xs text-raport-muted md:grid-cols-[minmax(0,1fr)_auto]"
                                 >
                                   <span className="min-w-0 truncate">
                                     {record.responsible} · срок: {formatDate(record.deadline) || "не указан"}
                                     {record.newDeadline ? ` · новый срок: ${formatDate(record.newDeadline)}` : ""}
                                   </span>
-                                  <span className="font-semibold text-[var(--raport-text)]">{record.status}</span>
+                                  <span className="font-semibold text-raport-text">{record.status}</span>
                                 </div>
                               ))}
                               {problem.records.length > 6 ? (
-                                <p className="px-2 text-xs text-[var(--raport-muted)]">Еще строк: {formatInteger(problem.records.length - 6)}</p>
+                                <p className="px-2 text-xs text-raport-muted">Еще строк: {formatInteger(problem.records.length - 6)}</p>
                               ) : null}
                             </div>
                           </div>

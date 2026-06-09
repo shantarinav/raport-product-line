@@ -41,7 +41,7 @@ const targetMarkerClassByStep: Record<number, string> = {
 const deltaTextClass: Record<MetricDelta["variant"], string> = {
   success: "text-emerald-700",
   danger: "text-red-700",
-  secondary: "text-[var(--raport-muted)]",
+  secondary: "text-raport-muted",
 };
 
 export function targetTone(value: number | null, targetRatio: number): "low" | "medium" | "high" {
@@ -156,10 +156,10 @@ function ProgressStrip({
 
   const barClass =
     tone === "high"
-      ? "[&::-moz-progress-bar]:bg-[var(--raport-success)] [&::-webkit-progress-value]:bg-[var(--raport-success)]"
+      ? "[&::-moz-progress-bar]:bg-raport-success [&::-webkit-progress-value]:bg-raport-success"
       : tone === "medium"
-        ? "[&::-moz-progress-bar]:bg-[var(--raport-warning)] [&::-webkit-progress-value]:bg-[var(--raport-warning)]"
-        : "[&::-moz-progress-bar]:bg-[var(--raport-danger)] [&::-webkit-progress-value]:bg-[var(--raport-danger)]";
+        ? "[&::-moz-progress-bar]:bg-raport-warning [&::-webkit-progress-value]:bg-raport-warning"
+        : "[&::-moz-progress-bar]:bg-raport-danger [&::-webkit-progress-value]:bg-raport-danger";
 
   return (
     <div className={spacingClassName}>
@@ -273,9 +273,9 @@ export function MasterLeaderboardCard({
       }
     >
       {visibleRows.length === 0 ? (
-        <p className="text-sm text-[var(--raport-muted)]">Нет данных для текущей выборки.</p>
+        <p className="text-sm text-raport-muted">Нет данных для текущей выборки.</p>
       ) : (
-        <div className="divide-y divide-[var(--raport-border)] rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3">
+        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white px-3">
           {visibleRows.map((row, index) => (
             <div key={row.key} className="py-1.5">
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px_86px_74px] items-center gap-2">
@@ -283,13 +283,13 @@ export function MasterLeaderboardCard({
                   <RankBadge rank={index + 1} tone={tone === "support" ? "support" : growthSeverity(row.ownNoTechnologyRatio) === "critical" ? "danger" : "warning"} />
                   <RowNameButton text={row.key} onClick={() => onMasterClick(row.key)} className="text-sm font-semibold leading-[14px]" />
                 </div>
-                <span className="text-right text-sm font-extrabold leading-[14px] tabular-nums text-[var(--raport-text)]">
+                <span className="text-right text-sm font-extrabold leading-[14px] tabular-nums text-raport-text">
                   {formatPercent(tone === "support" ? row.ownTechnologyRatio : row.ownNoTechnologyRatio)}
                 </span>
-                <span className="text-right text-[11px] font-semibold leading-[14px] tabular-nums text-[var(--raport-muted)]">
+                <span className="text-right text-[11px] font-semibold leading-[14px] tabular-nums text-raport-muted">
                   {formatHours(tone === "support" ? row.technologyTime : row.noTechnologyTime)}
                 </span>
-                <span className="text-right text-[11px] font-semibold leading-[14px] tabular-nums text-[var(--raport-muted)]">
+                <span className="text-right text-[11px] font-semibold leading-[14px] tabular-nums text-raport-muted">
                   {(tone === "support" ? row.technologyOperationCount : row.noTechnologyOperationCount).toLocaleString("ru-RU")}
                 </span>
               </div>
@@ -299,7 +299,7 @@ export function MasterLeaderboardCard({
                 mode={tone === "support" ? "technology" : "attention"}
                 spacingClassName="mt-1"
               />
-              <div className="mt-0.5 flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-[var(--raport-muted)]">
+              <div className="mt-0.5 flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-raport-muted">
                 <span>
                   н-ч всего: {formatHours(row.totalTime)} · н-ч {tone === "support" ? "по тех." : "без тех."}:{" "}
                   {formatHours(tone === "support" ? row.technologyTime : row.noTechnologyTime)} · опер. {tone === "support" ? "по тех." : "без тех."}:{" "}
@@ -370,9 +370,9 @@ export function TechnologyBoardCard({
       </div>
 
       {visibleRows.length === 0 ? (
-        <p className="text-sm text-[var(--raport-muted)]">Нет данных для текущей выборки.</p>
+        <p className="text-sm text-raport-muted">Нет данных для текущей выборки.</p>
       ) : layout === "compact-list" ? (
-        <div className="divide-y divide-[var(--raport-border)] rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3">
+        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white px-3">
           {visibleRows.map((row) => (
             <div key={row.key} className="py-1.5">
               <div className="grid gap-1">
@@ -385,7 +385,7 @@ export function TechnologyBoardCard({
                     )}
                   </div>
                   <div className="grid shrink-0 grid-cols-[44px_88px] items-center gap-1">
-                    <span className="text-right text-xs font-semibold leading-[14px] tabular-nums text-[var(--raport-text)]">
+                    <span className="text-right text-xs font-semibold leading-[14px] tabular-nums text-raport-text">
                       {formatPercent(row.ownTechnologyRatio)}
                     </span>
                     <Badge
@@ -397,7 +397,7 @@ export function TechnologyBoardCard({
                   </div>
                 </div>
                 <ProgressStrip value={row.ownTechnologyRatio} targetRatio={targetRatio} mode="technology" showTargetMarker spacingClassName="mt-0" />
-                <div className="flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-[var(--raport-muted)]">
+                <div className="flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-raport-muted">
                   <span>
                     н-ч всего: {formatHours(row.totalTime)} · н-ч по тех.: {formatHours(row.technologyTime)} · опер. по тех.:{" "}
                     {row.technologyOperationCount.toLocaleString("ru-RU")}

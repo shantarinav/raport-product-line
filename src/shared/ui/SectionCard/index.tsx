@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../shadcn/card";
 import { cn } from "../cn";
@@ -40,7 +40,7 @@ export function SectionCard({
         >
           <div className="min-w-0">
             <CardTitle className="flex items-center gap-2">
-              {Icon ? <Icon className="h-5 w-5 text-[var(--raport-primary)]" strokeWidth={2} /> : null}
+              {Icon ? <Icon className="h-5 w-5 text-raport-primary" strokeWidth={2} /> : null}
               <span>{title}</span>
             </CardTitle>
             {description ? <CardDescription className="mt-1">{description}</CardDescription> : null}

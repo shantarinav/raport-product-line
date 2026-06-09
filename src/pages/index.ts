@@ -1,4 +1,4 @@
-﻿export { LandingPage } from "./landing";
+export { LandingPage } from "./landing";
 export { SszPage } from "./ssz";
 export { TessaPage } from "./tessa";
 export { PrintPage } from "./print";

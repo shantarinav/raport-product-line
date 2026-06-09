@@ -40,11 +40,11 @@ export function quickFocusFromFilters(filters: PrintFilters): PrintQuickFocus {
 }
 
 function quickFocusButtonClass(active: boolean, tone: QuickFocusTone = "neutral") {
-  if (!active) return "border-[var(--raport-border)] bg-white text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]";
+  if (!active) return "border-raport-border bg-white text-raport-text hover:bg-raport-action-bg";
   if (tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
   if (tone === "warning") return "border-amber-300 bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
   if (tone === "success") return "border-emerald-300 bg-emerald-50 text-emerald-700 shadow-[inset_0_0_0_1px_rgb(167_243_208)]";
-  return "border-[var(--raport-action-border)] bg-[var(--raport-action-bg-active)] text-[var(--raport-primary)] shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
+  return "border-raport-action-border bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
 }
 
 export function AutocompleteField({
@@ -101,7 +101,7 @@ export function AutocompleteField({
       />
       <button
         type="button"
-        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--raport-radius-control)] text-[var(--raport-muted)] hover:bg-[var(--raport-action-bg)]"
+        className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-control text-raport-muted hover:bg-raport-action-bg"
         aria-label="Показать список"
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => setOpen((current) => !current)}
@@ -109,12 +109,12 @@ export function AutocompleteField({
         <ChevronDown className="h-4 w-4" strokeWidth={2} />
       </button>
       {open && visibleOptions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white py-1 shadow-[var(--raport-shadow-card)]">
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-auto rounded-control border border-raport-border bg-white py-1 shadow-card">
           {visibleOptions.map((option) => (
             <button
               key={option}
               type="button"
-              className="block w-full truncate px-3 py-2 text-left text-sm text-[var(--raport-text)] hover:bg-[var(--raport-action-bg)]"
+              className="block w-full truncate px-3 py-2 text-left text-sm text-raport-text hover:bg-raport-action-bg"
               title={option}
               onMouseDown={(event) => {
                 event.preventDefault();
@@ -133,10 +133,10 @@ export function AutocompleteField({
 
 export function QuickFocusPanel({ value, onChange }: { value: PrintQuickFocus; onChange: (value: PrintQuickFocus) => void }) {
   return (
-    <div className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
+    <div className="rounded-control border border-raport-border bg-raport-surface-soft p-2">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[var(--raport-muted)]">Быстрый фокус</span>
-        <span className="rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 py-0.5 text-[10px] font-bold text-[var(--raport-primary)]">
+        <span className="text-xs font-semibold text-raport-muted">Быстрый фокус</span>
+        <span className="rounded-full border border-raport-action-border bg-raport-action-bg px-2 py-0.5 text-[10px] font-bold text-raport-primary">
           {quickFocusLabel(value)}
         </span>
       </div>
@@ -145,7 +145,7 @@ export function QuickFocusPanel({ value, onChange }: { value: PrintQuickFocus; o
           <button
             key={option.value}
             type="button"
-            className={`min-h-8 rounded-[var(--raport-radius-control)] border px-2 py-1 text-xs font-semibold transition-colors ${quickFocusButtonClass(value === option.value, option.tone)}`}
+            className={`min-h-8 rounded-control border px-2 py-1 text-xs font-semibold transition-colors ${quickFocusButtonClass(value === option.value, option.tone)}`}
             onClick={() => onChange(option.value)}
           >
             {option.label}
@@ -172,7 +172,7 @@ export function SortToolbar({
   onLimitChange: (value: string) => void;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-end justify-between gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
       <DashboardSwitch label={sortLabel} value={sortValue} onChange={onSortChange} options={sortOptions} />
       <DashboardSwitch
         label="Показать"

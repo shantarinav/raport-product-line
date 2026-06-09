@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck } from "lucide-react";
 import { Button } from "../../shared/ui/shadcn/button";
@@ -255,7 +255,7 @@ export function LandingPage() {
             </span>
             <div className="min-w-0">
               <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
-              <span className="mt-1 block text-sm font-bold text-[var(--raport-primary)]">Excel докладывает главное</span>
+              <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
         }
@@ -288,31 +288,31 @@ export function LandingPage() {
           }
         />
 
-        <div className="grid min-w-0 gap-3 overflow-hidden rounded-[var(--raport-radius-card)] border border-[var(--raport-border)] bg-[var(--raport-surface)] p-3 shadow-[var(--raport-shadow-card)] lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
+        <div className="grid min-w-0 gap-3 overflow-hidden rounded-card border border-raport-border bg-raport-surface p-3 shadow-card lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
           <div className="grid content-start gap-3">
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white text-[var(--raport-primary)]">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-raport-border bg-white text-raport-primary">
                 <ActiveReportIcon className="h-6 w-6" strokeWidth={2} />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--raport-muted)]">Что умеет Рапорт</p>
-                <h2 className="mt-1 text-xl font-extrabold text-[var(--raport-text)]">{activeReport.title}</h2>
-                <p className="mt-1 text-sm font-bold text-[var(--raport-primary)]">{activeReport.subtitle}</p>
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Что умеет Рапорт</p>
+                <h2 className="mt-1 text-xl font-extrabold text-raport-text">{activeReport.title}</h2>
+                <p className="mt-1 text-sm font-bold text-raport-primary">{activeReport.subtitle}</p>
               </div>
             </div>
 
-            <p className="max-w-3xl text-sm font-semibold leading-6 text-[var(--raport-muted)]">{activeReport.description}</p>
+            <p className="max-w-3xl text-sm font-semibold leading-6 text-raport-muted">{activeReport.description}</p>
           </div>
 
-          <div className="grid min-w-0 gap-2 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-2">
+          <div className="grid min-w-0 gap-2 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft p-2">
             {SUPPORTED_REPORTS.map(({ id, title, subtitle, Icon }, index) => (
               <button
                 key={id}
                 type="button"
-                className={`flex min-w-0 items-center gap-3 overflow-hidden rounded-[var(--raport-radius-control)] border px-3 py-2 text-left transition-colors ${
+                className={`flex min-w-0 items-center gap-3 overflow-hidden rounded-control border px-3 py-2 text-left transition-colors ${
                   activeReportIndex === index
-                    ? "border-[var(--raport-primary)] bg-white text-[var(--raport-primary)] shadow-sm"
-                    : "border-transparent text-[var(--raport-muted)] hover:bg-white/70 hover:text-[var(--raport-text)]"
+                    ? "border-raport-primary bg-white text-raport-primary shadow-sm"
+                    : "border-transparent text-raport-muted hover:bg-white/70 hover:text-raport-text"
                 }`}
                 onClick={() => setActiveReportIndex(index)}
               >

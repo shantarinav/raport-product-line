@@ -1,4 +1,4 @@
-﻿import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes } from "react";
 import { cn } from "../cn";
 
 type ButtonVariant = "default" | "outline" | "ghost" | "destructive";
@@ -9,11 +9,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClass: Record<ButtonVariant, string> = {
   default:
-    "border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] text-[var(--raport-primary)] hover:bg-[var(--raport-action-bg-active)]",
+    "border border-raport-action-border bg-raport-action-bg text-raport-primary hover:bg-raport-action-bg-active",
   outline:
-    "border border-[var(--raport-border)] bg-[var(--raport-surface)] text-[var(--raport-text)] hover:bg-[var(--raport-surface-soft)]",
-  ghost: "border border-transparent bg-transparent text-[var(--raport-muted)] hover:bg-[var(--raport-surface-soft)]",
-  destructive: "border border-[var(--raport-danger-border)] bg-[var(--raport-danger-muted)] text-[var(--raport-danger)] hover:brightness-95",
+    "border border-raport-border bg-raport-surface text-raport-text hover:bg-raport-surface-soft",
+  ghost: "border border-transparent bg-transparent text-raport-muted hover:bg-raport-surface-soft",
+  destructive: "border border-raport-danger-border bg-raport-danger-muted text-raport-danger hover:brightness-95",
 };
 
 export function Button({ variant = "default", className, type = "button", ...props }: ButtonProps) {
@@ -21,7 +21,7 @@ export function Button({ variant = "default", className, type = "button", ...pro
     <button
       type={type}
       className={cn(
-        "inline-flex min-h-9 items-center justify-center gap-2 rounded-[var(--raport-radius-control)] px-3 py-2 text-sm font-semibold transition-colors",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-semibold transition-colors",
         variantClass[variant],
         className,
       )}
