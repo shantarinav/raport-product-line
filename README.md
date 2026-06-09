@@ -188,8 +188,7 @@ npm run build
 Production-сборка не привязана к домену или папке. Ее можно разместить, например:
 
 ```txt
-https://bi.ekb.ru/
-https://bi.ekb.ru/raport/
+https://example.ru/
 https://example.ru/any/folder/
 ```
 
