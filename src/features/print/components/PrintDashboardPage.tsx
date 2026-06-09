@@ -586,7 +586,7 @@ export function PrintDashboardPage() {
           </FilterPanel>
         </div>
 
-        <motion.div layout className="grid gap-4">
+        <div className="grid gap-4 relative">
           <FilterStatusBar
             chips={chips}
             actions={
@@ -601,8 +601,24 @@ export function PrintDashboardPage() {
             }
           />
 
-          {isManagerView ? (
-            <div className="grid gap-4 md:grid-cols-3">
+          <motion.div layout className="grid gap-3">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {!isManagerView ? (
+                <motion.div
+                  key="analyst-kpi-title"
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full"
+                >
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-raport-muted">Объем и стоимость</p>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <motion.div layout className="grid gap-4 md:grid-cols-3">
               <MetricCard
                 label="Всего страниц"
                 value={formatInteger(kpis.totalPages)}
@@ -624,65 +640,51 @@ export function PrintDashboardPage() {
                 Icon={Printer}
                 tone="success"
               />
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              <div className="grid gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-raport-muted">Объем и стоимость</p>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <MetricCard
-                    label="Всего страниц"
-                    value={formatInteger(kpis.totalPages)}
-                    note={<MetricNote label={`${formatInteger(kpis.totalJobs)} заданий`} delta={totalPagesDelta} suffix=" стр." />}
-                    Icon={Printer}
-                    tone="neutral"
-                  />
-                  <MetricCard
-                    label="Уникальные пользователи"
-                    value={formatInteger(kpis.usersCount)}
-                    note={<MetricNote label="в текущей выборке" delta={usersDelta} />}
-                    Icon={Users}
-                    tone="neutral"
-                  />
-                  <MetricCard
-                    label="Оценка стоимости"
-                    value={formatInteger(kpis.estimatedCost)}
-                    note={<MetricNote label="руб." delta={costDelta} suffix=" руб." />}
-                    Icon={Printer}
-                    tone="success"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-raport-muted">Отклонения печати</p>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <MetricCard
-                    label="Односторонняя печать"
-                    value={formatPercent(kpis.simplexRatio)}
-                    note={<MetricNote label={`${formatInteger(kpis.simplexPages)} страниц`} delta={simplexRatioDelta} />}
-                    Icon={FileText}
-                    tone="warning"
-                  />
-                  <MetricCard
-                    label="Цветная печать"
-                    value={formatPercent(kpis.colorRatio)}
-                    note={<MetricNote label={`${formatInteger(kpis.colorPages)} страниц`} delta={colorRatioDelta} />}
-                    Icon={Gauge}
-                    tone="warning"
-                  />
-                  <MetricCard
-                    label="Задания от 100 стр."
-                    value={formatInteger(kpis.bigJobs)}
-                    note={<MetricNote label={`${formatInteger(kpis.bigPages)} страниц`} delta={bigJobsDelta} />}
-                    Icon={AlertTriangle}
-                    tone="danger"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+            </motion.div>
 
-          <motion.div layout><SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              {!isManagerView ? (
+                <motion.div
+                  key="analyst-deviations"
+                  layout
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full grid gap-2"
+                >
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-raport-muted mt-2">Отклонения печати</p>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <MetricCard
+                      label="Односторонняя печать"
+                      value={formatPercent(kpis.simplexRatio)}
+                      note={<MetricNote label={`${formatInteger(kpis.simplexPages)} страниц`} delta={simplexRatioDelta} />}
+                      Icon={FileText}
+                      tone="warning"
+                    />
+                    <MetricCard
+                      label="Цветная печать"
+                      value={formatPercent(kpis.colorRatio)}
+                      note={<MetricNote label={`${formatInteger(kpis.colorPages)} страниц`} delta={colorRatioDelta} />}
+                      Icon={Gauge}
+                      tone="warning"
+                    />
+                    <MetricCard
+                      label="Задания от 100 стр."
+                      value={formatInteger(kpis.bigJobs)}
+                      note={<MetricNote label={`${formatInteger(kpis.bigPages)} страниц`} delta={bigJobsDelta} />}
+                      Icon={AlertTriangle}
+                      tone="danger"
+                    />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
+
+          <motion.div layout>
+            <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
+
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
                 <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
@@ -705,7 +707,7 @@ export function PrintDashboardPage() {
 
           <AnimatePresence mode="popLayout" initial={false}>
             {viewMode === "analyst" && hasHistoryChartData ? (
-              <motion.div key="analyst-history" layout initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
+              <motion.div key="analyst-history" layout initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }} className="w-full">
                 <PrintPagesTrendChart data={printHistory} />
               </motion.div>
             ) : null}
@@ -713,7 +715,7 @@ export function PrintDashboardPage() {
 
           <AnimatePresence mode="popLayout" initial={false}>
             {filteredRows.length === 0 ? (
-              <motion.div key="filtered-empty" layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+              <motion.div key="filtered-empty" layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full">
                 <SectionCard title="Нет данных" description="По выбранным фильтрам заданий нет.">
                   <p className="text-sm text-raport-muted">Измените параметры или нажмите «Сбросить».</p>
                 </SectionCard>
@@ -811,7 +813,7 @@ export function PrintDashboardPage() {
               <RiskJobList rows={riskJobs} onUserSelect={(user) => patchFilters({ user })} />
             </SectionCard>
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </PageShell>
   );

@@ -546,7 +546,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         />
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 relative">
         <FilterStatusBar
           chips={activeFilterChips(filters, defaultFilters, patchFilters)}
           actions={
@@ -596,6 +596,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
               transition={{ duration: 0.3 }}
+              className="w-full"
             >
               <SSZTrendChart data={history} targetPercent={filters.targetPercent} />
             </motion.div>
@@ -611,7 +612,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
               transition={{ duration: 0.3 }}
-              className="grid gap-4 xl:grid-cols-2"
+              className="w-full grid gap-4 xl:grid-cols-2"
             >
               <MasterLeaderboardCard
                 title="Лидеры по технологии"
@@ -643,7 +644,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
             }
             Icon={Gauge}
           >
-          <div className="grid gap-4">
+          <div className="grid gap-4 relative">
             <AnimatePresence mode="popLayout" initial={false}>
               {viewMode === "analyst" ? (
                 <motion.div
@@ -653,6 +654,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.3 }}
+                  className="w-full"
                 >
                   <TechnologyBoardCard
                     title="Заказы"
