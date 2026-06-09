@@ -250,7 +250,7 @@ export function SupportDashboardPage() {
           />
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 relative">
           <FilterStatusBar
             title="Активные фильтры"
             chips={chips.length > 0 ? chips : [{ label: "Все заявки", tone: "secondary" }]}
@@ -287,6 +287,7 @@ export function SupportDashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
+                className="w-full"
               >
                 <div className="grid gap-4 xl:grid-cols-2">
                   <SupportDistributionCard
@@ -352,7 +353,7 @@ export function SupportDashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
-                className="grid gap-4"
+                className="w-full grid gap-4"
               >
                 <SupportOverdueTailTable rows={overdueTail} limit={overdueTailLimit} onLimitChange={setOverdueTailLimit} />
                 <SupportDataQualityPanel summary={dataQuality} />
