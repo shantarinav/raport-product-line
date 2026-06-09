@@ -31,7 +31,7 @@ export function SupportOverdueTailTable({
         />
       }
     >
-      <p className="mb-3 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--raport-muted)]">
+      <p className="mb-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
         Критично = просрочка выше установленного порога.
       </p>
       <DataTable
@@ -42,7 +42,7 @@ export function SupportOverdueTailTable({
           {
             key: "ticketNumber",
             header: "№",
-            cell: (row) => <span className="font-bold tabular-nums text-[var(--raport-text)]">{row.ticketNumber}</span>,
+            cell: (row) => <span className="font-bold tabular-nums text-raport-text">{row.ticketNumber}</span>,
             className: "whitespace-nowrap",
           },
           {
@@ -50,10 +50,10 @@ export function SupportOverdueTailTable({
             header: "Тема",
             cell: (row) => (
               <div className="grid max-w-[320px] gap-1">
-                <span className="truncate font-semibold text-[var(--raport-text)]" title={row.topic}>
+                <span className="truncate font-semibold text-raport-text" title={row.topic}>
                   {row.topic}
                 </span>
-                <span className="truncate text-xs text-[var(--raport-muted)]" title={row.category}>
+                <span className="truncate text-xs text-raport-muted" title={row.category}>
                   {row.category}
                 </span>
               </div>

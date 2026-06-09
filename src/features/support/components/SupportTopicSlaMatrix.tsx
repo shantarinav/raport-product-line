@@ -36,28 +36,28 @@ export function SupportTopicSlaMatrix({
   return (
     <ChartCard title="SLA по темам" description="Соблюдение SLA и интенсивность обращений по категориям." Icon={Activity}>
       <div className="grid gap-3">
-        <div className="flex flex-wrap gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2">
-          <span className="basis-full text-xs font-semibold text-[var(--raport-muted)]">
+        <div className="flex flex-wrap gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
+          <span className="basis-full text-xs font-semibold text-raport-muted">
             Каждая строка — категория обращений. Полоса показывает состав заявок: в SLA, нарушено, нет расчета.
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--raport-muted)]">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
             В SLA
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--raport-muted)]">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
             Нарушен SLA
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--raport-muted)]">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
             Нет расчета SLA
           </span>
-          <span className="basis-full text-[11px] font-semibold text-[var(--raport-muted)]">
+          <span className="basis-full text-[11px] font-semibold text-raport-muted">
             Сортировка: больше заявок → хуже SLA → больше нарушений.
           </span>
         </div>
 
-        {rows.length === 0 ? <p className="text-sm text-[var(--raport-muted)]">Нет заявок по выбранным фильтрам.</p> : null}
+        {rows.length === 0 ? <p className="text-sm text-raport-muted">Нет заявок по выбранным фильтрам.</p> : null}
 
         <div className="grid gap-2">
           {rows.map((row, index) => {
@@ -68,23 +68,23 @@ export function SupportTopicSlaMatrix({
             return (
               <article
                 key={row.category}
-                className="grid gap-2 rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2 text-left"
+                className="grid gap-2 rounded-control border border-raport-border bg-white px-3 py-2 text-left"
               >
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                   <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2">
-                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-2 text-xs font-extrabold tabular-nums text-[var(--raport-primary)]">
+                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-extrabold tabular-nums text-raport-primary">
                       #{index + 1}
                     </span>
                     <div className="min-w-0">
                       <button
                         type="button"
                         onClick={() => onCategorySelect?.(row.category)}
-                        className="block max-w-full truncate text-left text-sm font-extrabold text-[var(--raport-primary)] hover:underline"
+                        className="block max-w-full truncate text-left text-sm font-extrabold text-raport-primary hover:underline"
                         title={row.category}
                       >
                         {row.category}
                       </button>
-                      <p className="mt-0.5 text-xs font-semibold text-[var(--raport-muted)]">
+                      <p className="mt-0.5 text-xs font-semibold text-raport-muted">
                         Соблюдение SLA внутри категории
                       </p>
                     </div>
@@ -93,7 +93,7 @@ export function SupportTopicSlaMatrix({
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
                     <Badge variant={intensityVariant(row.intensity)}>интенсивность: {row.intensity}</Badge>
                     <Badge variant={slaVariant(row.slaRate, controlPercent)}>{slaLabel(row.slaRate, row.applicable, controlPercent)}</Badge>
-                    <strong className="min-w-16 text-right text-lg font-extrabold tabular-nums text-[var(--raport-text)]">
+                    <strong className="min-w-16 text-right text-lg font-extrabold tabular-nums text-raport-text">
                       {row.applicable > 0 ? formatSupportPercent(row.slaRate) : "—"}
                     </strong>
                   </div>
@@ -110,10 +110,10 @@ export function SupportTopicSlaMatrix({
                     <rect x="0" y="0" width={inSlaWidth} height="14" className="fill-emerald-500" />
                     <rect x={overdueX} y="0" width={overdueWidth} height="14" className="fill-red-500" />
                   </svg>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[var(--raport-muted)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-raport-muted">
                     <span>
-                      Заявок: <strong className="text-[var(--raport-text)]">{row.total}</strong> · с расчетом SLA:{" "}
-                      <strong className="text-[var(--raport-text)]">{row.applicable}</strong>
+                      Заявок: <strong className="text-raport-text">{row.total}</strong> · с расчетом SLA:{" "}
+                      <strong className="text-raport-text">{row.applicable}</strong>
                       {row.dataProblems > 0 ? (
                         <>
                           {" "}· без расчета: <strong className="text-slate-700">{row.dataProblems}</strong>

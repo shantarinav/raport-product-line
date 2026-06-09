@@ -1,11 +1,11 @@
-﻿import { ChartCard } from "../../../shared/ui";
+import { ChartCard } from "../../../shared/ui";
 import type { SupportDailyPoint } from "../supportTypes";
 import { formatSupportPercent } from "../logic/supportMetrics";
 import { Activity } from "lucide-react";
 
 function LegendItem({ className, label }: { className: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--raport-border)] bg-white px-2 py-1 text-xs font-semibold text-[var(--raport-muted)]">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-raport-border bg-white px-2 py-1 text-xs font-semibold text-raport-muted">
       <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
       {label}
     </span>
@@ -33,30 +33,30 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
   return (
     <ChartCard title="SLA по дням" description="Динамика нагрузки и выполнения SLA по датам создания заявок." Icon={Activity}>
       {points.length === 0 ? (
-        <p className="text-sm text-[var(--raport-muted)]">Нет данных для построения графика.</p>
+        <p className="text-sm text-raport-muted">Нет данных для построения графика.</p>
       ) : (
-        <div className="grid gap-2 overflow-hidden rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] p-3">
-          <p className="text-xs font-semibold text-[var(--raport-muted)]">
+        <div className="grid gap-2 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft p-3">
+          <p className="text-xs font-semibold text-raport-muted">
             Столбец — сколько заявок создано. Линия — доля выполненных SLA. Цвет столбца — уровень просрочек.
           </p>
           <div className="flex flex-wrap gap-2">
             <LegendItem className="bg-blue-600" label="Мало просрочек (<20%)" />
             <LegendItem className="bg-amber-500" label="Заметно просрочек (20–39%)" />
             <LegendItem className="bg-red-500" label="Много просрочек (≥40%)" />
-            <LegendItem className="bg-[var(--raport-primary)]" label="SLA выполнен" />
+            <LegendItem className="bg-raport-primary" label="SLA выполнен" />
             <LegendItem className="bg-emerald-500" label="Норма 95%" />
             <LegendItem className="bg-amber-500" label={`Контроль ${controlPercent}%`} />
           </div>
-          <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-[var(--raport-radius-control)] bg-white">
-            <text x={padding.left} y="18" className="fill-[var(--raport-muted)] text-[11px] font-bold">Заявки</text>
-            <text x={width - padding.right} y="18" textAnchor="end" className="fill-[var(--raport-muted)] text-[11px] font-bold">SLA, %</text>
+          <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-control bg-white">
+            <text x={padding.left} y="18" className="fill-raport-muted text-[11px] font-bold">Заявки</text>
+            <text x={width - padding.right} y="18" textAnchor="end" className="fill-raport-muted text-[11px] font-bold">SLA, %</text>
             <line x1={padding.left} y1={padding.top + innerHeight} x2={width - padding.right} y2={padding.top + innerHeight} className="stroke-slate-200" />
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerHeight} className="stroke-slate-200" />
-            <text x={padding.left - 8} y={padding.top + 4} textAnchor="end" className="fill-[var(--raport-muted)] text-[10px] font-semibold">{maxTotal}</text>
-            <text x={padding.left - 8} y={padding.top + innerHeight + 4} textAnchor="end" className="fill-[var(--raport-muted)] text-[10px] font-semibold">0</text>
-            {[0.5, controlRatio, healthyRatio].map((ratio) => (
+            <text x={padding.left - 8} y={padding.top + 4} textAnchor="end" className="fill-raport-muted text-[10px] font-semibold">{maxTotal}</text>
+            <text x={padding.left - 8} y={padding.top + innerHeight + 4} textAnchor="end" className="fill-raport-muted text-[10px] font-semibold">0</text>
+            {[0.5, controlRatio, healthyRatio].filter((v, i, a) => a.indexOf(v) === i).map((ratio) => (
               <line
-                key={ratio}
+                key={ratio.toString()}
                 x1={padding.left}
                 y1={padding.top + innerHeight - ratio * innerHeight}
                 x2={width - padding.right}
@@ -88,7 +88,7 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
                       x={x + barWidth / 2}
                       y={height - 18}
                       textAnchor="middle"
-                      className="fill-[var(--raport-muted)] text-[10px] font-semibold"
+                      className="fill-raport-muted text-[10px] font-semibold"
                     >
                       {point.label.slice(0, 5)}
                     </text>
@@ -96,11 +96,11 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
                 </g>
               );
             })}
-            <polyline points={linePoints.join(" ")} fill="none" className="stroke-[var(--raport-primary)]" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={linePoints.join(" ")} fill="none" className="stroke-raport-primary" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + slotWidth / 2;
               const y = padding.top + innerHeight - point.slaRate * innerHeight;
-              return <circle key={`${point.dateKey}-dot`} cx={x} cy={y} r="4" className="fill-[var(--raport-primary)] stroke-[var(--raport-surface)]" strokeWidth="2" />;
+              return <circle key={`${point.dateKey}-dot`} cx={x} cy={y} r="4" className="fill-raport-primary stroke-raport-surface" strokeWidth="2" />;
             })}
           </svg>
         </div>

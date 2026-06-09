@@ -107,7 +107,7 @@ export function groupContributions(operations: OperationRecord[], kind: Contribu
           : kind === "operation"
             ? operation.operation
             : operation.product;
-    const normalized = normalizedText(key) || "Не заполнено";
+    const normalized = normalizedText(key) || "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ";
     const group = groups.get(normalized);
     if (group) {
       group.push(operation);
@@ -123,7 +123,7 @@ export function groupContributions(operations: OperationRecord[], kind: Contribu
 
     return {
       key,
-      departmentKey: kind === "department" ? key : primaryDepartment(rowsForKey, "Не заполнено"),
+      departmentKey: kind === "department" ? key : primaryDepartment(rowsForKey, "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"),
       technologyTime,
       noTechnologyTime,
       totalTime,

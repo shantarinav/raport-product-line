@@ -3,6 +3,6 @@ export function formatHours(value: number): string {
 }
 
 export function formatPercent(value: number | null): string {
-  if (value === null) return "í/ä";
+  if (value === null) return "ï¿½/ï¿½";
   return `${(value * 100).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 }

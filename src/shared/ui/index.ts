@@ -1,4 +1,4 @@
-﻿export { PageShell } from "./PageShell";
+export { PageShell } from "./PageShell";
 export { DashboardHeader } from "./DashboardHeader";
 export { FileDropZone } from "./FileDropZone";
 export { MetricCard } from "./MetricCard";

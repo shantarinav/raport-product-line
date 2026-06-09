@@ -1,4 +1,4 @@
-﻿import { CircleX } from "lucide-react";
+import { CircleX } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "../shadcn/alert";
 
 type ErrorStateProps = {
@@ -11,9 +11,9 @@ export function ErrorState({ title = "Ошибка", message, className }: Error
   return (
     <Alert className={className}>
       <div className="flex items-start gap-2">
-        <CircleX className="mt-0.5 h-4 w-4 text-[var(--raport-danger)]" strokeWidth={2} />
+        <CircleX className="mt-0.5 h-4 w-4 text-raport-danger" strokeWidth={2} />
         <div>
-          <AlertTitle className="text-[var(--raport-danger)]">{title}</AlertTitle>
+          <AlertTitle className="text-raport-danger">{title}</AlertTitle>
           <AlertDescription>{message}</AlertDescription>
         </div>
       </div>

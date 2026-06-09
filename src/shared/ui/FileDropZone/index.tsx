@@ -1,4 +1,4 @@
-﻿import { useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import { FileSpreadsheet, UploadCloud } from "lucide-react";
 import { Button } from "../shadcn/button";
 import { cn } from "../cn";
@@ -41,8 +41,8 @@ export function FileDropZone({
   return (
     <section
       className={cn(
-        "rounded-[var(--raport-radius-card)] border-2 border-dashed border-[var(--raport-border)] bg-[var(--raport-surface)] p-6 text-center shadow-[var(--raport-shadow-card)] transition-colors",
-        dragActive && "border-[var(--raport-primary)] bg-[var(--raport-action-bg)]",
+        "rounded-card border-2 border-dashed border-raport-border bg-raport-surface p-6 text-center shadow-card transition-colors",
+        dragActive && "border-raport-primary bg-raport-action-bg",
         className,
       )}
       onDragEnter={(event) => {
@@ -68,11 +68,11 @@ export function FileDropZone({
           event.currentTarget.value = "";
         }}
       />
-      <UploadCloud className="mx-auto mb-3 h-10 w-10 text-[var(--raport-primary)]" strokeWidth={2} />
-      <h2 className="text-xl font-bold text-[var(--raport-text)]">{title}</h2>
-      <p className="mt-2 text-sm text-[var(--raport-muted)]">{hint}</p>
+      <UploadCloud className="mx-auto mb-3 h-10 w-10 text-raport-primary" strokeWidth={2} />
+      <h2 className="text-xl font-bold text-raport-text">{title}</h2>
+      <p className="mt-2 text-sm text-raport-muted">{hint}</p>
       {selectedFileName ? (
-        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[var(--raport-action-border)] bg-[var(--raport-action-bg)] px-3 py-1 text-xs font-semibold text-[var(--raport-primary)]">
+        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-raport-action-border bg-raport-action-bg px-3 py-1 text-xs font-semibold text-raport-primary">
           <FileSpreadsheet className="h-4 w-4" strokeWidth={2} />
           {selectedFileName}
         </p>
@@ -82,7 +82,7 @@ export function FileDropZone({
           <Button onClick={() => inputRef.current?.click()}>Выбрать файл</Button>
         </div>
       ) : null}
-      {footer ? <div className="mt-4 text-sm text-[var(--raport-muted)]">{footer}</div> : null}
+      {footer ? <div className="mt-4 text-sm text-raport-muted">{footer}</div> : null}
     </section>
   );
 }

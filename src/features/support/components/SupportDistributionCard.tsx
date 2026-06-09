@@ -1,4 +1,4 @@
-﻿import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { SectionCard } from "../../../shared/ui";
 import type { SupportQuantiles } from "../supportTypes";
 import { formatSupportHours } from "../logic/supportMetrics";
@@ -41,7 +41,7 @@ export function SupportDistributionCard({
                 cx={x}
                 cy="6"
                 r="4"
-                className="fill-[var(--raport-primary)] stroke-white"
+                className="fill-raport-primary stroke-white"
                 strokeWidth="2"
               >
                 <title>{`${item.label}: ${formatSupportHours(value)}`}</title>
@@ -51,15 +51,15 @@ export function SupportDistributionCard({
           </svg>
         </div>
         {explanation ? (
-          <p className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-[var(--raport-surface-soft)] px-3 py-2 text-xs font-semibold text-[var(--raport-muted)]">
+          <p className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
             {explanation}
           </p>
         ) : null}
         <div className="grid gap-2 sm:grid-cols-4">
           {QUANTILE_KEYS.map((item) => (
-            <div key={item.key} className="rounded-[var(--raport-radius-control)] border border-[var(--raport-border)] bg-white px-3 py-2">
-              <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em] text-[var(--raport-muted)]">{item.label}</span>
-              <strong className="mt-1 block text-sm font-extrabold tabular-nums text-[var(--raport-text)]">{formatSupportHours(quantiles[item.key])}</strong>
+            <div key={item.key} className="rounded-control border border-raport-border bg-white px-3 py-2">
+              <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em] text-raport-muted">{item.label}</span>
+              <strong className="mt-1 block text-sm font-extrabold tabular-nums text-raport-text">{formatSupportHours(quantiles[item.key])}</strong>
             </div>
           ))}
         </div>

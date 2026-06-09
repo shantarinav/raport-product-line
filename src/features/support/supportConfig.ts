@@ -1,4 +1,4 @@
-﻿export const SUPPORT_REQUIRED_COLUMNS = ["№", "Тема", "Дата создания", "SLA_plan", "SLA_fact"] as const;
+export const SUPPORT_REQUIRED_COLUMNS = ["№", "Тема", "Дата создания", "SLA_plan", "SLA_fact"] as const;
 
 export const SUPPORT_MAX_PARSE_ROWS = 20_000;
 

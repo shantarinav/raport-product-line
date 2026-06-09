@@ -104,11 +104,11 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
   return (
     <ChartCard title="Тренд печати по месяцам" description="Как меняется общий объем напечатанных страниц по месяцам." Icon={TrendingUp}>
       <div className="grid gap-3">
-        <p className="text-sm font-semibold leading-5 text-[var(--raport-text)]">
-          <span className="text-[var(--raport-muted)]">Период тренда:</span> {firstPoint.periodLabel} → {lastPoint.periodLabel} ·{" "}
-          <span className="text-[var(--raport-muted)]">общий сдвиг:</span>{" "}
+        <p className="text-sm font-semibold leading-5 text-raport-text">
+          <span className="text-raport-muted">Период тренда:</span> {firstPoint.periodLabel} → {lastPoint.periodLabel} ·{" "}
+          <span className="text-raport-muted">общий сдвиг:</span>{" "}
           <span className="tabular-nums">{formatSignedInteger(periodDelta)}</span> ·{" "}
-          <span className="text-[var(--raport-muted)]">к предыдущему:</span>{" "}
+          <span className="text-raport-muted">к предыдущему:</span>{" "}
           <span className="tabular-nums">{formatSignedInteger(monthDelta)}</span>
         </p>
 
@@ -129,7 +129,7 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
           <polyline
             points={polylinePoints}
             fill="none"
-            className="stroke-[var(--raport-primary)]"
+            className="stroke-raport-primary"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={3.5}
@@ -140,20 +140,20 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
                 cx={point.x}
                 cy={point.y}
                 r={points.length > 12 ? 4 : 5}
-                className="fill-[var(--raport-primary)] stroke-white transition-opacity hover:opacity-80"
+                className="fill-raport-primary stroke-white transition-opacity hover:opacity-80"
                 strokeWidth={1.8}
               >
                 <title>{point.tooltipLabel}</title>
               </circle>
               {point.showLabel ? (
                 <>
-                  <text x={point.x} y={CHART_HEIGHT - 40} textAnchor="middle" className="fill-[var(--raport-muted)] text-[11px] font-medium">
+                  <text x={point.x} y={CHART_HEIGHT - 40} textAnchor="middle" className="fill-raport-muted text-[11px] font-medium">
                     {point.periodLabel}
                   </text>
-                  <text x={point.x} y={CHART_HEIGHT - 24} textAnchor="middle" className="fill-[var(--raport-text)] text-[12px] font-semibold">
+                  <text x={point.x} y={CHART_HEIGHT - 24} textAnchor="middle" className="fill-raport-text text-[12px] font-semibold">
                     {point.valueLabel}
                   </text>
-                  <text x={point.x} y={CHART_HEIGHT - 8} textAnchor="middle" className="fill-[var(--raport-muted)] text-[11px] font-medium">
+                  <text x={point.x} y={CHART_HEIGHT - 8} textAnchor="middle" className="fill-raport-muted text-[11px] font-medium">
                     {point.coverageLabel}
                   </text>
                 </>
@@ -162,7 +162,7 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
           ))}
         </svg>
 
-        <p className="border-t border-[var(--raport-border)] pt-2 text-xs font-semibold leading-4 text-[var(--raport-muted)]">
+        <p className="border-t border-raport-border pt-2 text-xs font-semibold leading-4 text-raport-muted">
           При построении тренда учитываются только месяцы с покрытием не меньше 50%.
         </p>
       </div>
