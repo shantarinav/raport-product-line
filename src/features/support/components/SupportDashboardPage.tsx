@@ -282,7 +282,7 @@ export function SupportDashboardPage() {
             {viewMode === "analyst" ? (
               <motion.div
                 key="analyst-distributions"
-                layout
+                layout="position"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -309,7 +309,7 @@ export function SupportDashboardPage() {
             ) : null}
           </AnimatePresence>
 
-          <motion.div layout className="grid gap-4">
+          <motion.div layout="position" className="grid gap-4">
             <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
@@ -348,7 +348,7 @@ export function SupportDashboardPage() {
             {viewMode === "analyst" ? (
               <motion.div
                 key="analyst-tables"
-                layout
+                layout="position"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}

@@ -561,11 +561,11 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           }
         />
 
-        <motion.div layout>
+        <motion.div layout="position">
           <SszKpiCards data={kpis} targetPercent={filters.targetPercent} previousSnapshot={kpiPreviousSnapshot} />
         </motion.div>
 
-        <motion.div layout>
+        <motion.div layout="position">
           <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
@@ -591,7 +591,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           {viewMode === "analyst" && hasTrendData ? (
             <motion.div
               key="analyst-trend-chart"
-              layout
+              layout="position"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
@@ -607,7 +607,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           {viewMode === "analyst" ? (
             <motion.div
               key="analyst-leaderboards"
-              layout
+              layout="position"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
@@ -634,7 +634,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           ) : null}
         </AnimatePresence>
 
-        <motion.div layout>
+        <motion.div layout="position">
           <SectionCard
             title="Срезы по технологии"
             description={
@@ -649,7 +649,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
               {viewMode === "analyst" ? (
                 <motion.div
                   key="analyst-tech-board-orders"
-                  layout
+                  layout="position"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}

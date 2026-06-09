@@ -72,12 +72,21 @@ function groupByDashboard(snapshots: DashboardSnapshot[]): Record<DashboardType,
 export function HistoryManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeType, setActiveType] = useState<DashboardType>("ssz");
+  const [showAll, setShowAll] = useState(false);
   const [state, setState] = useState<HistoryState>({ snapshots: [], isLoading: false, error: "" });
   const [trendsEnabled, setTrendsEnabled] = useTrendsEnabled();
 
   const grouped = useMemo(() => groupByDashboard(state.snapshots), [state.snapshots]);
   const activeSnapshots = grouped[activeType];
   const totalSnapshots = state.snapshots.length;
+
+  const VISIBLE_LIMIT = 12;
+  const visibleSnapshots = showAll ? activeSnapshots : activeSnapshots.slice(0, VISIBLE_LIMIT);
+  const hiddenCount = activeSnapshots.length - visibleSnapshots.length;
+
+  useEffect(() => {
+    setShowAll(false);
+  }, [activeType]);
 
   async function loadHistory() {
     setState((current) => ({ ...current, isLoading: true, error: "" }));
@@ -257,7 +266,7 @@ export function HistoryManager() {
                 {!state.isLoading && activeSnapshots.length > 0 ? (
                   <div className="grid gap-2">
                     <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white">
-                      {activeSnapshots.map((snapshot) => (
+                      {visibleSnapshots.map((snapshot) => (
                         <div key={snapshot.id} className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-raport-text">{periodLabel(snapshot)}</p>
@@ -275,6 +284,17 @@ export function HistoryManager() {
                           </Button>
                         </div>
                       ))}
+                      {hiddenCount > 0 && (
+                        <div className="bg-raport-surface-soft p-1">
+                          <Button 
+                            variant="ghost" 
+                            className="w-full h-8 text-xs text-raport-muted hover:text-raport-text hover:bg-white" 
+                            onClick={() => setShowAll(true)}
+                          >
+                            Показать еще {hiddenCount}
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end">

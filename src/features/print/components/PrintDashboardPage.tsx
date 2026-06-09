@@ -601,12 +601,12 @@ export function PrintDashboardPage() {
             }
           />
 
-          <motion.div layout className="grid gap-3">
+          <motion.div layout="position" className="grid gap-3">
             <AnimatePresence mode="popLayout" initial={false}>
               {!isManagerView ? (
                 <motion.div
                   key="analyst-kpi-title"
-                  layout
+                  layout="position"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -618,7 +618,7 @@ export function PrintDashboardPage() {
               ) : null}
             </AnimatePresence>
 
-            <motion.div layout className="grid gap-4 md:grid-cols-3">
+            <motion.div layout="position" className="grid gap-4 md:grid-cols-3">
               <MetricCard
                 label="Всего страниц"
                 value={formatInteger(kpis.totalPages)}
@@ -646,7 +646,7 @@ export function PrintDashboardPage() {
               {!isManagerView ? (
                 <motion.div
                   key="analyst-deviations"
-                  layout
+                  layout="position"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -682,7 +682,7 @@ export function PrintDashboardPage() {
             </AnimatePresence>
           </motion.div>
 
-          <motion.div layout>
+          <motion.div layout="position">
             <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
 
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -707,7 +707,7 @@ export function PrintDashboardPage() {
 
           <AnimatePresence mode="popLayout" initial={false}>
             {viewMode === "analyst" && hasHistoryChartData ? (
-              <motion.div key="analyst-history" layout initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }} className="w-full">
+              <motion.div key="analyst-history" layout="position" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }} className="w-full">
                 <PrintPagesTrendChart data={printHistory} />
               </motion.div>
             ) : null}
@@ -715,7 +715,7 @@ export function PrintDashboardPage() {
 
           <AnimatePresence mode="popLayout" initial={false}>
             {filteredRows.length === 0 ? (
-              <motion.div key="filtered-empty" layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full">
+              <motion.div key="filtered-empty" layout="position" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full">
                 <SectionCard title="Нет данных" description="По выбранным фильтрам заданий нет.">
                   <p className="text-sm text-raport-muted">Измените параметры или нажмите «Сбросить».</p>
                 </SectionCard>
@@ -723,7 +723,7 @@ export function PrintDashboardPage() {
             ) : null}
           </AnimatePresence>
 
-          <motion.div layout>
+          <motion.div layout="position">
           <SectionCard title="Топ пользователей по страницам"
             description="Рейтинг пользователей в текущей выборке."
             Icon={Users}
@@ -762,7 +762,7 @@ export function PrintDashboardPage() {
 
         <AnimatePresence mode="popLayout" initial={false}>
             {!isManagerView ? (
-              <motion.div key="analyst-tables" layout initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
+              <motion.div key="analyst-tables" layout="position" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
                 <div className="grid gap-4 xl:grid-cols-2">
                 <ChartCard title="Тип документа" description="Распределение напечатанных страниц по типам документов." Icon={FileText}>
                   <BarList items={docTypeBars} />
@@ -794,7 +794,7 @@ export function PrintDashboardPage() {
             ) : null}
           </AnimatePresence>
 
-          <motion.div layout>
+          <motion.div layout="position">
             <SectionCard
               title="Топ заданий с отклонениями"
               description="Сортировка по баллу риска или по объему страниц."
