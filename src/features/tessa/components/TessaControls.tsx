@@ -128,7 +128,7 @@ function DeadlineFocusControl({
   const optionClass = (optionValue: DeadlineMode, tone: "danger" | "warning" | "primary") => {
     const active = value === optionValue;
     if (active && tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
-    if (active && tone === "warning") return "border-amber-300 bg-amber-50 text-amber-700 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
+    if (active && tone === "warning") return "border-amber-300 bg-amber-50 text-amber-900 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
     if (active) return "border-raport-action-border bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
     return "border-raport-border bg-white text-raport-text hover:bg-raport-action-bg";
   };

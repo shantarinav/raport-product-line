@@ -225,14 +225,28 @@ function parseDelimitedRows(text: string, delimiter: string): string[][] {
 }
 
 async function readRows(file: File): Promise<unknown[][]> {
-  if (file.name.toLowerCase().endsWith(".csv")) {
+  const fallbackToText = async () => {
     const text = (await readFileText(file)).replace(/^\uFEFF/, "");
     const firstLine = text.replace(/\r/g, "").split("\n").find((line) => line.trim().length > 0) ?? "";
     return parseDelimitedRows(text, detectCsvDelimiter(firstLine));
+  };
+
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    return fallbackToText();
   }
 
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: true, sheetRows: SUPPORT_MAX_PARSE_ROWS });
+  let workbook;
+  try {
+    workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: true, sheetRows: SUPPORT_MAX_PARSE_ROWS });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Invalid HTML")) {
+      console.warn("XLSX parsing failed with HTML error, falling back to raw text parsing for", file.name);
+      return fallbackToText();
+    }
+    throw err;
+  }
+
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const worksheet = workbook.Sheets[firstSheetName];

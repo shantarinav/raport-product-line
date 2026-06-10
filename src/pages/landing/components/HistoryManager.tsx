@@ -172,8 +172,8 @@ export function HistoryManager() {
                     : "Сбор новых снимков KPI выключен. Уже сохраненную историю можно посмотреть или очистить вручную."}
                 </p>
               </div>
-              <Button variant="ghost" className="h-8 w-8 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>
-                <X className="h-4 w-4" strokeWidth={2} />
+              <Button variant="ghost" className="h-10 w-10 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>
+                <X className="h-6 w-6" strokeWidth={2} />
               </Button>
             </CardHeader>
 
@@ -192,7 +192,7 @@ export function HistoryManager() {
                     className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface p-1"
                     role="group"
                     aria-label="Переключатель сбора трендов"
-                    title={trendsEnabled ? "Тренды включены: сохраняются только месячные KPI" : "Тренды выключены: KPI не сохраняются"}
+                    title={trendsEnabled ? "Тренды включены" : "Тренды выключены"}
                   >
                     <button
                       type="button"
@@ -276,11 +276,11 @@ export function HistoryManager() {
                           </div>
                           <Button
                             variant="ghost"
-                            className="h-8 w-8 justify-self-start px-0 py-0 text-red-600 hover:bg-red-50 sm:justify-self-end"
+                            className="h-10 w-10 justify-self-start px-0 py-0 text-red-600 hover:bg-red-50 sm:justify-self-end"
                             aria-label={`Удалить снимок ${periodLabel(snapshot)}`}
                             onClick={() => void handleDeleteSnapshot(snapshot.id)}
                           >
-                            <Trash2 className="h-4 w-4" strokeWidth={2} />
+                            <Trash2 className="h-5 w-5" strokeWidth={2} />
                           </Button>
                         </div>
                       ))}

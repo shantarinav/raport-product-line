@@ -158,7 +158,7 @@ export function SupportTopicSlaChart({ rows, onCategorySelect }: SupportTopicSla
                              {isDanger ? (
                                <Badge variant="danger" className="text-[9px] px-1.5 py-0 bg-red-600 border-0 h-[18px]">Критично</Badge>
                              ) : isWarning ? (
-                               <Badge variant="warning" className="text-[9px] px-1.5 py-0 bg-amber-500 border-0 h-[18px] text-white">Риск</Badge>
+                               <Badge variant="warning" className="text-[9px] px-1.5 py-0 h-[18px]">Риск</Badge>
                              ) : (
                                <Badge variant="success" className="text-[9px] px-1.5 py-0 bg-emerald-500 border-0 h-[18px]">Норма</Badge>
                              )}
@@ -272,7 +272,7 @@ export function SupportTopicSlaChart({ rows, onCategorySelect }: SupportTopicSla
                                 Критическая зона
                               </Badge>
                             ) : isRiskZone ? (
-                              <Badge variant="warning" className="flex items-center gap-1 font-bold text-[10px] bg-amber-500 text-white border-0 py-0.5">
+                              <Badge variant="warning" className="flex items-center gap-1 font-bold text-[10px] py-0.5">
                                 <AlertTriangle className="h-3 w-3" />
                                 Зона риска
                               </Badge>

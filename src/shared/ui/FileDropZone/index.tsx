@@ -41,7 +41,7 @@ export function FileDropZone({
   return (
     <section
       className={cn(
-        "rounded-card border-2 border-dashed border-raport-border bg-raport-surface p-6 text-center shadow-card transition-colors",
+        "cursor-pointer rounded-card border-2 border-dashed border-raport-border bg-raport-surface p-6 text-center shadow-card transition-colors hover:border-raport-primary/50",
         dragActive && "border-raport-primary bg-raport-action-bg",
         className,
       )}
@@ -56,6 +56,7 @@ export function FileDropZone({
         onDragStateChange?.(false);
       }}
       onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
     >
       <input
         id={inputId}
@@ -79,7 +80,7 @@ export function FileDropZone({
       ) : null}
       {showPickButton ? (
         <div className="mt-4 flex justify-center">
-          <Button onClick={() => inputRef.current?.click()}>Выбрать файл</Button>
+          <Button onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}>Выбрать файл</Button>
         </div>
       ) : null}
       {footer ? <div className="mt-4 text-sm text-raport-muted">{footer}</div> : null}

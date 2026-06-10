@@ -66,7 +66,7 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
               />
             ))}
             <text x={width - padding.right + 8} y={padding.top + innerHeight - healthyRatio * innerHeight + 4} className="fill-emerald-700 text-[10px] font-bold">95% норма</text>
-            <text x={width - padding.right + 8} y={padding.top + innerHeight - controlRatio * innerHeight + 4} className="fill-amber-700 text-[10px] font-bold">{controlPercent}% контроль</text>
+            <text x={width - padding.right + 8} y={padding.top + innerHeight - controlRatio * innerHeight + 4} className="fill-amber-900 text-[10px] font-bold">{controlPercent}% контроль</text>
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + 2;
               const barHeight = (point.total / maxTotal) * innerHeight;

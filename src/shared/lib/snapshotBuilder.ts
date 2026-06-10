@@ -130,7 +130,7 @@ function buildMonthlySnapshots<T>({
         metrics: buildMetrics(group.items),
       } satisfies DashboardSnapshot;
     })
-    .filter((snapshot): snapshot is DashboardSnapshot => snapshot !== null);
+    .filter((snapshot): snapshot is DashboardSnapshot => snapshot !== null && snapshot.coverage?.isTrendReady === true);
 }
 
 
@@ -217,7 +217,7 @@ function buildSszMonthlySnapshots(report: ImportedReport): DashboardSnapshot[] {
         metrics: buildSszSnapshotMetrics(group.items, group.operations),
       };
     })
-    .filter((snapshot): snapshot is DashboardSnapshot => snapshot !== null);
+    .filter((snapshot): snapshot is DashboardSnapshot => snapshot !== null && snapshot.coverage?.isTrendReady === true);
 }
 
 function buildTessaSnapshotMetrics(records: NormalizedRecord[]): Record<string, number> {

@@ -7,6 +7,7 @@ import {
   Download,
   FileSpreadsheet,
   ListChecks,
+  UploadCloud,
   Users,
 } from "lucide-react";
 import {
@@ -61,10 +62,10 @@ function priorityStripClass(rating: number, riskTodayCount: number): string {
 }
 
 function priorityBadgeClass(rating: number, riskTodayCount: number): string {
-  if (riskTodayCount > 0) return "border-amber-200 bg-amber-50 text-amber-700";
+  if (riskTodayCount > 0) return "border-amber-200 bg-amber-50 text-amber-900";
   const tone = toneByRating(rating);
   if (tone === "error") return "border-rose-200 bg-rose-50 text-rose-700";
-  if (tone === "warn") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (tone === "warn") return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
@@ -256,9 +257,11 @@ export function TessaDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
+                title="Заменить отчет"
+                aria-label="Заменить отчет"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
               >
-                Заменить отчет
+                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               {themeToggle}
             </div>
@@ -306,7 +309,7 @@ export function TessaDashboardPage() {
 
             <SectionCard
               title="Исполнители с застрявшими договорами"
-              description="Нажмите на ФИО, чтобы отфильтровать рабочий список."
+              description="Выберите ФИО для просмотра застрявших договоров."
               Icon={Users}
               actions={
                 attentionPeople.length > 5 ? (
@@ -345,7 +348,7 @@ export function TessaDashboardPage() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
                       <span>{formatPercent(person.stuckRate)} просрочено</span>
                       <span>максимум {formatNumber(person.maxStuckDays)} дн.</span>
-                      {person.riskToday > 0 ? <span className="text-amber-700">{formatInteger(person.riskToday)} сегодня</span> : null}
+                      {person.riskToday > 0 ? <span className="text-amber-900">{formatInteger(person.riskToday)} сегодня</span> : null}
                     </div>
                   </button>
                   ))}
@@ -363,7 +366,7 @@ export function TessaDashboardPage() {
 
             <SectionCard
               title={registryTitle(filters.focusMode)}
-              description="Рабочий список"
+              description="Детальный перечень договоров по текущим фильтрам."
               Icon={ListChecks}
               actions={
                 <Button onClick={downloadFilteredCsv}>
@@ -414,7 +417,7 @@ export function TessaDashboardPage() {
                           <span>{formatInteger(problem.stuckCount)} {declineAgreement(problem.stuckCount)}</span>
                           <span>ответственные: {problem.responsibles}</span>
                           {problem.riskTodayCount > 0 ? (
-                            <span className="text-amber-700">{formatInteger(problem.riskTodayCount)} {declineRisk(problem.riskTodayCount)} сегодня</span>
+                            <span className="text-amber-900">{formatInteger(problem.riskTodayCount)} {declineRisk(problem.riskTodayCount)} сегодня</span>
                           ) : null}
                         </div>
                         {isExpanded ? (

@@ -83,7 +83,16 @@ async function readCsvRecords(file: File): Promise<PrintRawRecord[]> {
 
 async function readWorkbookRecords(file: File): Promise<PrintRawRecord[]> {
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: false });
+  let workbook;
+  try {
+    workbook = XLSX.read(await readFileArrayBuffer(file), { type: "array", cellDates: false });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Invalid HTML")) {
+      console.warn("XLSX parsing failed with HTML error, falling back to raw text parsing for", file.name);
+      return readCsvRecords(file);
+    }
+    throw err;
+  }
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheetName], {

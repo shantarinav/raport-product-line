@@ -78,25 +78,37 @@ function parseDelimitedRows(text: string, delimiter: string, maxRows = XLSX_DETE
 }
 
 async function readPreviewRows(file: File): Promise<unknown[][]> {
-  if (file.name.toLowerCase().endsWith(".csv")) {
+  const fallbackToText = async () => {
     const text = (await file.slice(0, CSV_DETECTION_BYTES).text()).replace(/^\uFEFF/, "");
     const firstLine = text.replace(/\r/g, "").split("\n").find((line) => line.trim().length > 0) ?? "";
     return parseDelimitedRows(text, detectCsvDelimiter(firstLine));
+  };
+
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    return fallbackToText();
   }
 
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(await readFileArrayBuffer(file), {
-    type: "array",
-    cellDates: true,
-    sheetRows: XLSX_DETECTION_ROWS,
-  });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) return [];
-  return XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheetName], {
-    header: 1,
-    raw: false,
-    defval: "",
-  });
+  try {
+    const workbook = XLSX.read(await readFileArrayBuffer(file), {
+      type: "array",
+      cellDates: true,
+      sheetRows: XLSX_DETECTION_ROWS,
+    });
+    const firstSheetName = workbook.SheetNames[0];
+    if (!firstSheetName) return [];
+    return XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheetName], {
+      header: 1,
+      raw: false,
+      defval: "",
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Invalid HTML")) {
+      console.warn("XLSX parsing failed with HTML error for preview, falling back to raw text parsing for", file.name);
+      return fallbackToText();
+    }
+    throw err;
+  }
 }
 
 function rowSets(rows: unknown[][]): Set<string>[] {

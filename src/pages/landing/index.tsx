@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck, UploadCloud } from "lucide-react";
 import { Button } from "../../shared/ui/shadcn/button";
 import { Badge } from "../../shared/ui/shadcn/badge";
 import { DashboardHeader, ErrorState, FileDropZone, FilterStatusBar, IconLabel, PageShell } from "../../shared/ui";
@@ -96,10 +96,7 @@ export function LandingPage() {
   const [selectedFile, setSelectedFile] = useState<SelectedFileState | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusNotice, setStatusNotice] = useState("");
-  const [activeReportIndex, setActiveReportIndex] = useState(0);
   const timersRef = useRef<number[]>([]);
-  const activeReport = SUPPORTED_REPORTS[activeReportIndex] ?? SUPPORTED_REPORTS[0];
-  const ActiveReportIcon = activeReport.Icon;
 
   useEffect(() => {
     return () => {
@@ -127,7 +124,16 @@ export function LandingPage() {
       return [{ label: "Ожидание файла", tone: "secondary" as const }];
     }
 
-    return [{ label: statusText(status) }];
+    if (status === "ambiguous") {
+      return [{ label: statusText(status), tone: "warning" as const }];
+    }
+    
+    if (status === "error") {
+      return [{ label: statusText(status), tone: "danger" as const }];
+    }
+
+    const isLoading = status === "reading" || status === "detecting" || status === "matched";
+    return [{ label: statusText(status), isLoading }];
   }, [status, statusNotice]);
 
   function clearTimers() {
@@ -267,7 +273,7 @@ export function LandingPage() {
         <FilterStatusBar title="Готовность" chips={statusChips} />
 
         <FileDropZone
-          title="Перетащите отчет сюда"
+          title="Кликните сюда или перетащите отчет"
           hint="Рапорт сам определит тип отчета и откроет нужный дашборд."
           accept=".csv,.xls,.xlsx"
           inputId={LANDING_FILE_INPUT_ID}
@@ -275,9 +281,9 @@ export function LandingPage() {
           onFileSelect={handleFileSelect}
           onDragStateChange={(isDragging) => setStatus(isDragging ? "dragging" : "idle")}
           showPickButton={false}
-          className="flex min-h-[340px] flex-col justify-center p-8 md:min-h-[400px] md:p-10 [&>h2]:text-2xl md:[&>h2]:text-3xl [&>p]:mx-auto [&>p]:max-w-2xl [&>svg:first-of-type]:mb-4 [&>svg:first-of-type]:h-14 [&>svg:first-of-type]:w-14"
+          className="flex min-h-[340px] flex-col justify-center p-8 md:min-h-[400px] md:p-10 [&>h2]:text-2xl md:[&>h2]:text-3xl [&>p]:mx-auto [&>p]:max-w-2xl [&>svg:first-of-type]:mb-4 [&>svg:first-of-type]:h-14 [&>svg:first-of-type]:w-14 hover:bg-raport-primary/5 hover:border-raport-primary transition-all duration-300 group"
           footer={
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
               <IconLabel Icon={ShieldCheck}>Локально: файл не отправляется на сервер</IconLabel>
               <IconLabel Icon={SearchCheck}>Автоматически: тип отчета определяется по структуре</IconLabel>
               <Badge variant="secondary">CSV</Badge>
@@ -288,40 +294,31 @@ export function LandingPage() {
           }
         />
 
-        <div className="grid min-w-0 gap-3 overflow-hidden rounded-card border border-raport-border bg-raport-surface p-3 shadow-card lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)]">
-          <div className="grid content-start gap-3">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-raport-border bg-white text-raport-primary">
-                <ActiveReportIcon className="h-6 w-6" strokeWidth={2} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Что умеет Рапорт</p>
-                <h2 className="mt-1 text-xl font-extrabold text-raport-text">{activeReport.title}</h2>
-                <p className="mt-1 text-sm font-bold text-raport-primary">{activeReport.subtitle}</p>
-              </div>
+        <div className="grid min-w-0 gap-8 overflow-hidden rounded-card border border-raport-border bg-raport-surface p-6 shadow-card md:p-8">
+          <div className="flex items-start gap-4 border-b border-raport-border pb-6">
+            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface-soft text-raport-primary">
+              <SearchCheck className="h-6 w-6" strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Возможности</p>
+              <h2 className="mt-1 text-xl font-extrabold text-raport-text">Поддерживаемые дашборды</h2>
             </div>
-
-            <p className="max-w-3xl text-sm font-semibold leading-6 text-raport-muted">{activeReport.description}</p>
           </div>
 
-          <div className="grid min-w-0 gap-2 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft p-2">
-            {SUPPORTED_REPORTS.map(({ id, title, subtitle, Icon }, index) => (
-              <button
-                key={id}
-                type="button"
-                className={`flex min-w-0 items-center gap-3 overflow-hidden rounded-control border px-3 py-2 text-left transition-colors ${
-                  activeReportIndex === index
-                    ? "border-raport-primary bg-white text-raport-primary shadow-sm"
-                    : "border-transparent text-raport-muted hover:bg-white/70 hover:text-raport-text"
-                }`}
-                onClick={() => setActiveReportIndex(index)}
-              >
-                <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-                <span className="min-w-0 flex-1 overflow-hidden">
-                  <span className="block truncate text-sm font-extrabold">{title}</span>
-                  <span className="block truncate text-xs font-semibold">{subtitle}</span>
+          <div className="grid gap-8 md:grid-cols-2 lg:gap-10">
+            {SUPPORTED_REPORTS.map(({ id, title, subtitle, description, Icon }) => (
+              <div key={id} className="flex min-w-0 items-start gap-4">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-raport-surface-soft text-raport-primary">
+                  <Icon className="h-6 w-6" strokeWidth={2} />
                 </span>
-              </button>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-extrabold text-raport-text">{title}</h3>
+                  <span className="mb-2 block text-xs font-semibold text-raport-primary/80">{subtitle}</span>
+                  <p className="text-sm font-medium leading-relaxed text-raport-muted">
+                    {description}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>

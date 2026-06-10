@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Factory, FileSpreadsheet, Gauge, Users, Wrench } from "lucide-react";
+import { Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
@@ -397,7 +397,7 @@ function insightStatus(ratio: number | null, targetRatio: number) {
   if (tone === "medium") {
     return {
       label: "Контроль",
-      className: "border-amber-200 bg-amber-50 text-amber-700",
+      className: "border-amber-200 bg-amber-50 text-amber-900",
     };
   }
 
@@ -566,7 +566,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         </motion.div>
 
         <motion.div layout="position">
-          <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
+          <SectionCard title="Главный вывод" description="Оценка выполнения заданий и ключевые отклонения." Icon={FileSpreadsheet}>
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
               <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
@@ -750,9 +750,11 @@ export function SszDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
+                title="Заменить отчет"
+                aria-label="Заменить отчет"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
               >
-                Заменить отчет
+                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               {themeToggle}
             </div>
@@ -763,7 +765,7 @@ export function SszDashboardPage() {
                 </p>
                 <p className="truncate">{formatReportPeriod(report.period)} · загружен {formatImportedAt(report.importedAt)}</p>
                 {report.warnings.length > 0 ? (
-                  <p className="mt-1 text-amber-700">
+                  <p className="mt-1 text-amber-900">
                     Предупреждений: {report.warnings.length.toLocaleString("ru-RU")}
                   </p>
                 ) : null}

@@ -198,8 +198,15 @@ progress[class]::-webkit-progress-bar {
   border-color: var(--raport-warning-border);
 }
 
+.dark .fill-amber-900,
+.dark .fill-amber-700,
+.dark .fill-amber-600,
+.dark .text-amber-900,
+.dark .text-amber-800,
 .dark .text-amber-700,
 .dark .text-amber-600,
+.dark .text-yellow-900,
+.dark .text-yellow-800,
 .dark .text-yellow-700,
 .dark .text-yellow-600 {
   color: var(--raport-warning);

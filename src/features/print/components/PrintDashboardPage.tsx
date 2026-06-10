@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, Users } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -194,7 +194,7 @@ function printInsightStatus(kpis: PrintKpis) {
   if (ratio >= 10 || kpis.simplexPages > 0 || kpis.colorPages > 0 || kpis.bigJobs > 0) {
     return {
       label: "Контроль",
-      className: "border-amber-200 bg-amber-50 text-amber-700",
+      className: "border-amber-200 bg-amber-50 text-amber-900",
     };
   }
   return {
@@ -300,13 +300,15 @@ export function PrintDashboardPage() {
           actions={
             <Link
               to="/"
-              className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
+              title="Заменить отчет"
+              aria-label="Заменить отчет"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
             >
-              Заменить отчет
+              <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
             </Link>
           }
         />
-        <SectionCard title="Подготовка Print" description="Данные отчета подготавливаются к отображению.">
+        <SectionCard title="Обработка отчета" description="Подготовка данных Print к отображению...">
           <p className="text-sm text-raport-muted">Пожалуйста, подождите.</p>
         </SectionCard>
       </PageShell>
@@ -405,9 +407,11 @@ export function PrintDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
+                title="Заменить отчет"
+                aria-label="Заменить отчет"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
               >
-                Заменить отчет
+                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               {themeToggle}
             </div>
@@ -683,7 +687,7 @@ export function PrintDashboardPage() {
           </motion.div>
 
           <motion.div layout="position">
-            <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={Printer}>
+            <SectionCard title="Главный вывод" description="Обзор объемов и структуры печати." Icon={Printer}>
 
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
@@ -772,7 +776,7 @@ export function PrintDashboardPage() {
                 </ChartCard>
               </div>
 
-              <SectionCard title="Потенциально избыточная печать" description="Личные тематики, нормативные документы и служебные записки." Icon={AlertTriangle}>
+              <SectionCard title="Потенциально избыточная печать" description="Документы, печать которых можно сократить (личные, нормативные, служебные)." Icon={AlertTriangle}>
                 <div className="mb-3 grid gap-2 md:grid-cols-3">
                   <div className="rounded-control border border-raport-border bg-white px-3 py-2">
                     <strong className="block text-xl font-extrabold text-raport-text">{formatInteger(excessSummary.jobs)}</strong>

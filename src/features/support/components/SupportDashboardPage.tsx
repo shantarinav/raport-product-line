@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, BarChart3, CheckCircle2, Clock, FileSpreadsheet, LifeBuoy } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, Clock, FileSpreadsheet, LifeBuoy, UploadCloud } from "lucide-react";
 import {
   DashboardHeader,
   ErrorState,
@@ -84,7 +84,7 @@ function insightStatus(slaRate: number, applicableTickets: number, controlPercen
   if (slaRate < SUPPORT_THRESHOLDS.healthySlaPercent / 100) {
     return {
       label: "Контроль",
-      className: "border-amber-200 bg-amber-50 text-amber-700",
+      className: "border-amber-200 bg-amber-50 text-amber-900",
     };
   }
   return {
@@ -218,9 +218,11 @@ export function SupportDashboardPage() {
             <div className="flex w-full items-center justify-end gap-2">
               <Link
                 to="/"
-                className="inline-flex min-h-8 items-center rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-1.5 text-sm font-semibold text-raport-primary hover:bg-raport-action-bg-active"
+                title="Заменить отчет"
+                aria-label="Заменить отчет"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
               >
-                Заменить отчет
+                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               {themeToggle}
             </div>
@@ -291,14 +293,14 @@ export function SupportDashboardPage() {
               >
                 <div className="grid gap-4 xl:grid-cols-2">
                   <SupportDistributionCard
-                    title="Время решения заявок"
+                    title="Скорость решения"
                     description="Квартили времени решения по текущим фильтрам."
                     explanation="Медиана показывает типовое время решения, P90 — тяжелый хвост самых долгих заявок."
                     quantiles={resolution}
                     Icon={Clock}
                   />
                   <SupportDistributionCard
-                    title="Размер просрочки"
+                    title="Длительность просрочки"
                     description="Квартили просрочки среди нарушенных SLA."
                     explanation="P90 показывает 10% самых тяжелых нарушений и помогает увидеть хвост просрочек."
                     quantiles={overdue}
@@ -310,7 +312,7 @@ export function SupportDashboardPage() {
           </AnimatePresence>
 
           <motion.div layout="position" className="grid gap-4">
-            <SectionCard title="Главный вывод" description="Короткая управленческая интерпретация текущей выборки." Icon={FileSpreadsheet}>
+            <SectionCard title="Главный вывод" description="Статус SLA и основные причины задержек." Icon={FileSpreadsheet}>
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
                   <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>

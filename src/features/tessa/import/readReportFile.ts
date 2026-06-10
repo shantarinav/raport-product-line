@@ -270,6 +270,7 @@ function rowsFromSheet(values: unknown[][]): RawRow[] {
 
 export async function readTessaReportFile(file: File): Promise<TessaImportResult> {
   const lowerName = file.name.toLowerCase();
+  
   if (lowerName.endsWith(".csv")) {
     const text = await readFileText(file);
     return normalizeRows(parseCsvText(text), file.name);
@@ -277,7 +278,19 @@ export async function readTessaReportFile(file: File): Promise<TessaImportResult
 
   const arrayBuffer = await readFileArrayBuffer(file);
   const XLSX = await import("xlsx");
-  const workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: false });
+  
+  let workbook;
+  try {
+    workbook = XLSX.read(arrayBuffer, { type: "array", cellDates: false });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Invalid HTML")) {
+      console.warn("XLSX parsing failed with HTML error, falling back to raw text parsing for", file.name);
+      const text = await readFileText(file);
+      return normalizeRows(parseCsvText(text), file.name);
+    }
+    throw error;
+  }
+
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return normalizeRows([], file.name);
   const sheetRows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheetName], {
