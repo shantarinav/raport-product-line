@@ -7,6 +7,7 @@ const VERSION_TOKEN_PATTERN = /^v\d+$/i;
 const TECHNICAL_NUMBER_PATTERN = /^0+\d+$/;
 const EXTENSION_PATTERN = /\.(pdf|doc|docx|rtf|xls|xlsx|xlsm|ppt|pptx|jpg|jpeg|png|tif|tiff|bmp|txt|csv)$/i;
 const CATEGORIES = new Set(["work", "education", "children", "finance", "travel", "household", "medical", "media", "legal", "other_personal", "unknown"]);
+const PERSONAL_TOPIC_CATEGORIES = new Set(["education", "children", "finance", "travel", "household", "medical", "media", "legal", "other_personal"]);
 const SIGNALS = new Set([
   "education",
   "children_or_school",
@@ -22,6 +23,17 @@ const SIGNALS = new Set([
   "technical_scan_name",
   "work_like",
   "unknown",
+]);
+const PERSONAL_TOPIC_SIGNALS = new Set([
+  "education",
+  "children_or_school",
+  "recipe_or_food",
+  "household",
+  "personal_finance",
+  "travel_or_tickets",
+  "medical",
+  "legal_personal",
+  "entertainment",
 ]);
 
 export function normalizeDocumentTitle(value) {
@@ -53,11 +65,18 @@ export function validateLlmClassification(value) {
 }
 
 export function postprocessRisk(input) {
-  if (input.primary_category === "unknown") return { ...input, risk_level: "unknown", needs_review: true };
-  if (input.is_personal && input.confidence_raw >= 0.75) return { ...input, risk_level: "high" };
-  if (input.is_personal && input.confidence_raw >= 0.55) return { ...input, risk_level: "medium", needs_review: true };
-  if (input.is_personal) return { ...input, risk_level: "low", needs_review: true };
-  return { ...input, risk_level: "low" };
+  const shouldUpgradePersonalTopic =
+    !input.is_personal &&
+    input.primary_category !== "unknown" &&
+    !input.signals.includes("work_like") &&
+    (PERSONAL_TOPIC_CATEGORIES.has(input.primary_category) || input.signals.some((signal) => PERSONAL_TOPIC_SIGNALS.has(signal)));
+  const normalized = shouldUpgradePersonalTopic ? { ...input, is_personal: true, needs_review: true } : input;
+
+  if (normalized.primary_category === "unknown") return { ...normalized, risk_level: "unknown", needs_review: true };
+  if (normalized.is_personal && normalized.confidence_raw >= 0.75) return { ...normalized, risk_level: "high" };
+  if (normalized.is_personal && normalized.confidence_raw >= 0.55) return { ...normalized, risk_level: "medium", needs_review: true };
+  if (normalized.is_personal) return { ...normalized, risk_level: "low", needs_review: true };
+  return { ...normalized, risk_level: "low" };
 }
 
 function fallbackItem(item, normalizedTitle, source = "rules_fallback", reason = "Ошибка классификации") {

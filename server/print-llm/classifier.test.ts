@@ -38,6 +38,28 @@ function validResponse() {
   });
 }
 
+function workLikeEducationResponse() {
+  return JSON.stringify({
+    is_personal: false,
+    primary_category: "education",
+    confidence_raw: 0.95,
+    needs_review: false,
+    reason_short: "Похоже на учебный материал",
+    signals: ["education"],
+  });
+}
+
+function explicitWorkResponse() {
+  return JSON.stringify({
+    is_personal: false,
+    primary_category: "work",
+    confidence_raw: 0.95,
+    needs_review: false,
+    reason_short: "Похоже на рабочий отчет",
+    signals: ["work_like"],
+  });
+}
+
 class MemoryCache {
   constructor() {
     this.items = new Map();
@@ -94,5 +116,28 @@ describe("classifyPrintPersonalItems", () => {
     });
     expect(result.items).toHaveLength(3);
     expect(callOllama).toHaveBeenCalledTimes(3);
+  });
+
+  it("upgrades education signals to personal review when there is no work-like signal", async () => {
+    const callOllama = vi.fn().mockResolvedValue(workLikeEducationResponse());
+    const result = await classifyPrintPersonalItems([item("education")], config({ cacheEnabled: false }), { callOllama, cache: new MemoryCache() });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: true,
+      primary_category: "education",
+      risk_level: "high",
+      needs_review: true,
+    });
+  });
+
+  it("does not upgrade explicit work-like results", async () => {
+    const callOllama = vi.fn().mockResolvedValue(explicitWorkResponse());
+    const result = await classifyPrintPersonalItems([item("work")], config({ cacheEnabled: false }), { callOllama, cache: new MemoryCache() });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: false,
+      primary_category: "work",
+      risk_level: "low",
+    });
   });
 });

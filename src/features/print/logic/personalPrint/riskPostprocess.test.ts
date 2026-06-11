@@ -34,4 +34,19 @@ describe("postprocessPrintLlmRisk", () => {
   it("marks non-personal as low", () => {
     expect(postprocessPrintLlmRisk(value({ is_personal: false, primary_category: "work", confidence_raw: 0.9 }))).toMatchObject({ risk_level: "low" });
   });
+
+  it("upgrades personal-topic categories to review when the model is too conservative", () => {
+    expect(postprocessPrintLlmRisk(value({ is_personal: false, primary_category: "education", confidence_raw: 0.95, signals: ["education"] }))).toMatchObject({
+      is_personal: true,
+      risk_level: "high",
+      needs_review: true,
+    });
+  });
+
+  it("keeps explicit work-like classifications as work", () => {
+    expect(postprocessPrintLlmRisk(value({ is_personal: false, primary_category: "education", confidence_raw: 0.95, signals: ["work_like"] }))).toMatchObject({
+      is_personal: false,
+      risk_level: "low",
+    });
+  });
 });

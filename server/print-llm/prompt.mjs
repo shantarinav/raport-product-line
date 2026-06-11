@@ -20,6 +20,10 @@ Classify as personal if the title likely relates to:
 - personal legal documents, заявления, доверенности, договоры outside obvious work context;
 - entertainment, photos, postcards, invitations.
 
+Education, school, diploma, homework, children, kindergarten, and similar topics are personal unless the title clearly states corporate training, internal course, work instruction, project documentation, or an operational report.
+If primary_category is education, children, finance, travel, household, medical, media, legal, or other_personal and there is no clear work context, set is_personal to true.
+Do not classify a title as work only because it was printed from Microsoft Word, Excel, Outlook, browser, or PDF viewer.
+
 Classify as work if the title clearly looks like business documentation:
 - invoice, contract, report, акт, счет, служебная записка, проектная документация;
 - corporate templates;

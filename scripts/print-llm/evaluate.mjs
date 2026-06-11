@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:8787/api/print/classify-personal";
+const DEFAULT_BATCH_SIZE = 10;
+const DEFAULT_REQUEST_TIMEOUT_MS = 300_000;
 const PERSONAL_HINTS = [
   "школ", "детск", "садик", "домаш", "диплом", "реферат", "курсов", "билет", "путев", "рецепт", "меню", "анкета", "заявление",
   "school", "klass", "class", "domash", "homework", "diplom", "referat", "recipe", "zayavlenie",
@@ -89,12 +91,20 @@ function fallbackPredict(item) {
   return PERSONAL_HINTS.some((hint) => title.includes(hint));
 }
 
-async function classifyWithProxy(items, url) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ items }),
-  });
+async function postProxyBatch(items, url, requestTimeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(`Classifier proxy returned ${response.status}`);
@@ -110,6 +120,19 @@ async function classifyWithProxy(items, url) {
       source: classification?.source || "rules_fallback",
     };
   });
+}
+
+export async function classifyWithProxy(items, url, options = {}) {
+  const batchSize = Math.max(1, Number(options.batchSize || DEFAULT_BATCH_SIZE));
+  const requestTimeoutMs = Math.max(1_000, Number(options.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS));
+  const results = [];
+
+  for (let index = 0; index < items.length; index += batchSize) {
+    const batch = items.slice(index, index + batchSize);
+    results.push(...(await postProxyBatch(batch, url, requestTimeoutMs)));
+  }
+
+  return results;
 }
 
 export function calculateBinaryMetrics(rows, predictions) {
@@ -139,7 +162,9 @@ async function main() {
   const positionalInput = rawArgs.find((item, index) => !item.startsWith("--") && !rawArgs[index - 1]?.startsWith("--"));
   const input = args.get("input") || positionalInput;
   if (!input) {
-    console.error("Usage: npm run print-llm:evaluate -- --input labeled.csv [--output result.json] [--proxy http://127.0.0.1:8787/api/print/classify-personal]");
+    console.error(
+      "Usage: npm run print-llm:evaluate -- --input labeled.csv [--output result.json] [--proxy http://127.0.0.1:8787/api/print/classify-personal] [--batch-size 10] [--request-timeout-ms 300000]",
+    );
     process.exitCode = 1;
     return;
   }
@@ -147,8 +172,10 @@ async function main() {
   const rows = parseLabeledCsv(await readFile(input, "utf8"));
   const startedAt = performance.now();
   const proxyUrl = args.get("proxy") || process.env.PRINT_LLM_EVALUATE_PROXY_URL;
+  const batchSize = Number(args.get("batch-size") || process.env.PRINT_LLM_EVALUATE_BATCH_SIZE || DEFAULT_BATCH_SIZE);
+  const requestTimeoutMs = Number(args.get("request-timeout-ms") || process.env.PRINT_LLM_EVALUATE_REQUEST_TIMEOUT_MS || DEFAULT_REQUEST_TIMEOUT_MS);
   const classifications = proxyUrl
-    ? await classifyWithProxy(rows, proxyUrl)
+    ? await classifyWithProxy(rows, proxyUrl, { batchSize, requestTimeoutMs })
     : rows.map((row) => ({ isPersonal: fallbackPredict(row), riskLevel: "unknown", source: "rules_fallback" }));
   const predictions = classifications.map((classification) => classification.isPersonal);
   const latencyMs = performance.now() - startedAt;
