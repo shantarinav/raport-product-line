@@ -1,4 +1,5 @@
-﻿import { cacheKey, PrintLlmCache } from "./cache.mjs";
+﻿import { cacheKey } from "./cache.mjs";
+import { PrintLlmSqliteCache } from "./sqliteCache.mjs";
 import { callOllamaChat } from "./ollamaClient.mjs";
 import { buildPrintLlmPrompt, PRINT_LLM_JSON_SCHEMA } from "./prompt.mjs";
 
@@ -161,18 +162,22 @@ async function classifyOne(item, config, dependencies) {
 }
 
 export async function classifyPrintPersonalItems(items, config, dependencies = {}) {
+  const ownedCache = dependencies.cache ? null : new PrintLlmSqliteCache(config.cacheDbPath);
   const deps = {
     callOllama: dependencies.callOllama ?? callOllamaChat,
-    cache: dependencies.cache ?? new PrintLlmCache(),
+    cache: dependencies.cache ?? ownedCache,
   };
 
-  const batchSize = Math.max(1, Number(config.batchSize || items.length || 1));
-  const results = [];
-  for (let index = 0; index < items.length; index += batchSize) {
-    const batch = items.slice(index, index + batchSize);
-    const classified = await Promise.all(batch.map((item) => classifyOne(item, config, deps)));
-    results.push(...classified);
+  try {
+    const batchSize = Math.max(1, Number(config.batchSize || items.length || 1));
+    const results = [];
+    for (let index = 0; index < items.length; index += batchSize) {
+      const batch = items.slice(index, index + batchSize);
+      const classified = await Promise.all(batch.map((item) => classifyOne(item, config, deps)));
+      results.push(...classified);
+    }
+    return { items: results };
+  } finally {
+    ownedCache?.close();
   }
-  return { items: results };
 }
-
