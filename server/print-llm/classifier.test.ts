@@ -6,6 +6,7 @@ function config(overrides = {}) {
   return {
     enabled: true,
     ollamaBaseUrl: "http://localhost:11434",
+    ollamaChatUrl: "http://localhost:11434/api/chat",
     model: "qwen3:4b",
     timeoutMs: 8000,
     batchSize: 20,
@@ -67,7 +68,13 @@ describe("classifyPrintPersonalItems", () => {
   it("falls back after Ollama failure", async () => {
     const callOllama = vi.fn().mockRejectedValue(new Error("timeout"));
     const result = await classifyPrintPersonalItems([item()], config(), { callOllama, cache: new MemoryCache() });
-    expect(result.items[0]).toMatchObject({ source: "rules_fallback", primary_category: "unknown" });
+    expect(result.items[0]).toMatchObject({
+      source: "rules_fallback",
+      is_personal: false,
+      primary_category: "unknown",
+      confidence_raw: 0,
+      reason_short: "Ошибка классификации",
+    });
   });
 
   it("uses cache for repeated classifications", async () => {

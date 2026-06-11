@@ -1,5 +1,5 @@
 ﻿import { cacheKey, PrintLlmCache } from "./cache.mjs";
-import { callOllamaGenerate } from "./ollamaClient.mjs";
+import { callOllamaChat } from "./ollamaClient.mjs";
 import { buildPrintLlmPrompt, PRINT_LLM_JSON_SCHEMA } from "./prompt.mjs";
 
 const TECHNICAL_SUFFIXES = new Set(["final", "copy", "копия", "version"]);
@@ -60,7 +60,7 @@ export function postprocessRisk(input) {
   return { ...input, risk_level: "low" };
 }
 
-function fallbackItem(item, normalizedTitle, source = "rules_fallback") {
+function fallbackItem(item, normalizedTitle, source = "rules_fallback", reason = "Ошибка классификации") {
   return {
     id: item.id,
     normalized_title: normalizedTitle,
@@ -70,7 +70,7 @@ function fallbackItem(item, normalizedTitle, source = "rules_fallback") {
     risk_level: "unknown",
     confidence_raw: 0,
     needs_review: true,
-    reason_short: "LLM-классификация недоступна, используется словарный режим",
+    reason_short: reason,
     signals: ["unknown"],
   };
 }
@@ -86,7 +86,7 @@ function parseOllamaJson(text) {
 
 async function classifyOne(item, config, dependencies) {
   const normalizedTitle = normalizeDocumentTitle(item.document_title);
-  if (!config.enabled) return fallbackItem(item, normalizedTitle, "disabled");
+  if (!config.enabled) return fallbackItem(item, normalizedTitle, "disabled", "LLM-классификация выключена");
 
   const key = cacheKey({
     schemaVersion: config.schemaVersion,
@@ -114,7 +114,7 @@ async function classifyOne(item, config, dependencies) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const text = await dependencies.callOllama({
-        baseUrl: config.ollamaBaseUrl,
+        chatUrl: config.ollamaChatUrl,
         model: config.model,
         prompt,
         schema: PRINT_LLM_JSON_SCHEMA,
@@ -143,7 +143,7 @@ async function classifyOne(item, config, dependencies) {
 
 export async function classifyPrintPersonalItems(items, config, dependencies = {}) {
   const deps = {
-    callOllama: dependencies.callOllama ?? callOllamaGenerate,
+    callOllama: dependencies.callOllama ?? callOllamaChat,
     cache: dependencies.cache ?? new PrintLlmCache(),
   };
 
@@ -156,3 +156,4 @@ export async function classifyPrintPersonalItems(items, config, dependencies = {
   }
   return { items: results };
 }
+

@@ -1,7 +1,10 @@
 ﻿export function readPrintLlmConfig(env = process.env) {
+  const ollamaBaseUrl = env.OLLAMA_BASE_URL || "http://localhost:11434";
+
   return {
     enabled: env.PRINT_LLM_CLASSIFIER_ENABLED === "true",
-    ollamaBaseUrl: env.OLLAMA_BASE_URL || "http://localhost:11434",
+    ollamaBaseUrl,
+    ollamaChatUrl: env.OLLAMA_CHAT_URL || env.OLLAMA_API_URL || `${ollamaBaseUrl.replace(/\/$/, "")}/api/chat`,
     model: env.PRINT_LLM_MODEL || "qwen3:4b",
     timeoutMs: Number(env.PRINT_LLM_TIMEOUT_MS || 8000),
     batchSize: Number(env.PRINT_LLM_BATCH_SIZE || 20),

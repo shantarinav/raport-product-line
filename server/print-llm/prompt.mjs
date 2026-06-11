@@ -1,5 +1,8 @@
 ﻿export function buildPrintLlmPrompt(input) {
-  return `You are a local classifier for a corporate print analytics dashboard.
+  return `/no_think
+
+You are a local classifier for a corporate print analytics dashboard.
+Reasoning mode is disabled. Do not think step by step. Do not output analysis, markdown, comments, or explanations.
 
 Task:
 Classify whether a printed document title is probably personal/non-work-related.
