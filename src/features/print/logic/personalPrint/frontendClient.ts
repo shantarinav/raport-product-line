@@ -9,6 +9,7 @@ export type PrintLlmFrontendConfig = {
   lookupUrl?: string;
   classifyMissingUrl?: string;
   batchSize?: number;
+  maxCandidates?: number;
 };
 
 export type PrintLlmProgress = {
@@ -44,11 +45,16 @@ export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import
     lookupUrl: typeof env.VITE_PRINT_LLM_LOOKUP_URL === "string" ? env.VITE_PRINT_LLM_LOOKUP_URL : derivePrintLlmEndpoint(url, "lookup"),
     classifyMissingUrl: typeof env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL : derivePrintLlmEndpoint(url, "classify-missing"),
     batchSize: Number(env.VITE_PRINT_LLM_BATCH_SIZE || 3),
+    maxCandidates: Number(env.VITE_PRINT_LLM_MAX_CANDIDATES || 300),
   };
 }
 
 function printLlmPriority(job: PrintJob): number {
-  return job.riskScore + (job.isExcessPrint ? 100 : 0) + (job.isBigJob ? 40 : 0) + (job.isColor ? 20 : 0) + (job.isMultiNoDuplex ? 10 : 0);
+  return job.riskScore + (job.isExcessPrint ? 100 : 0) + (job.isBigJob ? 40 : 0) + (job.isColor ? 20 : 0) + (job.isMultiNoDuplex ? 10 : 0) + Math.min(job.totalPages, 100) / 10;
+}
+
+function shouldSendPrintJobToLlm(job: PrintJob): boolean {
+  return job.riskScore >= 30 || job.isExcessPrint || job.totalPages >= 10 || (job.isColor && job.totalPages >= 2) || (job.isMultiNoDuplex && job.totalPages >= 3);
 }
 
 function buildUniqueCandidateGroups(jobs: PrintJob[]): PrintLlmCandidateGroup[] {
@@ -56,7 +62,7 @@ function buildUniqueCandidateGroups(jobs: PrintJob[]): PrintLlmCandidateGroup[] 
   const groups = new Map<string, PrintLlmCandidateGroup>();
 
   jobs.forEach((job, index) => {
-    if (!shouldClassifyPrintJobWithLlm(job)) return;
+    if (!shouldClassifyPrintJobWithLlm(job) || !shouldSendPrintJobToLlm(job)) return;
 
     const rowItem = rowItems[index];
     const normalizedTitle = normalizeDocumentTitle(rowItem.document_title);
@@ -97,7 +103,7 @@ export async function classifyPrintJobsWithProxy(
   onProgress?: (progress: PrintLlmProgress) => void,
 ): Promise<PrintPersonalClassifierResponse> {
   if (!config.enabled) return { items: [] };
-  const candidateGroups = buildUniqueCandidateGroups(jobs);
+  const candidateGroups = buildUniqueCandidateGroups(jobs).slice(0, Math.max(1, Number(config.maxCandidates || 300)));
   if (candidateGroups.length === 0) return { items: [] };
 
   const batchSize = Math.max(1, Number(config.batchSize || 3));

@@ -25,7 +25,7 @@ function job(index: number, overrides: Partial<PrintJob> = {}): PrintJob {
     isExcessPrint: false,
     excessCategories: [],
     excessMatches: [],
-    riskScore: 0,
+    riskScore: 30,
     riskReasons: [],
     riskReasonCodes: [],
     raw: {},
@@ -47,6 +47,7 @@ describe("print LLM frontend client", () => {
       lookupUrl: "http://127.0.0.1:8787/api/print/classifications/lookup",
       classifyMissingUrl: "http://127.0.0.1:8787/api/print/classifications/classify-missing",
       batchSize: 3,
+      maxCandidates: 300,
     });
   });
 
@@ -118,9 +119,9 @@ describe("print LLM frontend client", () => {
       fetchImpl,
     );
 
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
-    expect(sentIds).toHaveLength(2);
-    expect(result.items.map((item) => item.id)).toEqual(["print-job-0", "print-job-1", "print-job-2"]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(sentIds).toHaveLength(1);
+    expect(result.items.map((item) => item.id)).toEqual(["print-job-0", "print-job-1"]);
   });
 
   it("reports progressive accumulated row-level results after every batch", async () => {
@@ -215,7 +216,7 @@ describe("print LLM frontend client", () => {
             risk_level: "low",
             confidence_raw: 0.9,
             needs_review: false,
-            reason_short: "??????? ????????",
+            reason_short: "work document",
             signals: ["work_like"],
           })),
           missing: [],
@@ -227,6 +228,55 @@ describe("print LLM frontend client", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(result.items).toHaveLength(5);
+  });
+
+
+  it("does not call the proxy for low-risk documents", async () => {
+    const fetchImpl = vi.fn();
+
+    const result = await classifyPrintJobsWithProxy([job(1, { documentName: "ordinary-work-note.pdf", riskScore: 0 })], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result.items).toEqual([]);
+  });
+
+  it("limits LLM candidates to the highest-risk unique documents", async () => {
+    const sentTitles: string[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      sentTitles.push(...body.items.map((item: { document_title: string }) => item.document_title));
+      expect(String(url)).toContain("lookup");
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "??????? ????????",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy(
+      [
+        job(1, { documentName: "low.pdf", riskScore: 30, totalPages: 30 }),
+        job(2, { documentName: "top.pdf", riskScore: 80, totalPages: 80 }),
+        job(3, { documentName: "middle.pdf", riskScore: 50, totalPages: 50 }),
+      ],
+      { enabled: true, url: "/proxy", batchSize: 10, maxCandidates: 2 },
+      fetchImpl,
+    );
+
+    expect(sentTitles).toEqual(["top.pdf", "middle.pdf"]);
   });
 
 });
