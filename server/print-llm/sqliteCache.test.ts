@@ -56,4 +56,42 @@ describe("PrintLlmSqliteCache", () => {
     expect(cache.count()).toBe(1);
     cache.close();
   });
+
+  it("stores document classifications by title hash and loads them in batches", () => {
+    const cache = new PrintLlmSqliteCache(tempDbPath());
+    cache.putClassification("hash-a", { source: "llm", is_personal: true, primary_category: "education" }, { schemaVersion: "1", model: "qwen3:4b" });
+    cache.putClassification("hash-b", { source: "llm", is_personal: false, primary_category: "work" }, { schemaVersion: "1", model: "qwen3:4b" });
+
+    const result = cache.getClassifications(["hash-a", "missing", "hash-b"]);
+
+    expect(result.get("hash-a")).toMatchObject({ is_personal: true, primary_category: "education" });
+    expect(result.has("missing")).toBe(false);
+    expect(result.get("hash-b")).toMatchObject({ is_personal: false, primary_category: "work" });
+    expect(cache.countClassifications()).toBe(2);
+    cache.close();
+  });
+
+  it("upserts document classifications by title hash", () => {
+    const cache = new PrintLlmSqliteCache(tempDbPath());
+    cache.putClassification("hash-a", { source: "llm", is_personal: false, primary_category: "work" }, { schemaVersion: "1", model: "qwen3:4b" });
+    cache.putClassification("hash-a", { source: "llm", is_personal: true, primary_category: "education" }, { schemaVersion: "1", model: "qwen3:4b" });
+
+    expect(cache.getClassification("hash-a")).toMatchObject({ is_personal: true, primary_category: "education" });
+    expect(cache.countClassifications()).toBe(1);
+    cache.close();
+  });
+
+  it("ignores malformed document classification payloads", () => {
+    const cache = new PrintLlmSqliteCache(tempDbPath());
+    cache.open()
+      .prepare(
+        "INSERT INTO print_document_classifications (title_hash, schema_version, model, result_json, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))",
+      )
+      .run("broken", "1", "qwen3:4b", "not-json");
+
+    expect(cache.getClassification("broken")).toBeNull();
+    expect(cache.getClassifications(["broken"]).size).toBe(0);
+    cache.close();
+  });
+
 });

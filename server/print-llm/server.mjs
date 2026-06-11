@@ -1,6 +1,6 @@
-﻿import { createServer } from "node:http";
+import { createServer } from "node:http";
 import { readPrintLlmConfig } from "./config.mjs";
-import { classifyPrintPersonalItems } from "./classifier.mjs";
+import { classifyMissingPrintPersonalItems, classifyPrintPersonalItems, lookupPrintPersonalClassifications } from "./classifier.mjs";
 
 const config = readPrintLlmConfig();
 
@@ -32,7 +32,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (request.method !== "POST" || request.url !== "/api/print/classify-personal") {
+  if (request.method !== "POST") {
     sendJson(response, 404, { error: "Not found" });
     return;
   }
@@ -40,8 +40,24 @@ const server = createServer(async (request, response) => {
   try {
     const body = JSON.parse(await readBody(request));
     const items = Array.isArray(body.items) ? body.items : [];
-    const result = await classifyPrintPersonalItems(items, config);
-    sendJson(response, 200, result);
+    const pathname = new URL(request.url || "/", "http://127.0.0.1").pathname;
+
+    if (pathname === "/api/print/classifications/lookup") {
+      sendJson(response, 200, await lookupPrintPersonalClassifications(items, config));
+      return;
+    }
+
+    if (pathname === "/api/print/classifications/classify-missing") {
+      sendJson(response, 200, await classifyMissingPrintPersonalItems(items, config));
+      return;
+    }
+
+    if (pathname === "/api/print/classify-personal") {
+      sendJson(response, 200, await classifyPrintPersonalItems(items, config));
+      return;
+    }
+
+    sendJson(response, 404, { error: "Not found" });
   } catch (error) {
     sendJson(response, 400, { error: error instanceof Error ? error.message : "Invalid request" });
   }

@@ -1,6 +1,6 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const { classifyPrintPersonalItems } = await import("./classifier.mjs");
+const { classifyMissingPrintPersonalItems, classifyPrintPersonalItems, lookupPrintPersonalClassifications } = await import("./classifier.mjs");
 const { buildPrintLlmPrompt } = await import("./prompt.mjs");
 
 function config(overrides = {}) {
@@ -17,10 +17,10 @@ function config(overrides = {}) {
   };
 }
 
-function item(id = "row-1") {
+function item(id = "row-1", documentTitle = "Matematika_5klass_domashka.pdf") {
   return {
     id,
-    document_title: "Matematika_5klass_domashka.pdf",
+    document_title: documentTitle,
     pages: 2,
     color: false,
     duplex: false,
@@ -70,6 +70,20 @@ class MemoryCache {
   }
   set(key, value) {
     this.items.set(key, value);
+  }
+  getClassification(titleHash) {
+    return this.items.get(`doc:${titleHash}`) ?? null;
+  }
+  getClassifications(titleHashes) {
+    const result = new Map();
+    titleHashes.forEach((titleHash) => {
+      const value = this.getClassification(titleHash);
+      if (value) result.set(titleHash, value);
+    });
+    return result;
+  }
+  putClassification(titleHash, value) {
+    this.items.set(`doc:${titleHash}`, value);
   }
 }
 
@@ -152,5 +166,34 @@ describe("classifyPrintPersonalItems", () => {
       primary_category: "work",
       risk_level: "low",
     });
+  });
+});
+
+describe("document classification lookup", () => {
+  it("returns stored classifications and missing items without calling Ollama", async () => {
+    const cache = new MemoryCache();
+    const first = await classifyMissingPrintPersonalItems([item("known")], config(), { callOllama: vi.fn().mockResolvedValue(validResponse()), cache });
+    const callOllama = vi.fn();
+
+    const result = await lookupPrintPersonalClassifications([item("known"), item("missing", "Quarterly_work_report.pdf")], config(), { callOllama, cache });
+
+    expect(callOllama).not.toHaveBeenCalled();
+    expect(first.items[0]).toMatchObject({ source: "llm", primary_category: "education" });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ id: "known", source: "llm", primary_category: "education" });
+    expect(result.missing).toHaveLength(1);
+    expect(result.missing[0]).toMatchObject({ id: "missing" });
+  });
+
+  it("classifies missing items and stores document classifications for later lookup", async () => {
+    const cache = new MemoryCache();
+    const callOllama = vi.fn().mockResolvedValue(validResponse());
+
+    const classified = await classifyMissingPrintPersonalItems([item("first")], config(), { callOllama, cache });
+    const lookup = await lookupPrintPersonalClassifications([item("second")], config(), { callOllama: vi.fn(), cache });
+
+    expect(classified.items[0]).toMatchObject({ id: "first", source: "llm", primary_category: "education" });
+    expect(lookup.items[0]).toMatchObject({ id: "second", source: "llm", primary_category: "education" });
+    expect(callOllama).toHaveBeenCalledTimes(1);
   });
 });

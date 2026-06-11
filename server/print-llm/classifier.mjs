@@ -1,4 +1,5 @@
-﻿import { cacheKey } from "./cache.mjs";
+import { createHash } from "node:crypto";
+import { cacheKey } from "./cache.mjs";
 import { PrintLlmSqliteCache } from "./sqliteCache.mjs";
 import { callOllamaChat } from "./ollamaClient.mjs";
 import { buildPrintLlmPrompt, PRINT_LLM_JSON_SCHEMA } from "./prompt.mjs";
@@ -80,6 +81,21 @@ export function postprocessRisk(input) {
   return { ...normalized, risk_level: "low" };
 }
 
+function documentClassificationHash(item, config) {
+  const normalizedTitle = normalizeDocumentTitle(item.document_title);
+  return createHash("sha256").update(`${config.schemaVersion}::${config.model}::${normalizedTitle}`).digest("hex");
+}
+
+function ownDependencies(config, dependencies) {
+  const ownedCache = dependencies.cache ? null : new PrintLlmSqliteCache(config.cacheDbPath);
+  return {
+    ownedCache,
+    deps: {
+      callOllama: dependencies.callOllama ?? callOllamaChat,
+      cache: dependencies.cache ?? ownedCache,
+    },
+  };
+}
 function fallbackItem(item, normalizedTitle, source = "rules_fallback", reason = "Ошибка классификации") {
   return {
     id: item.id,
@@ -120,7 +136,7 @@ async function classifyOne(item, config, dependencies) {
 
   if (config.cacheEnabled) {
     const cached = dependencies.cache.get(key);
-    if (cached) return { ...cached, id: item.id };
+    if (cached) return { id: item.id, normalized_title: normalizedTitle, ...cached };
   }
 
   const prompt = buildPrintLlmPrompt({
@@ -149,7 +165,7 @@ async function classifyOne(item, config, dependencies) {
         ...postprocessRisk(validated),
       };
       if (config.cacheEnabled) {
-        const { id, ...cacheValue } = result;
+        const { id, normalized_title: _normalizedTitle, ...cacheValue } = result;
         dependencies.cache.set(key, cacheValue);
       }
       return result;
@@ -161,12 +177,34 @@ async function classifyOne(item, config, dependencies) {
   return fallbackItem(item, normalizedTitle);
 }
 
-export async function classifyPrintPersonalItems(items, config, dependencies = {}) {
-  const ownedCache = dependencies.cache ? null : new PrintLlmSqliteCache(config.cacheDbPath);
-  const deps = {
-    callOllama: dependencies.callOllama ?? callOllamaChat,
-    cache: dependencies.cache ?? ownedCache,
-  };
+export async function lookupPrintPersonalClassifications(items, config, dependencies = {}) {
+  const { ownedCache, deps } = ownDependencies(config, dependencies);
+
+  try {
+    if (!config.cacheEnabled) return { items: [], missing: items };
+
+    const keysByItem = items.map((item) => ({ item, key: documentClassificationHash(item, config), normalizedTitle: normalizeDocumentTitle(item.document_title) }));
+    const cachedByKey = deps.cache.getClassifications(keysByItem.map(({ key }) => key));
+    const found = [];
+    const missing = [];
+
+    keysByItem.forEach(({ item, key, normalizedTitle }) => {
+      const cached = cachedByKey.get(key);
+      if (cached) {
+        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...cached });
+      } else {
+        missing.push(item);
+      }
+    });
+
+    return { items: found, missing };
+  } finally {
+    ownedCache?.close();
+  }
+}
+
+export async function classifyMissingPrintPersonalItems(items, config, dependencies = {}) {
+  const { ownedCache, deps } = ownDependencies(config, dependencies);
 
   try {
     const batchSize = Math.max(1, Number(config.batchSize || items.length || 1));
@@ -174,10 +212,23 @@ export async function classifyPrintPersonalItems(items, config, dependencies = {
     for (let index = 0; index < items.length; index += batchSize) {
       const batch = items.slice(index, index + batchSize);
       const classified = await Promise.all(batch.map((item) => classifyOne(item, config, deps)));
+      classified.forEach((result) => {
+        const original = batch.find((item) => item.id === result.id);
+        if (original && config.cacheEnabled && result.source === "llm") {
+          const { id, normalized_title: _normalizedTitle, ...stored } = result;
+          deps.cache.putClassification(documentClassificationHash(original, config), stored, { schemaVersion: config.schemaVersion, model: config.model });
+        }
+      });
       results.push(...classified);
     }
     return { items: results };
   } finally {
     ownedCache?.close();
   }
+}
+
+export async function classifyPrintPersonalItems(items, config, dependencies = {}) {
+  const lookup = await lookupPrintPersonalClassifications(items, config, dependencies);
+  const classified = await classifyMissingPrintPersonalItems(lookup.missing, config, dependencies);
+  return { items: [...lookup.items, ...classified.items] };
 }

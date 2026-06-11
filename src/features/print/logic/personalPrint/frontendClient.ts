@@ -6,6 +6,8 @@ import type { PrintPersonalClassifierResponse, PrintPersonalClassifierResponseIt
 export type PrintLlmFrontendConfig = {
   enabled: boolean;
   url: string;
+  lookupUrl?: string;
+  classifyMissingUrl?: string;
   batchSize?: number;
 };
 
@@ -28,10 +30,19 @@ type PrintLlmCandidateGroup = {
   priority: number;
 };
 
+function derivePrintLlmEndpoint(url: string, endpoint: "lookup" | "classify-missing"): string {
+  const replacement = endpoint === "lookup" ? "/api/print/classifications/lookup" : "/api/print/classifications/classify-missing";
+  if (url.endsWith("/api/print/classify-personal")) return url.replace(/\/api\/print\/classify-personal$/, replacement);
+  return `${url.replace(/\/$/, "")}/classifications/${endpoint}`;
+}
+
 export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import.meta.env): PrintLlmFrontendConfig {
+  const url = typeof env.VITE_PRINT_LLM_CLASSIFIER_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFIER_URL : "/api/print/classify-personal";
   return {
     enabled: env.VITE_PRINT_LLM_CLASSIFIER_ENABLED === "true",
-    url: typeof env.VITE_PRINT_LLM_CLASSIFIER_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFIER_URL : "/api/print/classify-personal",
+    url,
+    lookupUrl: typeof env.VITE_PRINT_LLM_LOOKUP_URL === "string" ? env.VITE_PRINT_LLM_LOOKUP_URL : derivePrintLlmEndpoint(url, "lookup"),
+    classifyMissingUrl: typeof env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL : derivePrintLlmEndpoint(url, "classify-missing"),
     batchSize: Number(env.VITE_PRINT_LLM_BATCH_SIZE || 3),
   };
 }
@@ -92,11 +103,35 @@ export async function classifyPrintJobsWithProxy(
   const batchSize = Math.max(1, Number(config.batchSize || 3));
   const items: PrintPersonalClassifierResponseItem[] = [];
   const groupByRequestId = new Map(candidateGroups.map((group) => [group.requestItem.id, group]));
+  const lookupUrl = config.lookupUrl || derivePrintLlmEndpoint(config.url, "lookup");
+  const classifyMissingUrl = config.classifyMissingUrl || derivePrintLlmEndpoint(config.url, "classify-missing");
   onProgress?.({ processed: 0, total: candidateGroups.length, items: [] });
 
-  for (let index = 0; index < candidateGroups.length; index += batchSize) {
-    const batchGroups = candidateGroups.slice(index, index + batchSize);
-    const response = await fetchImpl(config.url, {
+  const lookupResponse = await fetchImpl(lookupUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ items: candidateGroups.map((group) => group.requestItem) }),
+  });
+
+  if (!lookupResponse.ok) {
+    throw new Error(`Print LLM classifier lookup returned ${lookupResponse.status}`);
+  }
+
+  const lookupPayload = (await lookupResponse.json()) as PrintPersonalClassifierResponse & { missing?: Array<{ id: string }> };
+  const lookupItems = Array.isArray(lookupPayload.items) ? lookupPayload.items : [];
+  lookupItems.forEach((item) => {
+    const group = groupByRequestId.get(item.id);
+    if (group) items.push(...expandGroupClassification(item, group));
+  });
+
+  const missingIds = new Set((Array.isArray(lookupPayload.missing) ? lookupPayload.missing : []).map((item) => item.id));
+  const missingGroups = candidateGroups.filter((group) => missingIds.has(group.requestItem.id));
+  const foundCount = candidateGroups.length - missingGroups.length;
+  onProgress?.({ processed: foundCount, total: candidateGroups.length, items: [...items] });
+
+  for (let index = 0; index < missingGroups.length; index += batchSize) {
+    const batchGroups = missingGroups.slice(index, index + batchSize);
+    const response = await fetchImpl(classifyMissingUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ items: batchGroups.map((group) => group.requestItem) }),
@@ -112,7 +147,7 @@ export async function classifyPrintJobsWithProxy(
       const group = groupByRequestId.get(item.id);
       if (group) items.push(...expandGroupClassification(item, group));
     });
-    onProgress?.({ processed: Math.min(index + batchGroups.length, candidateGroups.length), total: candidateGroups.length, items: [...items] });
+    onProgress?.({ processed: Math.min(foundCount + index + batchGroups.length, candidateGroups.length), total: candidateGroups.length, items: [...items] });
   }
 
   return { items };

@@ -44,6 +44,8 @@ describe("print LLM frontend client", () => {
     ).toEqual({
       enabled: true,
       url: "http://127.0.0.1:8787/api/print/classify-personal",
+      lookupUrl: "http://127.0.0.1:8787/api/print/classifications/lookup",
+      classifyMissingUrl: "http://127.0.0.1:8787/api/print/classifications/classify-missing",
       batchSize: 3,
     });
   });
@@ -55,9 +57,10 @@ describe("print LLM frontend client", () => {
   it("sends candidate jobs to proxy in batches", async () => {
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
+      const isLookup = String(_url).includes("lookup");
       return {
         ok: true,
-        json: async () => ({
+        json: async () => isLookup ? { items: [], missing: body.items } : ({
           items: body.items.map((item: { id: string }) => ({
             id: item.id,
             normalized_title: item.id,
@@ -76,7 +79,7 @@ describe("print LLM frontend client", () => {
 
     const result = await classifyPrintJobsWithProxy([job(1), job(2), job(3), job(4), job(5)], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(result.items).toHaveLength(5);
   });
 
@@ -84,10 +87,11 @@ describe("print LLM frontend client", () => {
     const sentIds: string[] = [];
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
-      sentIds.push(...body.items.map((item: { id: string }) => item.id));
+      const isLookup = String(_url).includes("lookup");
+      if (!isLookup) sentIds.push(...body.items.map((item: { id: string }) => item.id));
       return {
         ok: true,
-        json: async () => ({
+        json: async () => isLookup ? { items: [], missing: body.items } : ({
           items: body.items.map((item: { id: string }) => ({
             id: item.id,
             normalized_title: item.id,
@@ -114,7 +118,7 @@ describe("print LLM frontend client", () => {
       fetchImpl,
     );
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(sentIds).toHaveLength(2);
     expect(result.items.map((item) => item.id)).toEqual(["print-job-0", "print-job-1", "print-job-2"]);
   });
@@ -123,9 +127,10 @@ describe("print LLM frontend client", () => {
     const onProgress = vi.fn();
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
+      const isLookup = String(_url).includes("lookup");
       return {
         ok: true,
-        json: async () => ({
+        json: async () => isLookup ? { items: [], missing: body.items } : ({
           items: body.items.map((item: { id: string }) => ({
             id: item.id,
             normalized_title: item.id,
@@ -153,9 +158,42 @@ describe("print LLM frontend client", () => {
       onProgress,
     );
 
-    expect(onProgress).toHaveBeenCalledTimes(3);
+    expect(onProgress).toHaveBeenCalledTimes(4);
     expect(onProgress).toHaveBeenNthCalledWith(1, expect.objectContaining({ processed: 0, total: 2, items: [] }));
-    expect(onProgress).toHaveBeenNthCalledWith(2, expect.objectContaining({ processed: 1, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" })]) }));
-    expect(onProgress).toHaveBeenNthCalledWith(3, expect.objectContaining({ processed: 2, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" }), expect.objectContaining({ id: "print-job-2" })]) }));
+    expect(onProgress).toHaveBeenNthCalledWith(2, expect.objectContaining({ processed: 0, total: 2, items: [] }));
+    expect(onProgress).toHaveBeenNthCalledWith(3, expect.objectContaining({ processed: 1, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" })]) }));
+    expect(onProgress).toHaveBeenNthCalledWith(4, expect.objectContaining({ processed: 2, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" }), expect.objectContaining({ id: "print-job-2" })]) }));
   });
+
+  it("uses lookup results without calling classify-missing when all documents are cached", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(String(url)).toContain("lookup");
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: true,
+            primary_category: "education",
+            risk_level: "high",
+            confidence_raw: 0.9,
+            needs_review: true,
+            reason_short: "?????? ?? ??????? ????????",
+            signals: ["education"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    const result = await classifyPrintJobsWithProxy([job(1), job(2)], { enabled: true, url: "/proxy", batchSize: 1 }, fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(result.items).toHaveLength(2);
+    expect(result.items.every((item) => item.source === "llm")).toBe(true);
+  });
+
 });
