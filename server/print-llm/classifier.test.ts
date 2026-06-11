@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 
 const { classifyPrintPersonalItems } = await import("./classifier.mjs");
+const { buildPrintLlmPrompt } = await import("./prompt.mjs");
 
 function config(overrides = {}) {
   return {
@@ -73,6 +74,18 @@ class MemoryCache {
 }
 
 describe("classifyPrintPersonalItems", () => {
+  it("asks the model to write reason_short in Russian", () => {
+    const prompt = buildPrintLlmPrompt({
+      normalizedTitle: "school homework",
+      pages: 1,
+      color: false,
+      duplex: false,
+      paperSize: "A4",
+    });
+
+    expect(prompt).toContain("The reason_short field must be written in Russian.");
+  });
+
   it("returns disabled fallback without calling Ollama", async () => {
     const callOllama = vi.fn();
     const result = await classifyPrintPersonalItems([item()], config({ enabled: false }), { callOllama, cache: new MemoryCache() });

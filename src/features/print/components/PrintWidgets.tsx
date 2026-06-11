@@ -17,13 +17,6 @@ function personalRiskLabel(riskLevel: PersonalClassification["risk_level"]): str
   return "не определен";
 }
 
-function personalSourceLabel(source: PersonalClassification["source"]): string {
-  if (source === "llm") return "LLM";
-  if (source === "rules") return "словарь";
-  if (source === "rules_fallback") return "словарный режим";
-  return "выключено";
-}
-
 export function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatum[]; valueLabel?: string }) {
   const max = Math.max(1, ...items.map((item) => item.pages));
   const hasData = items.some((item) => item.pages > 0);
@@ -99,13 +92,8 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
                 {reason.label}
               </Badge>
             ))}
-            {row.personalPrintClassification?.is_personal ? <Badge variant="danger">Вероятно личная тематика</Badge> : null}
-            {row.personalPrintClassification?.needs_review ? <Badge variant="warning">Нужна проверка</Badge> : null}
             {row.personalPrintClassification ? (
-              <>
-                <Badge variant="secondary">Риск LLM: {personalRiskLabel(row.personalPrintClassification.risk_level)}</Badge>
-                <Badge variant="secondary">Источник: {personalSourceLabel(row.personalPrintClassification.source)}</Badge>
-              </>
+              <Badge variant="secondary">Риск LLM: {personalRiskLabel(row.personalPrintClassification.risk_level)}</Badge>
             ) : null}
           </div>
           {row.personalPrintClassification?.reason_short ? (

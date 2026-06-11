@@ -51,7 +51,7 @@ import {
 } from "./PrintControls";
 import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
 import { BarList, RiskJobList } from "./PrintWidgets";
-import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig } from "../logic/personalPrint/frontendClient";
+import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig, type PrintLlmProgress } from "../logic/personalPrint/frontendClient";
 import { enrichPrintJobsWithClassifications, type PrintLlmStatus } from "../logic/personalPrint/enrichPrintJobs";
 import { buildPrintClassificationCsv, downloadTextFile } from "../logic/personalPrint/exportClassification";
 
@@ -248,6 +248,21 @@ function printLlmStatusText(status: PrintLlmStatus): string {
   return "LLM-классификация выключена: используется словарный режим.";
 }
 
+function printLlmStatusChip(status: PrintLlmStatus, progress: Pick<PrintLlmProgress, "processed" | "total"> | null) {
+  if (status === "loading") {
+    const progressLabel = progress && progress.total > 0 ? ` · ${progress.processed}/${progress.total}` : "";
+    return { label: `LLM: классификация выполняется${progressLabel}`, tone: "warning" as const, isLoading: true };
+  }
+  if (status === "ready") {
+    const progressLabel = progress && progress.total > 0 ? ` · ${progress.total}/${progress.total}` : "";
+    return { label: `LLM: готово${progressLabel}`, tone: "secondary" as const };
+  }
+  if (status === "fallback") {
+    return { label: "LLM: недоступна", tone: "danger" as const };
+  }
+  return { label: "LLM: словарный режим", tone: "secondary" as const };
+}
+
 export function PrintDashboardPage() {
   const navigate = useNavigate();
   const [report] = useState<PrintImportResult | null>(() => readPendingDashboardData<PrintImportResult>(REPORT_ROUTE));
@@ -258,6 +273,7 @@ export function PrintDashboardPage() {
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
   const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
   const [llmStatus, setLlmStatus] = useState<PrintLlmStatus>("disabled");
+  const [llmProgress, setLlmProgress] = useState<Pick<PrintLlmProgress, "processed" | "total"> | null>(null);
   const [enrichedJobs, setEnrichedJobs] = useState<PrintJob[] | null>(null);
   const { history: printHistory } = usePrintHistory();
   const hasHistoryChartData = printHistory.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.totalPages === "number" && Number.isFinite(snapshot.metrics.totalPages)).length >= 2;
@@ -279,14 +295,20 @@ export function PrintDashboardPage() {
 
     if (!config.enabled) {
       setLlmStatus("disabled");
+      setLlmProgress(null);
       setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
       return;
     }
 
     setLlmStatus("loading");
+    setLlmProgress(null);
     setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
 
-    void classifyPrintJobsWithProxy(report.jobs, config)
+    void classifyPrintJobsWithProxy(report.jobs, config, fetch, (progress) => {
+      if (!isMounted) return;
+      setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs, progress.items));
+      setLlmProgress({ processed: progress.processed, total: progress.total });
+    })
       .then((response) => {
         if (!isMounted) return;
         setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs, response.items));
@@ -296,6 +318,7 @@ export function PrintDashboardPage() {
         console.error("LLM-классификация Print недоступна", error);
         if (!isMounted) return;
         setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
+        setLlmProgress(null);
         setLlmStatus("fallback");
       });
 
@@ -425,6 +448,7 @@ export function PrintDashboardPage() {
 
   const chips = [
     { label: `Период: ${filters.dateFrom ? formatFilterDate(filters.dateFrom) : "начало"} - ${filters.dateTo ? formatFilterDate(filters.dateTo) : "конец"}` },
+    printLlmStatusChip(llmStatus, llmProgress),
     ...(quickFocus !== "all" ? [{ label: `Фокус: ${quickFocusLabel(quickFocus)}`, onRemove: () => applyQuickFocus("all") }] : []),
     ...(filters.excludePdfPrinter ? [{ label: "PDF-принтер исключен" }] : [{ label: "PDF-принтер включен", tone: "secondary" as const }]),
     ...(filters.user ? [{ label: `Пользователь: ${filters.user}`, onRemove: () => patchFilters({ user: "" }) }] : []),

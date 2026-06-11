@@ -40,6 +40,7 @@ Use unknown if the title is too short or ambiguous:
 - isolated number
 
 Return only valid JSON matching the schema.
+The reason_short field must be written in Russian.
 Do not include personal data in the reason.
 Do not repeat the full filename in the reason.
 
