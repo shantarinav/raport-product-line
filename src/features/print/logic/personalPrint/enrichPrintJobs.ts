@@ -27,6 +27,7 @@ export function enrichPrintJobsWithClassifications(jobs: PrintJob[], llmItems: P
 
   return jobs.map((job, index) => {
     const llmItem = responseById.get(requestItems[index]?.id ?? "");
+    const fallbackClassification = rulesFallbackClassification(job);
     const classification: PrintPersonalClassification = llmItem
       ? {
           normalized_title: llmItem.normalized_title,
@@ -39,12 +40,15 @@ export function enrichPrintJobsWithClassifications(jobs: PrintJob[], llmItems: P
           reason_short: llmItem.reason_short,
           signals: llmItem.signals,
         }
-      : rulesFallbackClassification(job);
+      : fallbackClassification;
+
+    const effectiveClassification =
+      classification.source !== "llm" && fallbackClassification.is_personal && !classification.is_personal ? fallbackClassification : classification;
 
     return {
       ...job,
-      normalizedDocumentTitle: classification.normalized_title,
-      personalPrintClassification: classification,
+      normalizedDocumentTitle: effectiveClassification.normalized_title,
+      personalPrintClassification: effectiveClassification,
     };
   });
 }

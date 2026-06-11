@@ -58,6 +58,30 @@ describe("enrichPrintJobsWithClassifications", () => {
     expect(enriched.personalPrintClassification).toMatchObject({ source: "rules_fallback", is_personal: true, primary_category: "other_personal" });
   });
 
+  it("keeps local personal rules when backend returns a non-LLM fallback", () => {
+    const backendFallback: PrintPersonalClassifierResponseItem = {
+      id: "print-job-0",
+      normalized_title: "diplom",
+      source: "rules_fallback",
+      is_personal: false,
+      primary_category: "unknown",
+      risk_level: "unknown",
+      confidence_raw: 0,
+      needs_review: true,
+      reason_short: "Ошибка классификации",
+      signals: ["unknown"],
+    };
+
+    const [enriched] = enrichPrintJobsWithClassifications([job({ documentName: "диплом.pdf", excessCategories: ["Личные тематики"] })], [backendFallback]);
+
+    expect(enriched.personalPrintClassification).toMatchObject({
+      source: "rules_fallback",
+      is_personal: true,
+      primary_category: "other_personal",
+      risk_level: "medium",
+    });
+  });
+
   it("does not mutate original job", () => {
     const original = job();
     const [enriched] = enrichPrintJobsWithClassifications([original], [llmItem]);
