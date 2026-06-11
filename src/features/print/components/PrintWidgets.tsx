@@ -17,6 +17,10 @@ function personalRiskLabel(riskLevel: PersonalClassification["risk_level"]): str
   return "не определен";
 }
 
+function shouldShowPersonalClassification(classification: PersonalClassification): boolean {
+  return classification.source === "llm" || classification.is_personal;
+}
+
 export function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatum[]; valueLabel?: string }) {
   const max = Math.max(1, ...items.map((item) => item.pages));
   const hasData = items.some((item) => item.pages > 0);
@@ -92,11 +96,11 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
                 {reason.label}
               </Badge>
             ))}
-            {row.personalPrintClassification ? (
+            {row.personalPrintClassification && shouldShowPersonalClassification(row.personalPrintClassification) ? (
               <Badge variant="secondary">Риск LLM: {personalRiskLabel(row.personalPrintClassification.risk_level)}</Badge>
             ) : null}
           </div>
-          {row.personalPrintClassification?.reason_short ? (
+          {row.personalPrintClassification?.reason_short && shouldShowPersonalClassification(row.personalPrintClassification) ? (
             <p className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
               Основание классификации: {row.personalPrintClassification.reason_short}
             </p>
