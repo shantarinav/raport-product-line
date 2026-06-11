@@ -1,3 +1,5 @@
+import type { PrintPersonalClassification } from "./logic/personalPrint/types";
+
 export type PaperBucket = "до A4 включительно" | "A3" | "от A2 и выше" | "Не определено";
 
 export type DocumentType = "PDF" | "Word" | "Excel/табличный" | "Outlook" | "Изображение" | "Другое" | "Нет имени документа";
@@ -43,6 +45,8 @@ export type PrintJob = {
   riskScore: number;
   riskReasons: RiskReason[];
   riskReasonCodes: RiskReasonCode[];
+  normalizedDocumentTitle?: string;
+  personalPrintClassification?: PrintPersonalClassification;
   raw: PrintRawRecord;
 };
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck, UploadCloud } from "lucide-react";
+import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck } from "lucide-react";
 import { Button } from "../../shared/ui/shadcn/button";
 import { Badge } from "../../shared/ui/shadcn/badge";
 import { DashboardHeader, ErrorState, FileDropZone, FilterStatusBar, IconLabel, PageShell } from "../../shared/ui";

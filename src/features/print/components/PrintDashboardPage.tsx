@@ -15,6 +15,7 @@ import {
 } from "../../../shared/ui";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
+import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import {
@@ -50,6 +51,9 @@ import {
 } from "./PrintControls";
 import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
 import { BarList, RiskJobList } from "./PrintWidgets";
+import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig } from "../logic/personalPrint/frontendClient";
+import { enrichPrintJobsWithClassifications, type PrintLlmStatus } from "../logic/personalPrint/enrichPrintJobs";
+import { buildPrintClassificationCsv, downloadTextFile } from "../logic/personalPrint/exportClassification";
 
 const REPORT_ROUTE = "/print";
 
@@ -237,6 +241,13 @@ function printInsightPoints(topUsers: PrintUserAggregate[], riskJobs: PrintJob[]
   ];
 }
 
+function printLlmStatusText(status: PrintLlmStatus): string {
+  if (status === "loading") return "LLM-классификация выполняется: дашборд уже работает по словарным правилам.";
+  if (status === "ready") return "LLM-классификация включена: показаны сигналы локального классификатора.";
+  if (status === "fallback") return "LLM-классификация недоступна: используется словарный fallback.";
+  return "LLM-классификация выключена: используется словарный режим.";
+}
+
 export function PrintDashboardPage() {
   const navigate = useNavigate();
   const [report] = useState<PrintImportResult | null>(() => readPendingDashboardData<PrintImportResult>(REPORT_ROUTE));
@@ -246,6 +257,8 @@ export function PrintDashboardPage() {
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
   const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
+  const [llmStatus, setLlmStatus] = useState<PrintLlmStatus>("disabled");
+  const [enrichedJobs, setEnrichedJobs] = useState<PrintJob[] | null>(null);
   const { history: printHistory } = usePrintHistory();
   const hasHistoryChartData = printHistory.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.totalPages === "number" && Number.isFinite(snapshot.metrics.totalPages)).length >= 2;
 
@@ -259,8 +272,41 @@ export function PrintDashboardPage() {
     setFilters(initialPrintFilters(report.jobs));
   }, [filters, report]);
 
-  const options = useMemo(() => buildPrintFilterOptions(report?.jobs ?? []), [report]);
-  const filteredRows = useMemo(() => (report && filters ? applyPrintFilters(report.jobs, filters) : []), [filters, report]);
+  useEffect(() => {
+    if (!report) return;
+    let isMounted = true;
+    const config = readPrintLlmFrontendConfig();
+
+    if (!config.enabled) {
+      setLlmStatus("disabled");
+      setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
+      return;
+    }
+
+    setLlmStatus("loading");
+    setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
+
+    void classifyPrintJobsWithProxy(report.jobs, config)
+      .then((response) => {
+        if (!isMounted) return;
+        setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs, response.items));
+        setLlmStatus("ready");
+      })
+      .catch((error) => {
+        console.error("LLM-классификация Print недоступна", error);
+        if (!isMounted) return;
+        setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs));
+        setLlmStatus("fallback");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [report]);
+
+  const dashboardRows = enrichedJobs ?? report?.jobs ?? [];
+  const options = useMemo(() => buildPrintFilterOptions(dashboardRows), [dashboardRows]);
+  const filteredRows = useMemo(() => (filters ? applyPrintFilters(dashboardRows, filters) : []), [dashboardRows, filters]);
   const kpis = useMemo(() => calculatePrintKpis(filteredRows, tariffs), [filteredRows, tariffs]);
   const topUsers = useMemo(() => buildTopUsers(filteredRows, tariffs, userSort, tableLimits.users), [filteredRows, tariffs, userSort, tableLimits.users]);
   const { paperBars, docTypeBars, excessSummary } = useMemo(() => calculatePrintAnalytics(filteredRows), [filteredRows]);
@@ -268,6 +314,10 @@ export function PrintDashboardPage() {
   const mainInsightStatus = printInsightStatus(kpis);
   const mainInsightPoints = useMemo(() => printInsightPoints(topUsers, riskJobs, kpis, excessSummary), [topUsers, riskJobs, kpis, excessSummary]);
   const mainInsightDeviationCost = useMemo(() => printDeviationCost(filteredRows, tariffs), [filteredRows, tariffs]);
+  const classificationExportFileName = useMemo(() => {
+    const suffix = filters?.dateFrom && filters?.dateTo ? `${filters.dateFrom}_${filters.dateTo}` : "current";
+    return `print-personal-classification-${suffix}.csv`;
+  }, [filters?.dateFrom, filters?.dateTo]);
   const previousSnapshot = useMemo(
     () => {
       if (!filters || !isMonthlyCoverageReady(filters.dateFrom, filters.dateTo)) return null;
@@ -804,6 +854,18 @@ export function PrintDashboardPage() {
               description="Сортировка по баллу риска или по объему страниц."
               Icon={AlertTriangle}
             >
+              {!isManagerView ? (
+                <div className="mb-3 flex flex-col gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 md:flex-row md:items-center md:justify-between">
+                  <p className="text-xs font-semibold text-raport-muted">{printLlmStatusText(llmStatus)}</p>
+                  <Button
+                    variant="outline"
+                    className="min-h-8 px-2 py-1 text-xs"
+                    onClick={() => downloadTextFile(buildPrintClassificationCsv(filteredRows), classificationExportFileName)}
+                  >
+                    Скачать классификацию
+                  </Button>
+                </div>
+              ) : null}
               <SortToolbar
                 sortValue={riskSort}
                 sortOptions={[
