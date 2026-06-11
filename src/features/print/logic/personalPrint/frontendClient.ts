@@ -1,4 +1,4 @@
-import type { PrintJob } from "../../types";
+﻿import type { PrintJob } from "../../types";
 import { normalizeDocumentTitle } from "./normalizeDocumentTitle";
 import { buildPrintPersonalClassifierRequestItems, shouldClassifyPrintJobWithLlm } from "./requestBuilder";
 import type { PrintPersonalClassifierResponse, PrintPersonalClassifierResponseItem } from "./types";
@@ -107,28 +107,33 @@ export async function classifyPrintJobsWithProxy(
   const classifyMissingUrl = config.classifyMissingUrl || derivePrintLlmEndpoint(config.url, "classify-missing");
   onProgress?.({ processed: 0, total: candidateGroups.length, items: [] });
 
-  const lookupResponse = await fetchImpl(lookupUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ items: candidateGroups.map((group) => group.requestItem) }),
-  });
+  const missingIds = new Set<string>();
 
-  if (!lookupResponse.ok) {
-    throw new Error(`Print LLM classifier lookup returned ${lookupResponse.status}`);
+  for (let index = 0; index < candidateGroups.length; index += batchSize) {
+    const batchGroups = candidateGroups.slice(index, index + batchSize);
+    const lookupResponse = await fetchImpl(lookupUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: batchGroups.map((group) => group.requestItem) }),
+    });
+
+    if (!lookupResponse.ok) {
+      throw new Error(`Print LLM classifier lookup returned ${lookupResponse.status}`);
+    }
+
+    const lookupPayload = (await lookupResponse.json()) as PrintPersonalClassifierResponse & { missing?: Array<{ id: string }> };
+    const lookupItems = Array.isArray(lookupPayload.items) ? lookupPayload.items : [];
+    lookupItems.forEach((item) => {
+      const group = groupByRequestId.get(item.id);
+      if (group) items.push(...expandGroupClassification(item, group));
+    });
+
+    (Array.isArray(lookupPayload.missing) ? lookupPayload.missing : []).forEach((item) => missingIds.add(item.id));
+    onProgress?.({ processed: Math.min(index + batchGroups.length, candidateGroups.length) - missingIds.size, total: candidateGroups.length, items: [...items] });
   }
 
-  const lookupPayload = (await lookupResponse.json()) as PrintPersonalClassifierResponse & { missing?: Array<{ id: string }> };
-  const lookupItems = Array.isArray(lookupPayload.items) ? lookupPayload.items : [];
-  lookupItems.forEach((item) => {
-    const group = groupByRequestId.get(item.id);
-    if (group) items.push(...expandGroupClassification(item, group));
-  });
-
-  const missingIds = new Set((Array.isArray(lookupPayload.missing) ? lookupPayload.missing : []).map((item) => item.id));
   const missingGroups = candidateGroups.filter((group) => missingIds.has(group.requestItem.id));
   const foundCount = candidateGroups.length - missingGroups.length;
-  onProgress?.({ processed: foundCount, total: candidateGroups.length, items: [...items] });
-
   for (let index = 0; index < missingGroups.length; index += batchSize) {
     const batchGroups = missingGroups.slice(index, index + batchSize);
     const response = await fetchImpl(classifyMissingUrl, {
@@ -156,3 +161,4 @@ export async function classifyPrintJobsWithProxy(
 export function responseItemsById(items: PrintPersonalClassifierResponseItem[]): Map<string, PrintPersonalClassifierResponseItem> {
   return new Map(items.map((item) => [item.id, item]));
 }
+

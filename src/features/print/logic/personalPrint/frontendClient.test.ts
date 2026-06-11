@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../../types";
 import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig } from "./frontendClient";
 
@@ -16,7 +16,7 @@ function job(index: number, overrides: Partial<PrintJob> = {}): PrintJob {
     driver: "driver",
     duplex: "NOT DUPLEX",
     color: "GRAYSCALE",
-    paperBucket: "до A4 включительно",
+    paperBucket: "\u0434\u043e A4 \u0432\u043a\u043b\u044e\u0447\u0438\u0442\u0435\u043b\u044c\u043d\u043e",
     docType: "PDF",
     isBigJob: false,
     isMultiNoDuplex: false,
@@ -70,7 +70,7 @@ describe("print LLM frontend client", () => {
             risk_level: "low",
             confidence_raw: 0.9,
             needs_review: false,
-            reason_short: "Рабочий документ",
+            reason_short: "Р Р°Р±РѕС‡РёР№ РґРѕРєСѓРјРµРЅС‚",
             signals: ["work_like"],
           })),
         }),
@@ -79,7 +79,7 @@ describe("print LLM frontend client", () => {
 
     const result = await classifyPrintJobsWithProxy([job(1), job(2), job(3), job(4), job(5)], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
     expect(result.items).toHaveLength(5);
   });
 
@@ -101,7 +101,7 @@ describe("print LLM frontend client", () => {
             risk_level: "high",
             confidence_raw: 0.9,
             needs_review: true,
-            reason_short: "Похоже на учебный материал",
+            reason_short: "РџРѕС…РѕР¶Рµ РЅР° СѓС‡РµР±РЅС‹Р№ РјР°С‚РµСЂРёР°Р»",
             signals: ["education"],
           })),
         }),
@@ -118,7 +118,7 @@ describe("print LLM frontend client", () => {
       fetchImpl,
     );
 
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(sentIds).toHaveLength(2);
     expect(result.items.map((item) => item.id)).toEqual(["print-job-0", "print-job-1", "print-job-2"]);
   });
@@ -140,7 +140,7 @@ describe("print LLM frontend client", () => {
             risk_level: "low",
             confidence_raw: 0.9,
             needs_review: false,
-            reason_short: "Рабочий документ",
+            reason_short: "Р Р°Р±РѕС‡РёР№ РґРѕРєСѓРјРµРЅС‚",
             signals: ["work_like"],
           })),
         }),
@@ -158,11 +158,12 @@ describe("print LLM frontend client", () => {
       onProgress,
     );
 
-    expect(onProgress).toHaveBeenCalledTimes(4);
+    expect(onProgress).toHaveBeenCalledTimes(5);
     expect(onProgress).toHaveBeenNthCalledWith(1, expect.objectContaining({ processed: 0, total: 2, items: [] }));
     expect(onProgress).toHaveBeenNthCalledWith(2, expect.objectContaining({ processed: 0, total: 2, items: [] }));
-    expect(onProgress).toHaveBeenNthCalledWith(3, expect.objectContaining({ processed: 1, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" })]) }));
-    expect(onProgress).toHaveBeenNthCalledWith(4, expect.objectContaining({ processed: 2, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" }), expect.objectContaining({ id: "print-job-2" })]) }));
+    expect(onProgress).toHaveBeenNthCalledWith(3, expect.objectContaining({ processed: 0, total: 2, items: [] }));
+    expect(onProgress).toHaveBeenNthCalledWith(4, expect.objectContaining({ processed: 1, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" })]) }));
+    expect(onProgress).toHaveBeenNthCalledWith(5, expect.objectContaining({ processed: 2, total: 2, items: expect.arrayContaining([expect.objectContaining({ id: "print-job-0" }), expect.objectContaining({ id: "print-job-1" }), expect.objectContaining({ id: "print-job-2" })]) }));
   });
 
   it("uses lookup results without calling classify-missing when all documents are cached", async () => {
@@ -191,9 +192,44 @@ describe("print LLM frontend client", () => {
 
     const result = await classifyPrintJobsWithProxy([job(1), job(2)], { enabled: true, url: "/proxy", batchSize: 1 }, fetchImpl);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(result.items).toHaveLength(2);
     expect(result.items.every((item) => item.source === "llm")).toBe(true);
   });
 
+
+  it("splits lookup requests into batches to avoid large request bodies", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      expect(String(url)).toContain("lookup");
+      expect(body.items.length).toBeLessThanOrEqual(2);
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "??????? ????????",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    const result = await classifyPrintJobsWithProxy([job(1), job(2), job(3), job(4), job(5)], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(result.items).toHaveLength(5);
+  });
+
 });
+
+
+
