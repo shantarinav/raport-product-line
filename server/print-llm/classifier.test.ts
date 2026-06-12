@@ -72,6 +72,39 @@ function contradictoryTechnicalResponse() {
   });
 }
 
+function professionalDocumentResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "other_personal",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "Название содержит термины, связанные с безопасностью и идентификацией опасностей, что указывает на профессиональную документацию.",
+    signals: ["unknown"],
+  });
+}
+
+function corporateDocumentResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "finance",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "протокол портфеля - корпоративный документ, не относится к персональному контексту из списка выше",
+    signals: ["unknown"],
+  });
+}
+
+function personalNonCorporateResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "household",
+    confidence_raw: 0.95,
+    needs_review: false,
+    reason_short: "примерное меню на неделю — это личное планирование питания, не связанное с корпоративной деятельностью.",
+    signals: ["household"],
+  });
+}
+
 class MemoryCache {
   constructor() {
     this.items = new Map();
@@ -191,6 +224,37 @@ describe("classifyPrintPersonalItems", () => {
       primary_category: "work",
       risk_level: "low",
       needs_review: false,
+    });
+  });
+
+  it("downgrades explicit professional or corporate document explanations to work", async () => {
+    const callOllama = vi.fn().mockResolvedValueOnce(professionalDocumentResponse()).mockResolvedValueOnce(corporateDocumentResponse());
+    const result = await classifyPrintPersonalItems(
+      [
+        item("safety", "4. 600 перечень идентифицированных опасностей ОТК.xlsm"),
+        item("protocol", "Протокол портфеля №14 от 23.05.2026 + апатит 08.06 + комм. 11.06.xlsx"),
+      ],
+      config({ cacheEnabled: false }),
+      { callOllama, cache: new MemoryCache() },
+    );
+
+    expect(result.items).toEqual([
+      expect.objectContaining({ id: "safety", is_personal: false, primary_category: "work", risk_level: "low" }),
+      expect.objectContaining({ id: "protocol", is_personal: false, primary_category: "work", risk_level: "low" }),
+    ]);
+  });
+
+  it("keeps personal explanations that only mention absence of corporate context", async () => {
+    const callOllama = vi.fn().mockResolvedValue(personalNonCorporateResponse());
+    const result = await classifyPrintPersonalItems([item("menu", "ПРИМЕРНОЕ МЕНЮ НА неделю для 90 летнего")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: true,
+      primary_category: "household",
+      risk_level: "high",
     });
   });
 });

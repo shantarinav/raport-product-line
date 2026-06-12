@@ -38,9 +38,10 @@ const PERSONAL_TOPIC_SIGNALS = new Set([
   "entertainment",
 ]);
 
-const CLEAR_WORK_REASON_PATTERN = /техническ|производственн|рабоч|корпоративн|служебн|документац|чертеж|чертёж|детал|подшипник|корпус|узел|сборочн|спецификац|операционн|проектн/iu;
+const CLEAR_WORK_REASON_PATTERN =
+  /указывает\s+на\s+(?:профессиональн|корпоративн|техническ|рабоч|производственн|служебн)|профессиональн\w*\s+документац|корпоративн\w*\s+документ|техническ\w*\s+документац|рабоч\w*\s+документ|проектн\w*\s+документац|не\s+относится\s+к\s+персональн|не\s+является\s+личн|не\s+связан[ао]?\s+с\s+личн/iu;
 const CLEAR_WORK_TITLE_PATTERN =
-  /(?:^|[\s_-])(?:тп|сб|кд|тз|тк|ту|рд|сп|гост)(?:$|[\s_.-])|корпус|подшипник|чертеж|чертёж|детал|узел|сборочн|спецификац|проектн|техническ/iu;
+  /(?:^|[\s_-])(?:тп|сб|кд|тз|тк|ту|рд|сп|гост|отк)(?:$|[\s_.-])|протокол|перечень\s+идентифицированн\w*\s+опасност|опасност|охрана\s+труда|корпус|подшипник|чертеж|чертёж|детал|узел|сборочн|спецификац|проектн|техническ/iu;
 
 export function normalizeDocumentTitle(value) {
   const original = String(value ?? "").trim();
@@ -73,7 +74,8 @@ export function validateLlmClassification(value) {
 export function postprocessRisk(input) {
   const isClearWorkContext =
     input.signals.includes("work_like") ||
-    (input.signals.includes("technical_scan_name") && CLEAR_WORK_REASON_PATTERN.test(input.reason_short));
+    input.signals.includes("technical_scan_name") ||
+    CLEAR_WORK_REASON_PATTERN.test(input.reason_short);
 
   if (isClearWorkContext) {
     return {
