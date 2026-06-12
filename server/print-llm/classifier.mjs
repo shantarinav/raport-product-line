@@ -38,6 +38,10 @@ const PERSONAL_TOPIC_SIGNALS = new Set([
   "entertainment",
 ]);
 
+const CLEAR_WORK_REASON_PATTERN = /техническ|производственн|рабоч|корпоративн|служебн|документац|чертеж|чертёж|детал|подшипник|корпус|узел|сборочн|спецификац|операционн|проектн/iu;
+const CLEAR_WORK_TITLE_PATTERN =
+  /(?:^|[\s_-])(?:тп|сб|кд|тз|тк|ту|рд|сп|гост)(?:$|[\s_.-])|корпус|подшипник|чертеж|чертёж|детал|узел|сборочн|спецификац|проектн|техническ/iu;
+
 export function normalizeDocumentTitle(value) {
   const original = String(value ?? "").trim();
   if (!original) return "";
@@ -67,6 +71,21 @@ export function validateLlmClassification(value) {
 }
 
 export function postprocessRisk(input) {
+  const isClearWorkContext =
+    input.signals.includes("work_like") ||
+    (input.signals.includes("technical_scan_name") && CLEAR_WORK_REASON_PATTERN.test(input.reason_short));
+
+  if (isClearWorkContext) {
+    return {
+      ...input,
+      is_personal: false,
+      primary_category: "work",
+      risk_level: "low",
+      needs_review: false,
+      signals: input.signals.includes("work_like") ? input.signals : ["work_like", ...input.signals].slice(0, 5),
+    };
+  }
+
   const shouldUpgradePersonalTopic =
     !input.is_personal &&
     input.primary_category !== "unknown" &&
@@ -79,6 +98,12 @@ export function postprocessRisk(input) {
   if (normalized.is_personal && normalized.confidence_raw >= 0.55) return { ...normalized, risk_level: "medium", needs_review: true };
   if (normalized.is_personal) return { ...normalized, risk_level: "low", needs_review: true };
   return { ...normalized, risk_level: "low" };
+}
+
+function applyTitleWorkSignal(value, normalizedTitle) {
+  return CLEAR_WORK_TITLE_PATTERN.test(normalizedTitle) && !value.signals.includes("work_like")
+    ? { ...value, signals: ["work_like", ...value.signals].slice(0, 5) }
+    : value;
 }
 
 function documentClassificationHash(item, config) {
@@ -162,7 +187,7 @@ async function classifyOne(item, config, dependencies) {
         id: item.id,
         normalized_title: normalizedTitle,
         source: "llm",
-        ...postprocessRisk(validated),
+        ...postprocessRisk(applyTitleWorkSignal(validated, normalizedTitle)),
       };
       if (config.cacheEnabled) {
         const { id, normalized_title: _normalizedTitle, ...cacheValue } = result;
@@ -191,7 +216,8 @@ export async function lookupPrintPersonalClassifications(items, config, dependen
     keysByItem.forEach(({ item, key, normalizedTitle }) => {
       const cached = cachedByKey.get(key);
       if (cached) {
-        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...cached });
+        const effectiveCached = cached.source === "llm" ? postprocessRisk(applyTitleWorkSignal(cached, normalizedTitle)) : cached;
+        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...effectiveCached });
       } else {
         missing.push(item);
       }

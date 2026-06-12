@@ -99,7 +99,7 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
                 {reason.label}
               </Badge>
             ))}
-            {personalStatus.isPersonal && personalStatus.source === "llm" && !row.riskReasonCodes.includes("excess-personal") ? (
+            {personalStatus.isPersonal && personalStatus.source === "llm" ? (
               <Badge variant="warning">личная тематика: LLM</Badge>
             ) : null}
             {row.personalPrintClassification && shouldShowPersonalClassification(row.personalPrintClassification) ? (

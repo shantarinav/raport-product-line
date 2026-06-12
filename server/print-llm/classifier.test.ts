@@ -61,6 +61,17 @@ function explicitWorkResponse() {
   });
 }
 
+function contradictoryTechnicalResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "medical",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "Титул содержит термины, связанные с техническими деталями подшипника, что указывает на техническую документацию.",
+    signals: ["technical_scan_name"],
+  });
+}
+
 class MemoryCache {
   constructor() {
     this.items = new Map();
@@ -167,6 +178,21 @@ describe("classifyPrintPersonalItems", () => {
       risk_level: "low",
     });
   });
+
+  it("downgrades contradictory technical document classifications to work", async () => {
+    const callOllama = vi.fn().mockResolvedValue(contradictoryTechnicalResponse());
+    const result = await classifyPrintPersonalItems([item("bearing", "ТП_К0704.01.03.000 СБ Корпус подшипника.pdf")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: false,
+      primary_category: "work",
+      risk_level: "low",
+      needs_review: false,
+    });
+  });
 });
 
 describe("document classification lookup", () => {
@@ -195,5 +221,26 @@ describe("document classification lookup", () => {
     expect(classified.items[0]).toMatchObject({ id: "first", source: "llm", primary_category: "education" });
     expect(lookup.items[0]).toMatchObject({ id: "second", source: "llm", primary_category: "education" });
     expect(callOllama).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes contradictory cached technical classifications during lookup", async () => {
+    const cache = new MemoryCache();
+    await classifyMissingPrintPersonalItems([item("first", "ТП_К0704.01.03.000 СБ Корпус подшипника.pdf")], config(), {
+      callOllama: vi.fn().mockResolvedValue(contradictoryTechnicalResponse()),
+      cache,
+    });
+
+    const result = await lookupPrintPersonalClassifications([item("second", "ТП_К0704.01.03.000 СБ Корпус подшипника.pdf")], config(), {
+      callOllama: vi.fn(),
+      cache,
+    });
+
+    expect(result.items[0]).toMatchObject({
+      id: "second",
+      source: "llm",
+      is_personal: false,
+      primary_category: "work",
+      risk_level: "low",
+    });
   });
 });
