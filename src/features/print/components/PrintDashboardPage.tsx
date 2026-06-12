@@ -247,13 +247,18 @@ function printLlmStatusText(status: PrintLlmStatus): string {
   return "LLM выключена: показаны только словарные подозрения по личным тематикам.";
 }
 
-function printLlmStatusChip(status: PrintLlmStatus, progress: Pick<PrintLlmProgress, "processed" | "total"> | null) {
+function printLlmStatusChip(status: PrintLlmStatus, progress: PrintLlmProgress | null) {
   if (status === "loading") {
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.processed}/${progress.total}` : "";
+    const cacheLabel = progress && progress.cacheHits > 0 ? ` · из кэша ${progress.cacheHits}` : "";
+    const modelLabel = progress && progress.modelRequests > 0 ? ` · модель ${progress.modelRequests}` : "";
+    const progressLabel = progress && progress.total > 0 ? ` · ${progress.processed}/${progress.total}${cacheLabel}${modelLabel}` : "";
     return { label: `LLM: классификация выполняется${progressLabel}`, tone: "warning" as const, isLoading: true };
   }
   if (status === "ready") {
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.total}/${progress.total}` : "";
+    if (progress && progress.total > 0 && progress.modelRequests === 0 && progress.cacheHits === progress.total) {
+      return { label: `LLM: из кэша · ${progress.cacheHits}/${progress.total}`, tone: "secondary" as const };
+    }
+    const progressLabel = progress && progress.total > 0 ? ` · ${progress.total}/${progress.total} · из кэша ${progress.cacheHits} · модель ${progress.modelRequests}` : "";
     return { label: `LLM: готово${progressLabel}`, tone: "secondary" as const };
   }
   if (status === "fallback") {
@@ -269,13 +274,13 @@ function PrintLlmReviewSummary({
   onExport,
 }: {
   status: PrintLlmStatus;
-  progress: Pick<PrintLlmProgress, "processed" | "total"> | null;
+  progress: PrintLlmProgress | null;
   stats: PersonalPrintReviewStats;
   onExport: () => void;
 }) {
   const progressLabel =
     status === "loading" && progress && progress.total > 0
-      ? `LLM проверяет кандидаты: ${formatInteger(progress.processed)} из ${formatInteger(progress.total)}`
+      ? `Проверено ${formatInteger(progress.processed)} из ${formatInteger(progress.total)}: из кэша ${formatInteger(progress.cacheHits)}, через модель ${formatInteger(progress.modelRequests)}.`
       : printLlmStatusText(status);
 
   return (
@@ -320,7 +325,7 @@ export function PrintDashboardPage() {
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
   const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
   const [llmStatus, setLlmStatus] = useState<PrintLlmStatus>("disabled");
-  const [llmProgress, setLlmProgress] = useState<Pick<PrintLlmProgress, "processed" | "total"> | null>(null);
+  const [llmProgress, setLlmProgress] = useState<PrintLlmProgress | null>(null);
   const [enrichedJobs, setEnrichedJobs] = useState<PrintJob[] | null>(null);
   const { history: printHistory } = usePrintHistory();
   const hasHistoryChartData = printHistory.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.totalPages === "number" && Number.isFinite(snapshot.metrics.totalPages)).length >= 2;
@@ -354,7 +359,7 @@ export function PrintDashboardPage() {
     void classifyPrintJobsWithProxy(report.jobs, config, fetch, (progress) => {
       if (!isMounted) return;
       setEnrichedJobs(enrichPrintJobsWithClassifications(report.jobs, progress.items));
-      setLlmProgress({ processed: progress.processed, total: progress.total });
+      setLlmProgress(progress);
     })
       .then((response) => {
         if (!isMounted) return;

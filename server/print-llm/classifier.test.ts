@@ -282,7 +282,7 @@ describe("classifyPrintPersonalItems", () => {
     await classifyPrintPersonalItems([item("first")], config(), { callOllama, cache });
     const second = await classifyPrintPersonalItems([item("second")], config(), { callOllama, cache });
     expect(callOllama).toHaveBeenCalledTimes(1);
-    expect(second.items[0]).toMatchObject({ id: "second", source: "llm", primary_category: "education" });
+    expect(second.items[0]).toMatchObject({ id: "second", source: "llm", primary_category: "education", cache_hit: true });
   });
 
   it("classifies batches", async () => {
@@ -446,7 +446,7 @@ describe("document classification lookup", () => {
     expect(callOllama).not.toHaveBeenCalled();
     expect(first.items[0]).toMatchObject({ source: "llm", primary_category: "education" });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]).toMatchObject({ id: "known", source: "llm", primary_category: "education" });
+    expect(result.items[0]).toMatchObject({ id: "known", source: "llm", primary_category: "education", cache_hit: true });
     expect(result.missing).toHaveLength(1);
     expect(result.missing[0]).toMatchObject({ id: "missing" });
   });

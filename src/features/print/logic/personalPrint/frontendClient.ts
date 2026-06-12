@@ -15,6 +15,8 @@ export type PrintLlmFrontendConfig = {
 export type PrintLlmProgress = {
   processed: number;
   total: number;
+  cacheHits: number;
+  modelRequests: number;
   items: PrintPersonalClassifierResponseItem[];
 };
 
@@ -119,7 +121,9 @@ export async function classifyPrintJobsWithProxy(
   const groupByRequestId = new Map(candidateGroups.map((group) => [group.requestItem.id, group]));
   const lookupUrl = config.lookupUrl || derivePrintLlmEndpoint(config.url, "lookup");
   const classifyMissingUrl = config.classifyMissingUrl || derivePrintLlmEndpoint(config.url, "classify-missing");
-  onProgress?.({ processed: 0, total: candidateGroups.length, items: [] });
+  let cacheHits = 0;
+  let modelRequests = 0;
+  onProgress?.({ processed: 0, total: candidateGroups.length, cacheHits, modelRequests, items: [] });
 
   const missingIds = new Set<string>();
 
@@ -137,17 +141,17 @@ export async function classifyPrintJobsWithProxy(
 
     const lookupPayload = (await lookupResponse.json()) as PrintPersonalClassifierResponse & { missing?: Array<{ id: string }> };
     const lookupItems = Array.isArray(lookupPayload.items) ? lookupPayload.items : [];
+    cacheHits += lookupItems.length;
     lookupItems.forEach((item) => {
       const group = groupByRequestId.get(item.id);
       if (group) items.push(...expandGroupClassification(item, group));
     });
 
     (Array.isArray(lookupPayload.missing) ? lookupPayload.missing : []).forEach((item) => missingIds.add(item.id));
-    onProgress?.({ processed: Math.min(index + batchGroups.length, candidateGroups.length) - missingIds.size, total: candidateGroups.length, items: [...items] });
+    onProgress?.({ processed: cacheHits + modelRequests, total: candidateGroups.length, cacheHits, modelRequests, items: [...items] });
   }
 
   const missingGroups = candidateGroups.filter((group) => missingIds.has(group.requestItem.id));
-  const foundCount = candidateGroups.length - missingGroups.length;
   for (let index = 0; index < missingGroups.length; index += batchSize) {
     const batchGroups = missingGroups.slice(index, index + batchSize);
     const response = await fetchImpl(classifyMissingUrl, {
@@ -162,11 +166,13 @@ export async function classifyPrintJobsWithProxy(
 
     const payload = (await response.json()) as PrintPersonalClassifierResponse;
     const batchItems = Array.isArray(payload.items) ? payload.items : [];
+    cacheHits += batchItems.filter((item) => item.cache_hit === true).length;
+    modelRequests += batchItems.filter((item) => item.cache_hit !== true).length;
     batchItems.forEach((item) => {
       const group = groupByRequestId.get(item.id);
       if (group) items.push(...expandGroupClassification(item, group));
     });
-    onProgress?.({ processed: Math.min(foundCount + index + batchGroups.length, candidateGroups.length), total: candidateGroups.length, items: [...items] });
+    onProgress?.({ processed: Math.min(cacheHits + modelRequests, candidateGroups.length), total: candidateGroups.length, cacheHits, modelRequests, items: [...items] });
   }
 
   return { items };

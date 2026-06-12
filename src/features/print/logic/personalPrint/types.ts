@@ -56,6 +56,7 @@ export type PrintPersonalClassifierRequestItem = {
 
 export type PrintPersonalClassifierResponseItem = PrintPersonalClassification & {
   id: string;
+  cache_hit?: boolean;
 };
 
 export type PrintPersonalClassifierResponse = {

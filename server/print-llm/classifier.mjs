@@ -180,7 +180,7 @@ async function classifyOne(item, config, dependencies) {
     const cached = dependencies.cache.get(key);
     if (cached) {
       const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
-      return { id: item.id, normalized_title: normalizedTitle, ...effectiveCached };
+      return { id: item.id, normalized_title: normalizedTitle, ...effectiveCached, cache_hit: true };
     }
   }
 
@@ -208,9 +208,10 @@ async function classifyOne(item, config, dependencies) {
         normalized_title: normalizedTitle,
         source: "llm",
         ...postprocessRisk(validated),
+        cache_hit: false,
       };
       if (config.cacheEnabled) {
-        const { id, normalized_title: _normalizedTitle, ...cacheValue } = result;
+        const { id, normalized_title: _normalizedTitle, cache_hit: _cacheHit, ...cacheValue } = result;
         dependencies.cache.set(key, cacheValue);
       }
       return result;
@@ -237,7 +238,7 @@ export async function lookupPrintPersonalClassifications(items, config, dependen
       const cached = cachedByKey.get(key);
       if (cached) {
         const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
-        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...effectiveCached });
+        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...effectiveCached, cache_hit: true });
       } else {
         missing.push(item);
       }
@@ -261,7 +262,7 @@ export async function classifyMissingPrintPersonalItems(items, config, dependenc
       classified.forEach((result) => {
         const original = batch.find((item) => item.id === result.id);
         if (original && config.cacheEnabled && result.source === "llm") {
-          const { id, normalized_title: _normalizedTitle, ...stored } = result;
+          const { id, normalized_title: _normalizedTitle, cache_hit: _cacheHit, ...stored } = result;
           deps.cache.putClassification(documentClassificationHash(original, config), stored, { schemaVersion: config.schemaVersion, model: config.model });
         }
       });

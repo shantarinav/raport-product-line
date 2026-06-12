@@ -198,6 +198,63 @@ describe("print LLM frontend client", () => {
     expect(result.items.every((item) => item.source === "llm")).toBe(true);
   });
 
+  it("reports cache hits and model requests separately", async () => {
+    const onProgress = vi.fn();
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const isLookup = String(url).includes("lookup");
+      return {
+        ok: true,
+        json: async () =>
+          isLookup
+            ? {
+                items: [
+                  {
+                    id: body.items[0].id,
+                    normalized_title: body.items[0].id,
+                    source: "llm",
+                    is_personal: true,
+                    primary_category: "education",
+                    risk_level: "high",
+                    confidence_raw: 0.9,
+                    needs_review: true,
+                    reason_short: "Из кэша",
+                    signals: ["education"],
+                    cache_hit: true,
+                  },
+                ],
+                missing: body.items.slice(1),
+              }
+            : {
+                items: body.items.map((item: { id: string }) => ({
+                  id: item.id,
+                  normalized_title: item.id,
+                  source: "llm",
+                  is_personal: false,
+                  primary_category: "work",
+                  risk_level: "low",
+                  confidence_raw: 0.9,
+                  needs_review: false,
+                  reason_short: "Новая проверка",
+                  signals: ["work_like"],
+                  cache_hit: false,
+                })),
+              },
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy([job(1), job(2)], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl, onProgress);
+
+    expect(onProgress).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        processed: 2,
+        total: 2,
+        cacheHits: 1,
+        modelRequests: 1,
+      }),
+    );
+  });
+
 
   it("splits lookup requests into batches to avoid large request bodies", async () => {
     const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
