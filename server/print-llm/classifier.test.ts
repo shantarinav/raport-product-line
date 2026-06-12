@@ -94,6 +94,39 @@ function corporateDocumentResponse() {
   });
 }
 
+function serviceNoteResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "other_personal",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "Служебная записка по согласованию закупки пленки - корпоративный документ.",
+    signals: ["unknown"],
+  });
+}
+
+function corporateStandardResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "other_personal",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "Нестандартный номер документа без явных личных данных, возможно, корпоративный стандарт.",
+    signals: ["unknown"],
+  });
+}
+
+function noPersonalContextResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "other_personal",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "Нестандартный номер документа без явного персонального контекста в названии, не относится к перечисленным личным категориям.",
+    signals: ["unknown"],
+  });
+}
+
 function personalNonCorporateResponse() {
   return JSON.stringify({
     is_personal: true,
@@ -228,11 +261,20 @@ describe("classifyPrintPersonalItems", () => {
   });
 
   it("downgrades explicit professional or corporate document explanations to work", async () => {
-    const callOllama = vi.fn().mockResolvedValueOnce(professionalDocumentResponse()).mockResolvedValueOnce(corporateDocumentResponse());
+    const callOllama = vi
+      .fn()
+      .mockResolvedValueOnce(professionalDocumentResponse())
+      .mockResolvedValueOnce(corporateDocumentResponse())
+      .mockResolvedValueOnce(serviceNoteResponse())
+      .mockResolvedValueOnce(corporateStandardResponse())
+      .mockResolvedValueOnce(noPersonalContextResponse());
     const result = await classifyPrintPersonalItems(
       [
         item("safety", "4. 600 перечень идентифицированных опасностей ОТК.xlsm"),
         item("protocol", "Протокол портфеля №14 от 23.05.2026 + апатит 08.06 + комм. 11.06.xlsx"),
+        item("service-note", "Microsoft Word - Сл. записка Бирману согласование закупки пленки"),
+        item("standard-102", "№102 нестандарт S25 АФ+МП+МПН V2.pdf"),
+        item("standard-103", "№103 нестандарт S17+4 АФ+АФПН V2.pdf"),
       ],
       config({ cacheEnabled: false }),
       { callOllama, cache: new MemoryCache() },
@@ -241,6 +283,9 @@ describe("classifyPrintPersonalItems", () => {
     expect(result.items).toEqual([
       expect.objectContaining({ id: "safety", is_personal: false, primary_category: "work", risk_level: "low" }),
       expect.objectContaining({ id: "protocol", is_personal: false, primary_category: "work", risk_level: "low" }),
+      expect.objectContaining({ id: "service-note", is_personal: false, primary_category: "work", risk_level: "low" }),
+      expect.objectContaining({ id: "standard-102", is_personal: false, primary_category: "work", risk_level: "low" }),
+      expect.objectContaining({ id: "standard-103", is_personal: false, primary_category: "work", risk_level: "low" }),
     ]);
   });
 
