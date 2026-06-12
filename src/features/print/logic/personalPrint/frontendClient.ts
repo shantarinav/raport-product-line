@@ -49,8 +49,12 @@ export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import
   };
 }
 
-function printLlmPriority(job: PrintJob): number {
-  return job.riskScore + (job.isExcessPrint ? 100 : 0) + (job.isBigJob ? 40 : 0) + (job.isColor ? 20 : 0) + (job.isMultiNoDuplex ? 10 : 0) + Math.min(job.totalPages, 100) / 10;
+function isLocalPersonalTopicCandidate(job: PrintJob): boolean {
+  return job.riskReasonCodes.includes("excess-personal") || job.excessCategories.includes("Личные тематики");
+}
+
+function printLlmTieBreakerPriority(job: PrintJob): number {
+  return job.riskScore + (job.isExcessPrint ? 100 : 0) + (job.isBigJob ? 40 : 0) + (job.isColor ? 20 : 0) + (job.isMultiNoDuplex ? 10 : 0);
 }
 
 function shouldSendPrintJobToLlm(job: PrintJob): boolean {
@@ -62,12 +66,12 @@ function buildUniqueCandidateGroups(jobs: PrintJob[]): PrintLlmCandidateGroup[] 
   const groups = new Map<string, PrintLlmCandidateGroup>();
 
   jobs.forEach((job, index) => {
-    if (!shouldClassifyPrintJobWithLlm(job) || !shouldSendPrintJobToLlm(job)) return;
+    if (!isLocalPersonalTopicCandidate(job) || !shouldClassifyPrintJobWithLlm(job) || !shouldSendPrintJobToLlm(job)) return;
 
     const rowItem = rowItems[index];
     const normalizedTitle = normalizeDocumentTitle(rowItem.document_title);
     const key = normalizedTitle || rowItem.document_title.trim().toLowerCase() || rowItem.id;
-    const priority = printLlmPriority(job);
+    const priority = printLlmTieBreakerPriority(job);
     const existingGroup = groups.get(key);
 
     if (existingGroup) {
@@ -89,7 +93,11 @@ function buildUniqueCandidateGroups(jobs: PrintJob[]): PrintLlmCandidateGroup[] 
     });
   });
 
-  return Array.from(groups.values()).sort((left, right) => right.priority - left.priority);
+  return Array.from(groups.values()).sort((left, right) => {
+    const pagesDelta = right.requestItem.pages - left.requestItem.pages;
+    if (pagesDelta !== 0) return pagesDelta;
+    return right.priority - left.priority;
+  });
 }
 
 function expandGroupClassification(item: PrintPersonalClassifierResponseItem, group: PrintLlmCandidateGroup): PrintPersonalClassifierResponseItem[] {

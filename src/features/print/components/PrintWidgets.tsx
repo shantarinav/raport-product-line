@@ -1,5 +1,5 @@
 import { Badge } from "../../../shared/ui/shadcn/badge";
-import { formatDateTime, formatInteger, getEffectivePersonalPrintStatus } from "../logic/dashboard";
+import { formatDateTime, formatInteger } from "../logic/dashboard";
 import type { PrintBarDatum, PrintJob } from "../types";
 
 function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" {
@@ -10,15 +10,18 @@ function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "dange
 
 type PersonalClassification = NonNullable<PrintJob["personalPrintClassification"]>;
 
-function personalRiskLabel(riskLevel: PersonalClassification["risk_level"]): string {
-  if (riskLevel === "high") return "высокий";
-  if (riskLevel === "medium") return "средний";
-  if (riskLevel === "low") return "низкий";
-  return "не определен";
-}
-
 function shouldShowPersonalClassification(classification: PersonalClassification): boolean {
   return classification.source === "llm" || classification.is_personal;
+}
+
+function personalRuleBadgeLabel(row: PrintJob): string {
+  const labels = row.excessMatches
+    .filter((match) => match.category === "Личные тематики")
+    .map((match) => match.label)
+    .slice(0, 2)
+    .join(", ");
+
+  return `Словарь: ${labels || "личная тематика"}`;
 }
 
 export function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatum[]; valueLabel?: string }) {
@@ -68,50 +71,54 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
   return (
     <div className="grid gap-2">
       {rows.map((row, index) => {
-        const personalStatus = getEffectivePersonalPrintStatus(row);
-        const visibleRiskReasons = row.riskReasons.filter((reason) => reason.code !== "excess-personal" || personalStatus.isPersonal);
+        const personalClassification = row.personalPrintClassification;
+        const hasPersonalRuleMatch = row.riskReasonCodes.includes("excess-personal");
+        const isLlmRejectedPersonalCandidate = hasPersonalRuleMatch && personalClassification?.source === "llm" && !personalClassification.is_personal;
+        const visibleRiskReasons = row.riskReasons.filter((reason) => reason.code !== "excess-personal" || hasPersonalRuleMatch);
+
         return (
-        <article
-          key={`${row.dateKey}-${row.user}-${row.documentName}-${index}`}
-          className="grid gap-2 rounded-control border border-raport-border bg-white px-3 py-2"
-        >
-          <div className="grid min-w-0 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
-            <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-extrabold tabular-nums text-raport-primary">
-              #{index + 1}
-            </span>
-            <div className="min-w-0">
-              <button className="block max-w-full truncate text-left text-sm font-bold text-raport-primary hover:underline" onClick={() => onUserSelect(row.user)}>
-                {row.user}
-              </button>
-              <p className="mt-0.5 truncate text-xs font-semibold text-raport-text" title={row.documentName}>
-                {row.documentName}
+          <article
+            key={`${row.dateKey}-${row.user}-${row.documentName}-${index}`}
+            className={`grid gap-2 rounded-control border border-raport-border px-3 py-2 ${
+              isLlmRejectedPersonalCandidate ? "bg-raport-surface-soft" : "bg-white"
+            }`}
+          >
+            <div className="grid min-w-0 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
+              <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-extrabold tabular-nums text-raport-primary">
+                #{index + 1}
+              </span>
+              <div className="min-w-0">
+                <button className="block max-w-full truncate text-left text-sm font-bold text-raport-primary hover:underline" onClick={() => onUserSelect(row.user)}>
+                  {row.user}
+                </button>
+                <p className="mt-0.5 truncate text-xs font-semibold text-raport-text" title={row.documentName}>
+                  {row.documentName}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-raport-muted md:justify-end">
+                <span className="tabular-nums text-raport-text">{formatInteger(row.totalPages)} стр.</span>
+                <time dateTime={row.date?.toISOString()}>{formatDateTime(row.date)}</time>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant="danger">Балл риска: {formatInteger(row.riskScore)}</Badge>
+              {visibleRiskReasons.map((reason) => (
+                <Badge key={`${row.documentName}-${reason.code}`} variant={reason.code === "excess-personal" ? "secondary" : riskBadgeVariant(reason.kind)}>
+                  {reason.code === "excess-personal" ? personalRuleBadgeLabel(row) : reason.label}
+                </Badge>
+              ))}
+              {personalClassification?.source === "llm" ? (
+                <Badge variant={personalClassification.is_personal ? "warning" : "secondary"}>{personalClassification.is_personal ? "LLM: подтвердила" : "LLM: не подтвердила"}</Badge>
+              ) : hasPersonalRuleMatch ? (
+                <Badge variant="secondary">LLM: не проверено</Badge>
+              ) : null}
+            </div>
+            {personalClassification?.source === "llm" && personalClassification.reason_short && shouldShowPersonalClassification(personalClassification) ? (
+              <p className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
+                Комментарий LLM: {personalClassification.reason_short}
               </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-raport-muted md:justify-end">
-              <span className="tabular-nums text-raport-text">{formatInteger(row.totalPages)} стр.</span>
-              <time dateTime={row.date?.toISOString()}>{formatDateTime(row.date)}</time>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            <Badge variant="danger">Балл риска: {formatInteger(row.riskScore)}</Badge>
-            {visibleRiskReasons.map((reason) => (
-              <Badge key={`${row.documentName}-${reason.code}`} variant={riskBadgeVariant(reason.kind)}>
-                {reason.label}
-              </Badge>
-            ))}
-            {personalStatus.isPersonal && personalStatus.source === "llm" ? (
-              <Badge variant="warning">личная тематика: LLM</Badge>
             ) : null}
-            {row.personalPrintClassification && shouldShowPersonalClassification(row.personalPrintClassification) ? (
-              <Badge variant="secondary">Риск LLM: {personalRiskLabel(row.personalPrintClassification.risk_level)}</Badge>
-            ) : null}
-          </div>
-          {row.personalPrintClassification?.reason_short && shouldShowPersonalClassification(row.personalPrintClassification) ? (
-            <p className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
-              Основание классификации: {row.personalPrintClassification.reason_short}
-            </p>
-          ) : null}
-        </article>
+          </article>
         );
       })}
     </div>

@@ -38,10 +38,12 @@ const PERSONAL_TOPIC_SIGNALS = new Set([
   "entertainment",
 ]);
 
+const CLEAR_PERSONAL_REASON_PATTERN =
+  /\u043b\u0438\u0447\u043d[\p{L}\p{N}_]*\s+\u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d|\u043b\u0438\u0447\u043d[\p{L}\p{N}_]*\s+(?:\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442|\u0442\u0435\u043c\u0430|\u043f\u043b\u0430\u043d\u0438\u0440\u043e\u0432\u0430\u043d|\u043f\u043e\u0437\u0434\u0440\u0430\u0432\u043b\u0435\u043d)|\u043d\u0435\s+\u0441\u0432\u044f\u0437\u0430\u043d[\u0430\u043e]?\s+\u0441\s+\u0440\u0430\u0431\u043e\u0442|\u043d\u0435\s+\u0441\u0432\u044f\u0437\u0430\u043d[\u0430\u043e]?\s+\u0441\s+\u043a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d|\u043d\u0435\s+\u0443\u043a\u0430\u0437\u0430\u043d[\u0430\u043e]?\s+\u043a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d/iu;
 const CLEAR_WORK_REASON_PATTERN =
-  /указывает\s+на\s+(?:профессиональн|корпоративн|техническ|рабоч|производственн|служебн)|профессиональн\w*\s+документац|корпоративн\w*\s+(?:документ|стандарт)|техническ\w*\s+документац|рабоч\w*\s+документ|проектн\w*\s+документац|без\s+явн\w*\s+(?:личн\w*\s+данн|персональн\w*\s+контекст)|не\s+относится\s+к\s+(?:персональн|перечисленн\w*\s+личн)|не\s+является\s+личн|не\s+связан[ао]?\s+с\s+личн/iu;
-const CLEAR_WORK_TITLE_PATTERN =
-  /(?:^|[\s_-])(?:тп|сб|кд|тз|тк|ту|рд|сп|гост|отк)(?:$|[\s_.-])|сл\.?\s*записк|служебн\w*\s+записк|согласован\w*\s+закупк|протокол|стандарт|нестандарт|перечень\s+идентифицированн\w*\s+опасност|опасност|охрана\s+труда|корпус|подшипник|чертеж|чертёж|детал|узел|сборочн|спецификац|проектн|техническ/iu;
+  /\u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u0442\s+\u043d\u0430\s+(?:\u043f\u0440\u043e\u0444\u0435\u0441\u0441\u0438\u043e\u043d\u0430\u043b\u044c\u043d|\u043a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d|\u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a|\u0440\u0430\u0431\u043e\u0447|\u043f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d|\u0441\u043b\u0443\u0436\u0435\u0431\u043d)|\u043f\u0440\u043e\u0444\u0435\u0441\u0441\u0438\u043e\u043d\u0430\u043b\u044c\u043d[\p{L}\p{N}_]*\s+\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446|\u043a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d[\p{L}\p{N}_]*\s+(?:\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442|\u0441\u0442\u0430\u043d\u0434\u0430\u0440\u0442)|\u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a[\p{L}\p{N}_]*\s+\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446|\u0440\u0430\u0431\u043e\u0447[\p{L}\p{N}_]*\s+\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442|\u043f\u0440\u043e\u0435\u043a\u0442\u043d[\p{L}\p{N}_]*\s+\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446|\u0441\u043b\u0443\u0436\u0435\u0431\u043d[\p{L}\p{N}_]*\s+\u0437\u0430\u043f\u0438\u0441\u043a|\u0441\u043e\u0433\u043b\u0430\u0441\u043e\u0432\u0430\u043d[\p{L}\p{N}_]*\s+\u0437\u0430\u043a\u0443\u043f\u043a|\u043f\u0440\u043e\u0442\u043e\u043a\u043e\u043b[\p{L}\p{N}_]*\s+(?:\u043f\u043e\u0440\u0442\u0444\u0435\u043b|\u0441\u043e\u0432\u0435\u0449\u0430\u043d|\u043a\u043e\u043c\u0438\u0441\u0441\u0438)|\u0431\u0435\u0437\s+\u044f\u0432\u043d[\p{L}\p{N}_]*\s+(?:\u043b\u0438\u0447\u043d[\p{L}\p{N}_]*\s+\u0434\u0430\u043d\u043d|\u043f\u0435\u0440\u0441\u043e\u043d\u0430\u043b\u044c\u043d[\p{L}\p{N}_]*\s+\u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442)|\u043d\u0435\s+\u043e\u0442\u043d\u043e\u0441\u0438\u0442\u0441\u044f\s+\u043a\s+(?:\u043f\u0435\u0440\u0441\u043e\u043d\u0430\u043b\u044c\u043d|\u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u0435\u043d\u043d[\p{L}\p{N}_]*\s+\u043b\u0438\u0447\u043d)|\u043d\u0435\s+\u044f\u0432\u043b\u044f\u0435\u0442\u0441\u044f\s+\u043b\u0438\u0447\u043d|\u043d\u0435\s+\u0441\u0432\u044f\u0437\u0430\u043d[\u0430\u043e]?\s+\u0441\s+\u043b\u0438\u0447\u043d/iu;
+const CORPORATE_HEALTH_MEMO_PATTERN =
+  /\u043a\u043e\u0440\u043f\u043e\u0440\u0430\u0442\u0438\u0432\u043d[\p{L}\p{N}_]*\s+\u043f\u0430\u043c\u044f\u0442\u043a|\u043f\u0440\u043e\u0444\s*\.?\s*\u043e\u0441\u043c\u043e\u0442\u0440|\u043f\u0440\u043e\u0444\u043e\u0441\u043c\u043e\u0442\u0440/iu;
 
 export function normalizeDocumentTitle(value) {
   const original = String(value ?? "").trim();
@@ -72,12 +74,31 @@ export function validateLlmClassification(value) {
 }
 
 export function postprocessRisk(input) {
+  const hasPersonalTopic =
+    PERSONAL_TOPIC_CATEGORIES.has(input.primary_category) || input.signals.some((signal) => PERSONAL_TOPIC_SIGNALS.has(signal));
+  const hasClearPersonalClassification = input.is_personal && hasPersonalTopic;
+  const hasClearPersonalReason = CLEAR_PERSONAL_REASON_PATTERN.test(input.reason_short);
+  if (hasClearPersonalReason && hasPersonalTopic) {
+    const primaryCategory = PERSONAL_TOPIC_CATEGORIES.has(input.primary_category)
+      ? input.primary_category
+      : input.signals.includes("education")
+        ? "education"
+        : "other_personal";
+    return {
+      ...input,
+      is_personal: true,
+      primary_category: primaryCategory,
+      needs_review: input.confidence_raw < 0.75 ? true : input.needs_review,
+      risk_level: input.confidence_raw >= 0.75 ? "high" : input.confidence_raw >= 0.55 ? "medium" : "low",
+    };
+  }
   const isClearWorkContext =
-    input.signals.includes("work_like") ||
-    input.signals.includes("technical_scan_name") ||
-    CLEAR_WORK_REASON_PATTERN.test(input.reason_short);
+    !hasClearPersonalReason &&
+    ((!hasClearPersonalClassification && (input.signals.includes("work_like") || input.signals.includes("technical_scan_name"))) ||
+      CLEAR_WORK_REASON_PATTERN.test(input.reason_short));
+  const hasCorporateHealthMemoContext = !hasClearPersonalReason && CORPORATE_HEALTH_MEMO_PATTERN.test(input.reason_short);
 
-  if (isClearWorkContext) {
+  if (isClearWorkContext || hasCorporateHealthMemoContext) {
     return {
       ...input,
       is_personal: false,
@@ -92,7 +113,7 @@ export function postprocessRisk(input) {
     !input.is_personal &&
     input.primary_category !== "unknown" &&
     !input.signals.includes("work_like") &&
-    (PERSONAL_TOPIC_CATEGORIES.has(input.primary_category) || input.signals.some((signal) => PERSONAL_TOPIC_SIGNALS.has(signal)));
+    hasPersonalTopic;
   const normalized = shouldUpgradePersonalTopic ? { ...input, is_personal: true, needs_review: true } : input;
 
   if (normalized.primary_category === "unknown") return { ...normalized, risk_level: "unknown", needs_review: true };
@@ -100,12 +121,6 @@ export function postprocessRisk(input) {
   if (normalized.is_personal && normalized.confidence_raw >= 0.55) return { ...normalized, risk_level: "medium", needs_review: true };
   if (normalized.is_personal) return { ...normalized, risk_level: "low", needs_review: true };
   return { ...normalized, risk_level: "low" };
-}
-
-function applyTitleWorkSignal(value, normalizedTitle) {
-  return CLEAR_WORK_TITLE_PATTERN.test(normalizedTitle) && !value.signals.includes("work_like")
-    ? { ...value, signals: ["work_like", ...value.signals].slice(0, 5) }
-    : value;
 }
 
 function documentClassificationHash(item, config) {
@@ -163,7 +178,10 @@ async function classifyOne(item, config, dependencies) {
 
   if (config.cacheEnabled) {
     const cached = dependencies.cache.get(key);
-    if (cached) return { id: item.id, normalized_title: normalizedTitle, ...cached };
+    if (cached) {
+      const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
+      return { id: item.id, normalized_title: normalizedTitle, ...effectiveCached };
+    }
   }
 
   const prompt = buildPrintLlmPrompt({
@@ -189,7 +207,7 @@ async function classifyOne(item, config, dependencies) {
         id: item.id,
         normalized_title: normalizedTitle,
         source: "llm",
-        ...postprocessRisk(applyTitleWorkSignal(validated, normalizedTitle)),
+        ...postprocessRisk(validated),
       };
       if (config.cacheEnabled) {
         const { id, normalized_title: _normalizedTitle, ...cacheValue } = result;
@@ -218,7 +236,7 @@ export async function lookupPrintPersonalClassifications(items, config, dependen
     keysByItem.forEach(({ item, key, normalizedTitle }) => {
       const cached = cachedByKey.get(key);
       if (cached) {
-        const effectiveCached = cached.source === "llm" ? postprocessRisk(applyTitleWorkSignal(cached, normalizedTitle)) : cached;
+        const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
         found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...effectiveCached });
       } else {
         missing.push(item);

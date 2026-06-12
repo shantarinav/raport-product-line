@@ -22,12 +22,12 @@ function job(index: number, overrides: Partial<PrintJob> = {}): PrintJob {
     isMultiNoDuplex: false,
     isColor: false,
     isPdfPrinter: false,
-    isExcessPrint: false,
-    excessCategories: [],
+    isExcessPrint: true,
+    excessCategories: ["Личные тематики"],
     excessMatches: [],
     riskScore: 30,
     riskReasons: [],
-    riskReasonCodes: [],
+    riskReasonCodes: ["excess-personal"],
     raw: {},
     ...overrides,
   };
@@ -113,7 +113,7 @@ describe("print LLM frontend client", () => {
       [
         job(1, { documentName: "school_homework.pdf", riskScore: 90 }),
         job(2, { documentName: "school homework.pdf", riskScore: 50 }),
-        job(3, { documentName: "invoice.pdf", riskScore: 10 }),
+        job(3, { documentName: "invoice.pdf", riskScore: 10, isExcessPrint: false, excessCategories: [], riskReasonCodes: [] }),
       ],
       { enabled: true, url: "/proxy", batchSize: 1 },
       fetchImpl,
@@ -234,13 +234,17 @@ describe("print LLM frontend client", () => {
   it("does not call the proxy for low-risk documents", async () => {
     const fetchImpl = vi.fn();
 
-    const result = await classifyPrintJobsWithProxy([job(1, { documentName: "ordinary-work-note.pdf", riskScore: 0 })], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
+    const result = await classifyPrintJobsWithProxy(
+      [job(1, { documentName: "ordinary-work-note.pdf", riskScore: 0, isExcessPrint: false, excessCategories: [], riskReasonCodes: [] })],
+      { enabled: true, url: "/proxy", batchSize: 2 },
+      fetchImpl,
+    );
 
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(result.items).toEqual([]);
   });
 
-  it("limits LLM candidates to the highest-risk unique documents", async () => {
+  it("limits LLM candidates to the highest-page-count unique personal-topic documents", async () => {
     const sentTitles: string[] = [];
     const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
@@ -277,6 +281,143 @@ describe("print LLM frontend client", () => {
     );
 
     expect(sentTitles).toEqual(["top.pdf", "middle.pdf"]);
+  });
+
+  it("prioritizes local personal-topic matches before generic high-risk documents", async () => {
+    const sentTitles: string[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      sentTitles.push(...body.items.map((item: { document_title: string }) => item.document_title));
+      expect(String(url)).toContain("lookup");
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "Рабочий документ",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy(
+      [
+        job(1, {
+          documentName: "large-work.pdf",
+          riskScore: 100,
+          totalPages: 500,
+          isBigJob: true,
+          isExcessPrint: true,
+          isColor: true,
+          isMultiNoDuplex: true,
+          excessCategories: [],
+          riskReasonCodes: [],
+        }),
+        job(2, { documentName: "диплом.pdf", riskScore: 85, totalPages: 19, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+      ],
+      { enabled: true, url: "/proxy", batchSize: 10, maxCandidates: 1 },
+      fetchImpl,
+    );
+
+    expect(sentTitles).toEqual(["диплом.pdf"]);
+  });
+
+  it("sends only local personal-topic candidates sorted by page count", async () => {
+    const sentTitles: string[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      sentTitles.push(...body.items.map((item: { document_title: string }) => item.document_title));
+      expect(String(url)).toContain("lookup");
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "Рабочий документ",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy(
+      [
+        job(1, {
+          documentName: "large-work.pdf",
+          riskScore: 100,
+          totalPages: 500,
+          isBigJob: true,
+          isExcessPrint: true,
+          isColor: true,
+          isMultiNoDuplex: true,
+          excessCategories: [],
+          riskReasonCodes: [],
+        }),
+        job(2, { documentName: "контрольная.pdf", riskScore: 65, totalPages: 9, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+        job(3, { documentName: "диплом.pdf", riskScore: 85, totalPages: 19, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+        job(4, { documentName: "меню.pdf", riskScore: 30, totalPages: 2, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+      ],
+      { enabled: true, url: "/proxy", batchSize: 10, maxCandidates: 2 },
+      fetchImpl,
+    );
+
+    expect(sentTitles).toEqual(["диплом.pdf", "контрольная.pdf"]);
+  });
+
+  it("uses page count as the primary order for local personal-topic candidates", async () => {
+    const sentTitles: string[] = [];
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      sentTitles.push(...body.items.map((item: { document_title: string }) => item.document_title));
+      expect(String(url)).toContain("lookup");
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "Рабочий документ",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy(
+      [
+        job(1, { documentName: "поздравление.pdf", riskScore: 90, totalPages: 1, isColor: true, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+        job(2, { documentName: "диплом.pdf", riskScore: 30, totalPages: 19, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+        job(3, { documentName: "меню.pdf", riskScore: 30, totalPages: 2, isExcessPrint: true, excessCategories: ["Личные тематики"], riskReasonCodes: ["excess-personal"] }),
+      ],
+      { enabled: true, url: "/proxy", batchSize: 10, maxCandidates: 1 },
+      fetchImpl,
+    );
+
+    expect(sentTitles).toEqual(["диплом.pdf"]);
   });
 
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 const { classifyMissingPrintPersonalItems, classifyPrintPersonalItems, lookupPrintPersonalClassifications } = await import("./classifier.mjs");
+const { readPrintLlmConfig } = await import("./config.mjs");
 const { buildPrintLlmPrompt } = await import("./prompt.mjs");
 
 function config(overrides = {}) {
@@ -12,7 +13,7 @@ function config(overrides = {}) {
     timeoutMs: 8000,
     batchSize: 20,
     cacheEnabled: true,
-    schemaVersion: "1",
+    schemaVersion: "4",
     ...overrides,
   };
 }
@@ -36,6 +37,17 @@ function validResponse() {
     needs_review: true,
     reason_short: "Похоже на учебный материал",
     signals: ["education", "children_or_school"],
+  });
+}
+
+function personalHouseholdResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "household",
+    confidence_raw: 0.86,
+    needs_review: true,
+    reason_short: "Документ похож на личную бытовую заметку.",
+    signals: ["household"],
   });
 }
 
@@ -116,6 +128,17 @@ function corporateStandardResponse() {
   });
 }
 
+function corporateHealthMemoResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "medical",
+    confidence_raw: 0.9,
+    needs_review: true,
+    reason_short: "проф осмотр памятка эдельвейс 8 марта : корпоративная памятка для профосмотра",
+    signals: ["medical"],
+  });
+}
+
 function noPersonalContextResponse() {
   return JSON.stringify({
     is_personal: true,
@@ -136,6 +159,29 @@ function personalNonCorporateResponse() {
     reason_short: "примерное меню на неделю — это личное планирование питания, не связанное с корпоративной деятельностью.",
     signals: ["household"],
   });
+}
+
+function personalEducationWithWorkLikeSignalResponse() {
+  return JSON.stringify({
+    is_personal: true,
+    primary_category: "education",
+    confidence_raw: 0.9,
+    needs_review: false,
+    reason_short: "Диплом для личного использования, не указана корпоративная тренинговая программа или проектная документация.",
+    signals: ["work_like", "education"],
+  });
+}
+
+function cachedWrongWorkForPersonalEducation() {
+  return {
+    source: "llm",
+    is_personal: false,
+    primary_category: "work",
+    confidence_raw: 0.9,
+    needs_review: false,
+    reason_short: "Диплом для личного использования, не указана корпоративная тренинговая программа или проектная документация.",
+    signals: ["work_like", "education"],
+  };
 }
 
 class MemoryCache {
@@ -174,7 +220,34 @@ describe("classifyPrintPersonalItems", () => {
       paperSize: "A4",
     });
 
-    expect(prompt).toContain("The reason_short field must be written in Russian.");
+    expect(prompt).toContain("The reason_short field must be written in Russian for every result, including work and unknown.");
+  });
+
+  it("keeps prompt consistency rules explicit", () => {
+    const prompt = buildPrintLlmPrompt({
+      normalizedTitle: "service note purchase approval",
+      pages: 1,
+      color: true,
+      duplex: false,
+      paperSize: "A4",
+    });
+
+    expect(prompt).toContain('If reason_short says the document is corporate, professional, technical, work-related, service, procurement, standard, protocol, project, or safety documentation, then is_personal MUST be false.');
+    expect(prompt).toContain('If is_personal is false, primary_category MUST be "work" or "unknown".');
+    expect(prompt).toContain("Do not classify a document as personal only because it is printed in color, without duplex, or has many pages.");
+    expect(prompt).toContain("corporate memos, корпоративная памятка, профосмотр");
+    expect(prompt).toContain("Work examples: корпоративная памятка, профосмотр, памятка для профосмотра.");
+    expect(prompt).toContain("Do not use medical for technical words such as bearing, корпус, подшипник, деталь, узел.");
+    expect(prompt).toContain("служебная записка");
+    expect(prompt).toContain("нестандарт");
+  });
+
+  it("uses schema version 4 by default to avoid old SQLite cache collisions", () => {
+    expect(readPrintLlmConfig({}).schemaVersion).toBe("4");
+  });
+
+  it("uses a CPU-friendly Ollama timeout by default", () => {
+    expect(readPrintLlmConfig({}).timeoutMs).toBe(30000);
   });
 
   it("returns disabled fallback without calling Ollama", async () => {
@@ -289,9 +362,67 @@ describe("classifyPrintPersonalItems", () => {
     ]);
   });
 
+  it("downgrades corporate medical check memo explanations to work", async () => {
+    const callOllama = vi.fn().mockResolvedValue(corporateHealthMemoResponse());
+    const result = await classifyPrintPersonalItems([item("health-memo", "Microsoft Word - 1Проф.осмотр памятка Эдельвейс 8 марта 146 (1)")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: false,
+      primary_category: "work",
+      risk_level: "low",
+      needs_review: false,
+    });
+  });
+
   it("keeps personal explanations that only mention absence of corporate context", async () => {
     const callOllama = vi.fn().mockResolvedValue(personalNonCorporateResponse());
     const result = await classifyPrintPersonalItems([item("menu", "ПРИМЕРНОЕ МЕНЮ НА неделю для 90 летнего")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: true,
+      primary_category: "household",
+      risk_level: "high",
+    });
+  });
+
+  it("does not let work_like override a clear personal education classification", async () => {
+    const callOllama = vi.fn().mockResolvedValue(personalEducationWithWorkLikeSignalResponse());
+    const result = await classifyPrintPersonalItems([item("diploma", "Железнов М.А. диплом.pdf")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: true,
+      primary_category: "education",
+      risk_level: "high",
+    });
+  });
+
+  it("reprocesses cached LLM results with the current postprocess rules", async () => {
+    const cache = new MemoryCache();
+    cache.get = () => cachedWrongWorkForPersonalEducation();
+    const result = await classifyPrintPersonalItems([item("diploma", "Железнов М.А. диплом.pdf")], config(), {
+      callOllama: vi.fn(),
+      cache,
+    });
+
+    expect(result.items[0]).toMatchObject({
+      is_personal: true,
+      primary_category: "education",
+      risk_level: "high",
+    });
+  });
+
+  it("does not infer work-like classification from document title before postprocess", async () => {
+    const callOllama = vi.fn().mockResolvedValue(personalHouseholdResponse());
+    const result = await classifyPrintPersonalItems([item("service-note-title", "Microsoft Word - Сл. записка Бирману согласование закупки пленки")], config({ cacheEnabled: false }), {
       callOllama,
       cache: new MemoryCache(),
     });

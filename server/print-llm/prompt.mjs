@@ -27,8 +27,19 @@ Do not classify a title as work only because it was printed from Microsoft Word,
 Classify as work if the title clearly looks like business documentation:
 - invoice, contract, report, акт, счет, служебная записка, проектная документация;
 - corporate templates;
+- corporate memos, корпоративная памятка, профосмотр, professional medical check notices;
 - technical documentation;
 - operational reports.
+
+Consistency rules for the JSON answer:
+- If reason_short says the document is corporate, professional, technical, work-related, service, procurement, standard, protocol, project, or safety documentation, then is_personal MUST be false.
+- If is_personal is false, primary_category MUST be "work" or "unknown".
+- If is_personal is true, reason_short MUST explain the personal topic, not a work topic.
+- Do not classify a document as personal only because it is printed in color, without duplex, or has many pages.
+- Do not use medical for technical words such as bearing, корпус, подшипник, деталь, узел.
+- Work examples: служебная записка, согласование закупки, протокол, стандарт, нестандарт, ОТК, охрана труда, перечень опасностей, корпус подшипника, чертеж, спецификация.
+- Work examples: корпоративная памятка, профосмотр, памятка для профосмотра.
+- Personal examples: меню для пожилого родственника, домашнее задание, диплом outside corporate training, школьные материалы, билеты for private travel.
 
 Use unknown if the title is too short or ambiguous:
 - scan001
@@ -40,7 +51,7 @@ Use unknown if the title is too short or ambiguous:
 - isolated number
 
 Return only valid JSON matching the schema.
-The reason_short field must be written in Russian.
+The reason_short field must be written in Russian for every result, including work and unknown.
 Do not include personal data in the reason.
 Do not repeat the full filename in the reason.
 

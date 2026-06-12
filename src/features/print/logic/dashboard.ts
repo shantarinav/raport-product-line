@@ -268,6 +268,7 @@ export function applyPrintFilters(rows: PrintJob[], filters: PrintFilters): Prin
   const userQuery = filters.user.toLowerCase();
   const computerQuery = filters.computer.toLowerCase();
   const docQuery = filters.documentText.toLowerCase();
+  const hasLlmPersonalReview = rows.some((row) => row.personalPrintClassification?.source === "llm");
 
   return rows.filter((row) => {
     if (filters.excludePdfPrinter && row.isPdfPrinter) return false;
@@ -280,7 +281,12 @@ export function applyPrintFilters(rows: PrintJob[], filters: PrintFilters): Prin
     if (filters.color && row.color !== filters.color) return false;
     if (filters.duplex && row.duplex !== filters.duplex) return false;
     if (filters.paperBuckets.length > 0 && !filters.paperBuckets.includes(row.paperBucket)) return false;
-    if (filters.riskReason === "excess-personal" && !getEffectivePersonalPrintStatus(row).isPersonal) return false;
+    if (filters.riskReason === "excess-personal") {
+      if (hasLlmPersonalReview) {
+        return row.personalPrintClassification?.source === "llm" && row.personalPrintClassification.is_personal;
+      }
+      if (!getEffectivePersonalPrintStatus(row).isPersonal) return false;
+    }
     if (filters.riskReason && filters.riskReason !== "excess-personal" && !row.riskReasonCodes.includes(filters.riskReason as RiskReasonCode)) return false;
     return true;
   });
@@ -317,6 +323,59 @@ export function getEffectivePersonalPrintStatus(row: PrintJob): {
     confidence: null,
     riskLevel: null,
   };
+}
+
+export type PersonalPrintReviewStats = {
+  dictionaryCandidates: number;
+  checked: number;
+  confirmed: number;
+  rejected: number;
+  unchecked: number;
+  confirmedPages: number;
+  rejectedPages: number;
+  uncheckedPages: number;
+};
+
+export function calculatePersonalPrintReviewStats(rows: PrintJob[]): PersonalPrintReviewStats {
+  return rows.reduce<PersonalPrintReviewStats>(
+    (stats, row) => {
+      const hasDictionaryPersonalSignal = row.riskReasonCodes.includes("excess-personal");
+      const classification = row.personalPrintClassification;
+
+      if (hasDictionaryPersonalSignal) {
+        stats.dictionaryCandidates += 1;
+      }
+
+      if (classification?.source === "llm") {
+        stats.checked += 1;
+        if (classification.is_personal) {
+          stats.confirmed += 1;
+          stats.confirmedPages += row.totalPages;
+        } else {
+          stats.rejected += 1;
+          stats.rejectedPages += row.totalPages;
+        }
+        return stats;
+      }
+
+      if (hasDictionaryPersonalSignal) {
+        stats.unchecked += 1;
+        stats.uncheckedPages += row.totalPages;
+      }
+
+      return stats;
+    },
+    {
+      dictionaryCandidates: 0,
+      checked: 0,
+      confirmed: 0,
+      rejected: 0,
+      unchecked: 0,
+      confirmedPages: 0,
+      rejectedPages: 0,
+      uncheckedPages: 0,
+    },
+  );
 }
 
 export function calculatePrintKpis(rows: PrintJob[], tariffs: PrintTariffs): PrintKpis {

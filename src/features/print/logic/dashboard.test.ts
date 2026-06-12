@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PrintJob } from "../types";
-import { applyPrintFilters, initialPrintFilters } from "./dashboard";
+import { applyPrintFilters, calculatePersonalPrintReviewStats, initialPrintFilters } from "./dashboard";
 
 function job(overrides: Partial<PrintJob> = {}): PrintJob {
   return {
@@ -72,6 +72,81 @@ describe("applyPrintFilters", () => {
     ];
     const filters = { ...initialPrintFilters(rows), riskReason: "excess-personal" };
 
-    expect(applyPrintFilters(rows, filters).map((row) => row.documentName)).toEqual(["unknown.pdf", "local-rule.pdf"]);
+    expect(applyPrintFilters(rows, filters).map((row) => row.documentName)).toEqual(["unknown.pdf"]);
+  });
+
+  it("uses local personal rules as fallback when there are no LLM results in the current rows", () => {
+    const rows = [
+      job({
+        documentName: "local-rule.pdf",
+        riskReasonCodes: ["excess-personal"],
+      }),
+      job({
+        documentName: "work.pdf",
+      }),
+    ];
+    const filters = { ...initialPrintFilters(rows), riskReason: "excess-personal" };
+
+    expect(applyPrintFilters(rows, filters).map((row) => row.documentName)).toEqual(["local-rule.pdf"]);
+  });
+});
+
+describe("calculatePersonalPrintReviewStats", () => {
+  it("separates dictionary candidates, confirmed, rejected and unchecked LLM review states", () => {
+    const rows = [
+      job({
+        documentName: "confirmed.pdf",
+        riskReasonCodes: ["excess-personal"],
+        totalPages: 10,
+        personalPrintClassification: {
+          normalized_title: "confirmed",
+          source: "llm",
+          is_personal: true,
+          primary_category: "education",
+          risk_level: "high",
+          confidence_raw: 0.9,
+          needs_review: true,
+          reason_short: "Личная тематика.",
+          signals: ["education"],
+        },
+      }),
+      job({
+        documentName: "rejected.pdf",
+        riskReasonCodes: ["excess-personal"],
+        totalPages: 20,
+        personalPrintClassification: {
+          normalized_title: "rejected",
+          source: "llm",
+          is_personal: false,
+          primary_category: "work",
+          risk_level: "low",
+          confidence_raw: 0.8,
+          needs_review: false,
+          reason_short: "Рабочий документ.",
+          signals: ["work_like"],
+        },
+      }),
+      job({
+        documentName: "unchecked.pdf",
+        riskReasonCodes: ["excess-personal"],
+        totalPages: 5,
+      }),
+      job({
+        documentName: "technical.pdf",
+        riskReasonCodes: ["color"],
+        totalPages: 30,
+      }),
+    ];
+
+    expect(calculatePersonalPrintReviewStats(rows)).toEqual({
+      dictionaryCandidates: 3,
+      checked: 2,
+      confirmed: 1,
+      rejected: 1,
+      unchecked: 1,
+      confirmedPages: 10,
+      rejectedPages: 20,
+      uncheckedPages: 5,
+    });
   });
 });

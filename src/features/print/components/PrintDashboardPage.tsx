@@ -16,6 +16,7 @@ import {
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { Button } from "../../../shared/ui/shadcn/button";
+import { Badge } from "../../../shared/ui/shadcn/badge";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import {
@@ -23,6 +24,7 @@ import {
   buildPrintFilterOptions,
   buildRiskJobs,
   buildTopUsers,
+  calculatePersonalPrintReviewStats,
   calculatePrintAnalytics,
   calculatePrintKpis,
   DEFAULT_TABLE_LIMITS,
@@ -36,17 +38,14 @@ import {
   initialPrintFilters,
   PAPER_BUCKETS,
   RISK_REASON_OPTIONS,
+  type PersonalPrintReviewStats,
 } from "../logic/dashboard";
 import type { PaperBucket, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
 import { usePrintHistory } from "../logic/usePrintHistory";
 import {
   AutocompleteField,
-  QuickFocusPanel,
   SortToolbar,
   USER_SORT_OPTIONS,
-  quickFocusFromFilters,
-  quickFocusLabel,
-  type PrintQuickFocus,
   type UserSort,
 } from "./PrintControls";
 import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
@@ -242,10 +241,10 @@ function printInsightPoints(topUsers: PrintUserAggregate[], riskJobs: PrintJob[]
 }
 
 function printLlmStatusText(status: PrintLlmStatus): string {
-  if (status === "loading") return "LLM-классификация выполняется: дашборд уже работает по словарным правилам.";
-  if (status === "ready") return "LLM-классификация включена: показаны сигналы локального классификатора.";
-  if (status === "fallback") return "LLM-классификация недоступна: используется словарный fallback.";
-  return "LLM-классификация выключена: используется словарный режим.";
+  if (status === "loading") return "Словарь нашел подозрительные личные темы. LLM проверяет TOP-кандидаты, результаты обновляются по мере готовности.";
+  if (status === "ready") return "Словарь нашел подозрительные личные темы, LLM подтвердила или отклонила проверенные кандидаты.";
+  if (status === "fallback") return "LLM недоступна: показаны только словарные подозрения по личным тематикам.";
+  return "LLM выключена: показаны только словарные подозрения по личным тематикам.";
 }
 
 function printLlmStatusChip(status: PrintLlmStatus, progress: Pick<PrintLlmProgress, "processed" | "total"> | null) {
@@ -261,6 +260,54 @@ function printLlmStatusChip(status: PrintLlmStatus, progress: Pick<PrintLlmProgr
     return { label: "LLM: недоступна", tone: "danger" as const };
   }
   return { label: "LLM: словарный режим", tone: "secondary" as const };
+}
+
+function PrintLlmReviewSummary({
+  status,
+  progress,
+  stats,
+  onExport,
+}: {
+  status: PrintLlmStatus;
+  progress: Pick<PrintLlmProgress, "processed" | "total"> | null;
+  stats: PersonalPrintReviewStats;
+  onExport: () => void;
+}) {
+  const progressLabel =
+    status === "loading" && progress && progress.total > 0
+      ? `LLM проверяет кандидаты: ${formatInteger(progress.processed)} из ${formatInteger(progress.total)}`
+      : printLlmStatusText(status);
+
+  return (
+    <div className="mb-3 grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-3">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div className="grid gap-1">
+          <p className="text-sm font-extrabold text-raport-text">Проверка личной печати</p>
+          <p className="max-w-3xl text-xs font-semibold leading-relaxed text-raport-muted">
+            {progressLabel}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="min-h-8 shrink-0 px-2 py-1 text-xs"
+          title="CSV с результатами словарной и LLM-классификации по заданиям"
+          onClick={onExport}
+        >
+          CSV проверки
+        </Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Badge variant="secondary">Словарь: {formatInteger(stats.dictionaryCandidates)}</Badge>
+        <Badge variant="secondary">Проверено LLM: {formatInteger(stats.checked)}</Badge>
+        <Badge variant="warning">Подтверждено: {formatInteger(stats.confirmed)}</Badge>
+        <Badge variant="secondary">Отклонено: {formatInteger(stats.rejected)}</Badge>
+        <Badge variant="secondary">Не проверено: {formatInteger(stats.unchecked)}</Badge>
+      </div>
+      <p className="text-xs font-semibold leading-relaxed text-raport-muted">
+        Фильтр «Личные тематики» после появления LLM-результатов показывает только кандидатов, которые LLM подтвердила как личную печать. Если LLM недоступна, используется словарный режим.
+      </p>
+    </div>
+  );
 }
 
 export function PrintDashboardPage() {
@@ -330,6 +377,11 @@ export function PrintDashboardPage() {
   const dashboardRows = enrichedJobs ?? report?.jobs ?? [];
   const options = useMemo(() => buildPrintFilterOptions(dashboardRows), [dashboardRows]);
   const filteredRows = useMemo(() => (filters ? applyPrintFilters(dashboardRows, filters) : []), [dashboardRows, filters]);
+  const personalReviewRows = useMemo(
+    () => (filters ? applyPrintFilters(dashboardRows, { ...filters, riskReason: "" }) : []),
+    [dashboardRows, filters],
+  );
+  const personalReviewStats = useMemo(() => calculatePersonalPrintReviewStats(personalReviewRows), [personalReviewRows]);
   const kpis = useMemo(() => calculatePrintKpis(filteredRows, tariffs), [filteredRows, tariffs]);
   const topUsers = useMemo(() => buildTopUsers(filteredRows, tariffs, userSort, tableLimits.users), [filteredRows, tariffs, userSort, tableLimits.users]);
   const { paperBars, docTypeBars, excessSummary } = useMemo(() => calculatePrintAnalytics(filteredRows), [filteredRows]);
@@ -401,32 +453,6 @@ export function PrintDashboardPage() {
       }
     : null;
 
-  const quickFocus = quickFocusFromFilters(filters);
-
-  function applyQuickFocus(value: PrintQuickFocus) {
-    if (value === "all") {
-      patchFilters({ color: "", duplex: "", riskReason: "" });
-      return;
-    }
-    if (value === "simplex") {
-      patchFilters({ duplex: "NOT DUPLEX", color: "", riskReason: "" });
-      return;
-    }
-    if (value === "color") {
-      patchFilters({ color: "NOT GRAYSCALE", duplex: "", riskReason: "" });
-      return;
-    }
-    if (value === "bigJobs") {
-      patchFilters({ riskReason: "big-job", color: "", duplex: "" });
-      return;
-    }
-    if (value === "pdfIncluded") {
-      patchFilters({ excludePdfPrinter: false });
-      return;
-    }
-    patchFilters({ excludePdfPrinter: true });
-  }
-
   function changeViewMode(nextMode: PrintViewMode) {
     setViewMode(nextMode);
     saveStoredPrintViewMode(nextMode);
@@ -449,7 +475,6 @@ export function PrintDashboardPage() {
   const chips = [
     { label: `Период: ${filters.dateFrom ? formatFilterDate(filters.dateFrom) : "начало"} - ${filters.dateTo ? formatFilterDate(filters.dateTo) : "конец"}` },
     printLlmStatusChip(llmStatus, llmProgress),
-    ...(quickFocus !== "all" ? [{ label: `Фокус: ${quickFocusLabel(quickFocus)}`, onRemove: () => applyQuickFocus("all") }] : []),
     ...(filters.excludePdfPrinter ? [{ label: "PDF-принтер исключен" }] : [{ label: "PDF-принтер включен", tone: "secondary" as const }]),
     ...(filters.user ? [{ label: `Пользователь: ${filters.user}`, onRemove: () => patchFilters({ user: "" }) }] : []),
     ...(filters.computer ? [{ label: `Компьютер: ${filters.computer}`, onRemove: () => patchFilters({ computer: "" }) }] : []),
@@ -558,7 +583,17 @@ export function PrintDashboardPage() {
                 </label>
               ) : null}
 
-              <QuickFocusPanel value={quickFocus} onChange={applyQuickFocus} />
+              <label className="grid gap-1">
+                <span className="text-xs text-raport-muted">Причина отклонения</span>
+                <Select value={filters.riskReason} onChange={(event) => patchFilters({ riskReason: event.target.value })}>
+                  <option value="">Все причины</option>
+                  {RISK_REASON_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
 
               {!isManagerView ? (
               <details className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
@@ -613,17 +648,6 @@ export function PrintDashboardPage() {
                 </div>
               </div>
 
-              <label className="grid gap-1">
-                <span className="text-xs text-raport-muted">Причина отклонения</span>
-                <Select value={filters.riskReason} onChange={(event) => patchFilters({ riskReason: event.target.value })}>
-                  <option value="">Все причины</option>
-                  {RISK_REASON_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
 
               <label className="flex items-start gap-2 rounded-control border border-raport-border bg-white px-2 py-2 text-xs text-raport-muted">
                 <input type="checkbox" checked={filters.excludePdfPrinter} onChange={(event) => patchFilters({ excludePdfPrinter: event.target.checked })} />
@@ -879,16 +903,12 @@ export function PrintDashboardPage() {
               Icon={AlertTriangle}
             >
               {!isManagerView ? (
-                <div className="mb-3 flex flex-col gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 md:flex-row md:items-center md:justify-between">
-                  <p className="text-xs font-semibold text-raport-muted">{printLlmStatusText(llmStatus)}</p>
-                  <Button
-                    variant="outline"
-                    className="min-h-8 px-2 py-1 text-xs"
-                    onClick={() => downloadTextFile(buildPrintClassificationCsv(filteredRows), classificationExportFileName)}
-                  >
-                    Скачать классификацию
-                  </Button>
-                </div>
+                <PrintLlmReviewSummary
+                  status={llmStatus}
+                  progress={llmProgress}
+                  stats={personalReviewStats}
+                  onExport={() => downloadTextFile(buildPrintClassificationCsv(filteredRows), classificationExportFileName)}
+                />
               ) : null}
               <SortToolbar
                 sortValue={riskSort}
