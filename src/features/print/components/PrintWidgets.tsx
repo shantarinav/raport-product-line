@@ -1,5 +1,5 @@
 import { Badge } from "../../../shared/ui/shadcn/badge";
-import { formatDateTime, formatInteger } from "../logic/dashboard";
+import { formatDateTime, formatInteger, getEffectivePersonalPrintStatus } from "../logic/dashboard";
 import type { PrintBarDatum, PrintJob } from "../types";
 
 function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "danger" | "warning" | "default" {
@@ -67,7 +67,10 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
 
   return (
     <div className="grid gap-2">
-      {rows.map((row, index) => (
+      {rows.map((row, index) => {
+        const personalStatus = getEffectivePersonalPrintStatus(row);
+        const visibleRiskReasons = row.riskReasons.filter((reason) => reason.code !== "excess-personal" || personalStatus.isPersonal);
+        return (
         <article
           key={`${row.dateKey}-${row.user}-${row.documentName}-${index}`}
           className="grid gap-2 rounded-control border border-raport-border bg-white px-3 py-2"
@@ -91,11 +94,14 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
           </div>
           <div className="flex flex-wrap gap-1">
             <Badge variant="danger">Балл риска: {formatInteger(row.riskScore)}</Badge>
-            {row.riskReasons.map((reason) => (
+            {visibleRiskReasons.map((reason) => (
               <Badge key={`${row.documentName}-${reason.code}`} variant={riskBadgeVariant(reason.kind)}>
                 {reason.label}
               </Badge>
             ))}
+            {personalStatus.isPersonal && personalStatus.source === "llm" && !row.riskReasonCodes.includes("excess-personal") ? (
+              <Badge variant="warning">личная тематика: LLM</Badge>
+            ) : null}
             {row.personalPrintClassification && shouldShowPersonalClassification(row.personalPrintClassification) ? (
               <Badge variant="secondary">Риск LLM: {personalRiskLabel(row.personalPrintClassification.risk_level)}</Badge>
             ) : null}
@@ -106,7 +112,8 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
             </p>
           ) : null}
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

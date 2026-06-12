@@ -47,7 +47,7 @@ describe("print LLM frontend client", () => {
       lookupUrl: "http://127.0.0.1:8787/api/print/classifications/lookup",
       classifyMissingUrl: "http://127.0.0.1:8787/api/print/classifications/classify-missing",
       batchSize: 3,
-      maxCandidates: 300,
+      maxCandidates: 50,
     });
   });
 

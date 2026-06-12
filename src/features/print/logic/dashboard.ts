@@ -280,9 +280,43 @@ export function applyPrintFilters(rows: PrintJob[], filters: PrintFilters): Prin
     if (filters.color && row.color !== filters.color) return false;
     if (filters.duplex && row.duplex !== filters.duplex) return false;
     if (filters.paperBuckets.length > 0 && !filters.paperBuckets.includes(row.paperBucket)) return false;
-    if (filters.riskReason && !row.riskReasonCodes.includes(filters.riskReason as RiskReasonCode)) return false;
+    if (filters.riskReason === "excess-personal" && !getEffectivePersonalPrintStatus(row).isPersonal) return false;
+    if (filters.riskReason && filters.riskReason !== "excess-personal" && !row.riskReasonCodes.includes(filters.riskReason as RiskReasonCode)) return false;
     return true;
   });
+}
+
+export function getEffectivePersonalPrintStatus(row: PrintJob): {
+  isPersonal: boolean;
+  source: "llm" | "rules" | "none";
+  confidence: number | null;
+  riskLevel: string | null;
+} {
+  const classification = row.personalPrintClassification;
+  if (classification?.source === "llm") {
+    return {
+      isPersonal: classification.is_personal,
+      source: "llm",
+      confidence: classification.confidence_raw,
+      riskLevel: classification.risk_level,
+    };
+  }
+
+  if (row.riskReasonCodes.includes("excess-personal")) {
+    return {
+      isPersonal: true,
+      source: "rules",
+      confidence: null,
+      riskLevel: "medium",
+    };
+  }
+
+  return {
+    isPersonal: false,
+    source: "none",
+    confidence: null,
+    riskLevel: null,
+  };
 }
 
 export function calculatePrintKpis(rows: PrintJob[], tariffs: PrintTariffs): PrintKpis {
