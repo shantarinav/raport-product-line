@@ -59,7 +59,7 @@ export function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatu
   );
 }
 
-export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSelect: (user: string) => void }) {
+export function RiskJobList({ rows, onUserSelect, showAiClassification = false }: { rows: PrintJob[]; onUserSelect: (user: string) => void; showAiClassification?: boolean }) {
   if (rows.length === 0) {
     return (
       <p className="rounded-control border border-dashed border-raport-border bg-raport-surface-soft px-3 py-2 text-sm text-raport-muted">
@@ -107,15 +107,15 @@ export function RiskJobList({ rows, onUserSelect }: { rows: PrintJob[]; onUserSe
                   {reason.code === "excess-personal" ? personalRuleBadgeLabel(row) : reason.label}
                 </Badge>
               ))}
-              {personalClassification?.source === "llm" ? (
-                <Badge variant={personalClassification.is_personal ? "warning" : "secondary"}>{personalClassification.is_personal ? "LLM: подтвердила" : "LLM: не подтвердила"}</Badge>
-              ) : hasPersonalRuleMatch ? (
-                <Badge variant="secondary">LLM: не проверено</Badge>
+              {showAiClassification && personalClassification?.source === "llm" ? (
+                <Badge variant={personalClassification.is_personal ? "warning" : "secondary"}>{personalClassification.is_personal ? "ИИ: подтвердил" : "ИИ: не подтвердил"}</Badge>
+              ) : showAiClassification && hasPersonalRuleMatch ? (
+                <Badge variant="secondary">ИИ: не проверено</Badge>
               ) : null}
             </div>
-            {personalClassification?.source === "llm" && personalClassification.reason_short && shouldShowPersonalClassification(personalClassification) ? (
+            {showAiClassification && personalClassification?.source === "llm" && personalClassification.reason_short && shouldShowPersonalClassification(personalClassification) ? (
               <p className="rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
-                Комментарий LLM: {personalClassification.reason_short}
+                Комментарий ИИ: {personalClassification.reason_short}
               </p>
             ) : null}
           </article>

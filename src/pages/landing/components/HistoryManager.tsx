@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CircleOff, History, RefreshCcw, Trash2, TrendingUp, X } from "lucide-react";
+﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Bot, CircleOff, Database, History, RefreshCcw, Trash2, TrendingUp, X } from "lucide-react";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/shadcn/card";
@@ -11,6 +11,7 @@ import {
   type DashboardType,
 } from "../../../shared/lib/historyDB";
 import { useTrendsEnabled } from "../../../shared/lib/trendSettings";
+import { usePrintAiEnabled } from "../../../shared/lib/printAiSettings";
 import { cn } from "../../../shared/ui/cn";
 
 const DASHBOARD_TYPES: DashboardType[] = ["ssz", "tessa", "print", "support"];
@@ -52,7 +53,7 @@ function periodLabel(snapshot: DashboardSnapshot): string {
 
 function snapshotTypeNote(snapshot: DashboardSnapshot): string {
   if (snapshot.grain === "month" && snapshot.coverage) {
-    return `месяц · покрытие ${snapshot.coverage.days}/${snapshot.coverage.periodDays} дн.`;
+    return `покрытие ${snapshot.coverage.days}/${snapshot.coverage.periodDays} дн.`;
   }
   return "устаревший формат · не используется в трендах";
 }
@@ -69,12 +70,94 @@ function groupByDashboard(snapshots: DashboardSnapshot[]): Record<DashboardType,
   );
 }
 
+function SettingCard({
+  icon,
+  title,
+  description,
+  status,
+  isEnabled,
+  onDisable,
+  onEnable,
+  disableLabel,
+  enableLabel,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  status: string;
+  isEnabled: boolean;
+  onDisable: () => void;
+  onEnable: () => void;
+  disableLabel: string;
+  enableLabel: string;
+}) {
+  return (
+    <div className="grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface text-raport-primary">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-black text-raport-text">{title}</p>
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]",
+                  isEnabled
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "border-raport-border bg-raport-surface text-raport-muted",
+                )}
+              >
+                {status}
+              </span>
+            </div>
+            <p className="mt-2 max-w-xl text-xs font-semibold leading-relaxed text-raport-muted">{description}</p>
+          </div>
+        </div>
+      </div>
+      <div
+        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface p-1 justify-self-start sm:justify-self-end"
+        role="group"
+        aria-label={title}
+        title={isEnabled ? enableLabel : disableLabel}
+      >
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
+            !isEnabled && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+          )}
+          aria-label={disableLabel}
+          aria-pressed={!isEnabled}
+          onClick={onDisable}
+        >
+          <CircleOff className="h-4 w-4" strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
+            isEnabled && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
+          )}
+          aria-label={enableLabel}
+          aria-pressed={isEnabled}
+          onClick={onEnable}
+        >
+          {icon}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function HistoryManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeType, setActiveType] = useState<DashboardType>("ssz");
   const [showAll, setShowAll] = useState(false);
   const [state, setState] = useState<HistoryState>({ snapshots: [], isLoading: false, error: "" });
   const [trendsEnabled, setTrendsEnabled] = useTrendsEnabled();
+  const [printAiEnabled, setPrintAiEnabled] = usePrintAiEnabled();
 
   const grouped = useMemo(() => groupByDashboard(state.snapshots), [state.snapshots]);
   const activeSnapshots = grouped[activeType];
@@ -147,7 +230,7 @@ export function HistoryManager() {
           onClick={() => setIsOpen(true)}
         >
           <History className="h-4 w-4" strokeWidth={2} />
-          Управлять локальной историей
+          История и настройки
         </button>
       </div>
 
@@ -164,12 +247,10 @@ export function HistoryManager() {
               <div className="min-w-0">
                 <CardTitle id="history-manager-title" className="flex items-center gap-2">
                   <History className="h-5 w-5 text-raport-primary" strokeWidth={2} />
-                  Локальная история и тренды
+                  История и настройки
                 </CardTitle>
-                <p className="mt-1 text-sm text-raport-muted">
-                  {trendsEnabled
-                    ? "Месячные снимки KPI сохраняются в этом браузере и используются для динамики показателей. Сырые отчеты не сохраняются."
-                    : "Сбор новых снимков KPI выключен. Уже сохраненную историю можно посмотреть или очистить вручную."}
+                <p className="mt-1 max-w-3xl text-sm text-raport-muted">
+                  Локальные функции Рапорта работают только в этом браузере. Сырые отчеты не сохраняются.
                 </p>
               </div>
               <Button variant="ghost" className="h-10 w-10 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>
@@ -177,54 +258,59 @@ export function HistoryManager() {
               </Button>
             </CardHeader>
 
-            <CardContent className="max-h-[calc(86vh-92px)] overflow-auto p-4">
-              <div className="grid gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-raport-text">Сбор трендов</p>
-                    <p className="mt-1 text-xs font-semibold text-raport-muted">
-                      {trendsEnabled
-                        ? "Включено: Рапорт сохраняет только месячные KPI. Сырые отчеты не сохраняются."
-                        : "Выключено по умолчанию: отчеты открываются без сохранения KPI."}
-                    </p>
-                  </div>
-                  <div
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface p-1"
-                    role="group"
-                    aria-label="Переключатель сбора трендов"
-                    title={trendsEnabled ? "Тренды включены" : "Тренды выключены"}
-                  >
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
-                        !trendsEnabled &&
-                          "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-                      )}
-                      aria-label="Выключить сбор трендов"
-                      aria-pressed={!trendsEnabled}
-                      onClick={() => setTrendsEnabled(false)}
-                    >
-                      <CircleOff className="h-4 w-4" strokeWidth={2} />
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
-                        trendsEnabled &&
-                          "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-                      )}
-                      aria-label="Включить сбор трендов"
-                      aria-pressed={trendsEnabled}
-                      onClick={() => setTrendsEnabled(true)}
-                    >
-                      <TrendingUp className="h-4 w-4" strokeWidth={2} />
-                    </button>
-                  </div>
+            <CardContent className="max-h-[calc(86vh-92px)] overflow-auto px-4 pb-4 pt-5">
+              <div className="grid gap-4">
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <SettingCard
+                    icon={<Bot className="h-4 w-4" strokeWidth={2} />}
+                    title="ИИ-проверка личной печати"
+                    description={
+                      printAiEnabled
+                        ? "Print уточняет личные тематики через локальный ИИ-сервис, если он доступен. Без сервиса дашборд продолжит работать."
+                        : "Print работает без ИИ-бекенда и без ИИ-артефактов. Включите, если нужно уточнять личную печать локальной моделью."
+                    }
+                    status={printAiEnabled ? "включено" : "выключено"}
+                    isEnabled={printAiEnabled}
+                    onDisable={() => setPrintAiEnabled(false)}
+                    onEnable={() => setPrintAiEnabled(true)}
+                    disableLabel="Выключить ИИ-проверку личной печати"
+                    enableLabel="Включить ИИ-проверку личной печати"
+                  />
+                  <SettingCard
+                    icon={<TrendingUp className="h-4 w-4" strokeWidth={2} />}
+                    title="Сбор трендов"
+                    description={
+                      trendsEnabled
+                        ? "Рапорт сохраняет только месячные KPI для динамики показателей. Исходные строки отчетов не попадают в историю."
+                        : "Отчеты открываются без сохранения KPI. Уже сохраненные снимки остаются доступными, пока вы их не удалите."
+                    }
+                    status={trendsEnabled ? "включено" : "выключено"}
+                    isEnabled={trendsEnabled}
+                    onDisable={() => setTrendsEnabled(false)}
+                    onEnable={() => setTrendsEnabled(true)}
+                    disableLabel="Выключить сбор трендов"
+                    enableLabel="Включить сбор трендов"
+                  />
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="inline-flex flex-wrap gap-1 rounded-control border border-raport-border bg-raport-surface-soft p-1">
+                <section className="grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4 text-raport-primary" strokeWidth={2} />
+                        <h3 className="text-sm font-black text-raport-text">Локальная история · {totalSnapshots} снимков</h3>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold leading-relaxed text-raport-muted">
+                        Месячные снимки KPI по дашбордам. Можно удалить отдельный период или очистить историю выбранного дашборда.
+                      </p>
+                    </div>
+                    <Button variant="ghost" className="min-h-8 px-2 py-1 text-xs" onClick={() => void loadHistory()}>
+                      <RefreshCcw className="h-3.5 w-3.5" strokeWidth={2} />
+                      Обновить
+                    </Button>
+                  </div>
+
+                  <div className="inline-flex w-full flex-wrap gap-1 rounded-control border border-raport-border bg-raport-surface p-1 sm:w-fit">
                     {DASHBOARD_TYPES.map((dashboardType) => (
                       <button
                         key={dashboardType}
@@ -232,8 +318,8 @@ export function HistoryManager() {
                         className={cn(
                           "inline-flex min-h-8 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors",
                           activeType === dashboardType
-                            ? "bg-white text-raport-primary shadow-sm"
-                            : "text-raport-muted hover:bg-white/70 hover:text-raport-text",
+                            ? "bg-white text-raport-primary shadow-sm dark:bg-raport-surface-elevated"
+                            : "text-raport-muted hover:bg-white/70 hover:text-raport-text dark:hover:bg-raport-surface-elevated",
                         )}
                         onClick={() => setActiveType(dashboardType)}
                       >
@@ -245,65 +331,56 @@ export function HistoryManager() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Всего: {totalSnapshots}</Badge>
-                    <Button variant="ghost" className="min-h-8 px-2 py-1 text-xs" onClick={() => void loadHistory()}>
-                      <RefreshCcw className="h-3.5 w-3.5" strokeWidth={2} />
-                      Обновить
-                    </Button>
-                  </div>
-                </div>
+                  {state.error ? <p className="text-sm font-semibold text-red-700">{state.error}</p> : null}
+                  {state.isLoading ? <p className="text-sm text-raport-muted">Загрузка локальной истории...</p> : null}
 
-                {state.error ? <p className="text-sm font-semibold text-red-700">{state.error}</p> : null}
-                {state.isLoading ? <p className="text-sm text-raport-muted">Загрузка локальной истории...</p> : null}
+                  {!state.isLoading && activeSnapshots.length === 0 ? (
+                    <div className="rounded-control border border-dashed border-raport-border bg-white px-3 py-4 text-sm text-raport-muted dark:bg-raport-surface">
+                      История {DASHBOARD_LABELS[activeType]} пока пуста.
+                    </div>
+                  ) : null}
 
-                {!state.isLoading && activeSnapshots.length === 0 ? (
-                  <div className="rounded-control border border-dashed border-raport-border bg-white px-3 py-4 text-sm text-raport-muted">
-                    История {DASHBOARD_LABELS[activeType]} пока пуста.
-                  </div>
-                ) : null}
-
-                {!state.isLoading && activeSnapshots.length > 0 ? (
-                  <div className="grid gap-2">
-                    <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white">
-                      {visibleSnapshots.map((snapshot) => (
-                        <div key={snapshot.id} className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-raport-text">{periodLabel(snapshot)}</p>
-                            <p className="mt-0.5 text-xs font-semibold text-raport-muted">
-                              {snapshotTypeNote(snapshot)} · сохранен: {formatDateTime(snapshot.meta.savedAt)}
-                            </p>
+                  {!state.isLoading && activeSnapshots.length > 0 ? (
+                    <div className="grid gap-2">
+                      <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white dark:bg-raport-surface">
+                        {visibleSnapshots.map((snapshot) => (
+                          <div key={snapshot.id} className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div className="grid min-w-0 gap-1 sm:grid-cols-[minmax(150px,220px)_minmax(0,1fr)_auto] sm:items-center">
+                              <p className="truncate text-sm font-semibold text-raport-text">{periodLabel(snapshot)}</p>
+                              <p className="truncate text-xs font-semibold text-raport-muted">{snapshotTypeNote(snapshot)}</p>
+                              <p className="text-xs font-semibold text-raport-muted sm:text-right">{formatDateTime(snapshot.meta.savedAt)}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              className="h-9 w-9 justify-self-start px-0 py-0 text-red-600 hover:bg-red-50 sm:justify-self-end dark:hover:bg-red-950/30"
+                              aria-label={`Удалить снимок ${periodLabel(snapshot)}`}
+                              onClick={() => void handleDeleteSnapshot(snapshot.id)}
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={2} />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            className="h-10 w-10 justify-self-start px-0 py-0 text-red-600 hover:bg-red-50 sm:justify-self-end"
-                            aria-label={`Удалить снимок ${periodLabel(snapshot)}`}
-                            onClick={() => void handleDeleteSnapshot(snapshot.id)}
-                          >
-                            <Trash2 className="h-5 w-5" strokeWidth={2} />
-                          </Button>
-                        </div>
-                      ))}
-                      {hiddenCount > 0 && (
-                        <div className="bg-raport-surface-soft p-1">
-                          <Button 
-                            variant="ghost" 
-                            className="w-full h-8 text-xs text-raport-muted hover:text-raport-text hover:bg-white" 
-                            onClick={() => setShowAll(true)}
-                          >
-                            Показать еще {hiddenCount}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                        {hiddenCount > 0 && (
+                          <div className="bg-raport-surface-soft p-1">
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-full text-xs text-raport-muted hover:bg-white hover:text-raport-text dark:hover:bg-raport-surface-elevated"
+                              onClick={() => setShowAll(true)}
+                            >
+                              Показать еще {hiddenCount}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="flex justify-end">
-                      <Button variant="destructive" onClick={() => void handleClearDashboardHistory()}>
-                        Очистить историю {DASHBOARD_LABELS[activeType]}
-                      </Button>
+                      <div className="flex justify-end">
+                        <Button variant="destructive" onClick={() => void handleClearDashboardHistory()}>
+                          Очистить историю {DASHBOARD_LABELS[activeType]}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
+                  ) : null}
+                </section>
               </div>
             </CardContent>
           </Card>
