@@ -187,10 +187,10 @@ function healthLabel(result: PrintAiHealthResult | null, isChecking: boolean, is
   if (isChecking) return "проверка";
   if (!isEnabled) return "выключено";
   if (!result) return "настроено";
-  if (result.status === "available") return "доступен";
-  if (result.status === "disabled") return "выключен на сервере";
-  if (result.status === "unauthorized") return "ключ не принят";
-  return "недоступен";
+  if (result.status === "available") return "подключен";
+  if (result.status === "disabled") return "проверка выключена";
+  if (result.status === "unauthorized") return "проверьте ключ";
+  return "нет связи";
 }
 
 export function HistoryManager() {
@@ -319,7 +319,7 @@ export function HistoryManager() {
                   История и возможности Рапорта
                 </CardTitle>
                 <p className="mt-1 max-w-3xl text-sm text-raport-muted">
-                  Локальные усилители анализа: ИИ-проверка Print, месячные тренды и сохраненные KPI. Сырые отчеты не сохраняются.
+                  Настройки возможностей Рапорта: ИИ-проверка личной печати, месячные тренды и локальная история KPI. Сырые отчеты не сохраняются.
                 </p>
               </div>
               <Button variant="ghost" className="h-10 w-10 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>
@@ -348,7 +348,7 @@ export function HistoryManager() {
                           </span>
                         </div>
                         <p className="mt-2 max-w-2xl text-xs font-semibold leading-relaxed text-raport-muted">
-                          По умолчанию Print работает без backend и без ИИ-артефактов. Подключение нужно только если вы хотите уточнять найденные словарем личные тематики через локальную модель.
+                          По умолчанию Рапорт проверяет личную печать словарем. Подключите ИИ, чтобы перепроверять спорные документы локальной моделью.
                         </p>
                         {printAiHealth ? <p className="mt-2 text-xs font-semibold text-raport-muted">{printAiHealth.message}</p> : null}
                       </div>
@@ -363,7 +363,7 @@ export function HistoryManager() {
                         }}
                       >
                         <PlugZap className="h-4 w-4" strokeWidth={2} />
-                        {printAiSettings.enabled ? "Изменить подключение" : "Подключить ИИ"}
+                        {printAiSettings.enabled ? "Настроить ИИ" : "Подключить ИИ"}
                       </Button>
                       {printAiSettings.enabled ? (
                         <Button variant="ghost" className="min-h-9 text-raport-muted" onClick={handleDisablePrintAi}>
@@ -379,7 +379,7 @@ export function HistoryManager() {
                       <label className="grid gap-1 text-xs font-semibold text-raport-muted">
                         <span className="inline-flex items-center gap-1">
                           <Server className="h-3.5 w-3.5" strokeWidth={2} />
-                          Адрес backend
+                          Адрес сервиса ИИ
                         </span>
                         <Input
                           value={printAiDraft.backendUrl}
@@ -390,7 +390,7 @@ export function HistoryManager() {
                       <label className="grid gap-1 text-xs font-semibold text-raport-muted">
                         <span className="inline-flex items-center gap-1">
                           <KeyRound className="h-3.5 w-3.5" strokeWidth={2} />
-                          API-ключ, если задан на сервере
+                          Ключ доступа, если требуется
                         </span>
                         <Input
                           value={printAiDraft.apiKey}

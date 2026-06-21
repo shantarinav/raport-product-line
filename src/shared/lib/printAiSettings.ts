@@ -135,17 +135,17 @@ export async function checkPrintAiConnection(settings: PrintAiSettings, fetchImp
   try {
     const response = await fetchImpl(healthUrl, { method: "GET", headers });
     if (response.status === 401) {
-      return { status: "unauthorized", message: "Backend найден, но API-ключ не принят." };
+      return { status: "unauthorized", message: "Сервис найден, но ключ доступа не принят." };
     }
     if (!response.ok) {
-      return { status: "unavailable", message: `Backend ответил с ошибкой ${response.status}.` };
+      return { status: "unavailable", message: `Сервис проверки ответил с ошибкой ${response.status}.` };
     }
 
     const payload = (await response.json()) as { enabled?: boolean; model?: string; cacheEnabled?: boolean };
     if (payload.enabled === false) {
       return {
         status: "disabled",
-        message: "Backend доступен, но ИИ-классификация выключена на сервере.",
+        message: "Сервис доступен, но ИИ-проверка выключена.",
         model: payload.model,
         cacheEnabled: payload.cacheEnabled,
       };
@@ -153,11 +153,11 @@ export async function checkPrintAiConnection(settings: PrintAiSettings, fetchImp
 
     return {
       status: "available",
-      message: `Backend доступен${payload.model ? ` · модель ${payload.model}` : ""}.`,
+      message: `ИИ-проверка подключена${payload.model ? ` · модель ${payload.model}` : ""}.`,
       model: payload.model,
       cacheEnabled: payload.cacheEnabled,
     };
   } catch {
-    return { status: "unavailable", message: "Нет подключения к backend. Проверьте адрес и запущен ли сервис." };
+    return { status: "unavailable", message: "Не удалось подключиться к сервису ИИ. Проверьте адрес и что сервис запущен." };
   }
 }
