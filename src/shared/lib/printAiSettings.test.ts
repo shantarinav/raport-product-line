@@ -71,6 +71,12 @@ describe("print AI settings", () => {
       apiKey: "secret",
     });
   });
+  it("returns a stable snapshot for React external store", () => {
+    installMockWindow();
+    setPrintAiSettings({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" });
+
+    expect(getPrintAiSettings()).toBe(getPrintAiSettings());
+  });
 
   it("is safe without browser window", () => {
     expect(isPrintAiEnabled()).toBe(false);

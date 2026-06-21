@@ -22,6 +22,12 @@ export type PrintAiHealthResult = {
   cacheEnabled?: boolean;
 };
 
+let cachedSettings: PrintAiSettings | null = null;
+
+function sameSettings(left: PrintAiSettings | null, right: PrintAiSettings): boolean {
+  return Boolean(left && left.enabled === right.enabled && left.backendUrl === right.backendUrl && left.apiKey === right.apiKey);
+}
+
 function normalizeBackendUrl(value: string): string {
   const trimmed = value.trim().replace(/\/+$/, "");
   return trimmed || DEFAULT_PRINT_AI_BACKEND_URL;
@@ -51,11 +57,15 @@ function dispatchSettingsChange(): void {
 }
 
 export function getPrintAiSettings(): PrintAiSettings {
-  return {
+  const next = {
     enabled: readStorageValue(PRINT_AI_ENABLED_KEY) === "true",
     backendUrl: normalizeBackendUrl(readStorageValue(PRINT_AI_BACKEND_URL_KEY) ?? DEFAULT_PRINT_AI_BACKEND_URL),
     apiKey: readStorageValue(PRINT_AI_API_KEY_KEY) ?? "",
   };
+
+  if (sameSettings(cachedSettings, next)) return cachedSettings as PrintAiSettings;
+  cachedSettings = next;
+  return next;
 }
 
 export function setPrintAiSettings(nextSettings: Partial<PrintAiSettings>): void {
@@ -69,6 +79,7 @@ export function setPrintAiSettings(nextSettings: Partial<PrintAiSettings>): void
   writeStorageValue(PRINT_AI_ENABLED_KEY, next.enabled ? "true" : "false");
   writeStorageValue(PRINT_AI_BACKEND_URL_KEY, next.backendUrl);
   writeStorageValue(PRINT_AI_API_KEY_KEY, next.apiKey);
+  cachedSettings = next;
   dispatchSettingsChange();
 }
 
