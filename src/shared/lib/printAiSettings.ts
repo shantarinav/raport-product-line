@@ -6,6 +6,7 @@ const PRINT_AI_ENABLED_KEY = "raport-print-ai-enabled";
 const PRINT_AI_BACKEND_URL_KEY = "raport-print-ai-backend-url";
 const PRINT_AI_API_KEY_KEY = "raport-print-ai-api-key";
 const PRINT_AI_SETTINGS_EVENT = "raport-print-ai-settings-change";
+const PRINT_AI_LAST_HEALTH_KEY = "raport-print-ai-last-health";
 
 export type PrintAiSettings = {
   enabled: boolean;
@@ -18,8 +19,23 @@ export type PrintAiHealthStatus = "available" | "disabled" | "unauthorized" | "u
 export type PrintAiHealthResult = {
   status: PrintAiHealthStatus;
   message: string;
+  service?: string;
   model?: string;
   cacheEnabled?: boolean;
+  cacheClassifications?: number;
+  cacheStatus?: string;
+  queue?: {
+    concurrency: number;
+    active: number;
+    pending: number;
+  };
+};
+
+export type PrintAiStoredHealth = {
+  checkedAt: string;
+  backendUrl: string;
+  apiKeyFingerprint: string;
+  result: PrintAiHealthResult;
 };
 
 let cachedSettings: PrintAiSettings | null = null;
@@ -54,6 +70,43 @@ function writeStorageValue(key: string, value: string): void {
 function dispatchSettingsChange(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(PRINT_AI_SETTINGS_EVENT));
+}
+
+function apiKeyFingerprint(value: string): string {
+  if (!value) return "";
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${value.length}:${(hash >>> 0).toString(16)}`;
+}
+
+export function getPrintAiStoredHealth(settings = getPrintAiSettings()): PrintAiStoredHealth | null {
+  const raw = readStorageValue(PRINT_AI_LAST_HEALTH_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PrintAiStoredHealth;
+    if (parsed.backendUrl !== normalizeBackendUrl(settings.backendUrl)) return null;
+    if (parsed.apiKeyFingerprint !== apiKeyFingerprint(settings.apiKey)) return null;
+    if (!parsed.result || !parsed.checkedAt) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function setPrintAiStoredHealth(settings: PrintAiSettings, result: PrintAiHealthResult): void {
+  writeStorageValue(
+    PRINT_AI_LAST_HEALTH_KEY,
+    JSON.stringify({
+      checkedAt: new Date().toISOString(),
+      backendUrl: normalizeBackendUrl(settings.backendUrl),
+      apiKeyFingerprint: apiKeyFingerprint(settings.apiKey),
+      result,
+    } satisfies PrintAiStoredHealth),
+  );
+  dispatchSettingsChange();
 }
 
 export function getPrintAiSettings(): PrintAiSettings {
@@ -141,21 +194,49 @@ export async function checkPrintAiConnection(settings: PrintAiSettings, fetchImp
       return { status: "unavailable", message: `Сервис проверки ответил с ошибкой ${response.status}.` };
     }
 
-    const payload = (await response.json()) as { enabled?: boolean; model?: string; cacheEnabled?: boolean };
+    const payload = (await response.json()) as {
+      enabled?: boolean;
+      service?: string;
+      model?: string;
+      cacheEnabled?: boolean;
+      cacheClassifications?: number;
+      cacheStatus?: string;
+      queue?: {
+        concurrency?: number;
+        active?: number;
+        pending?: number;
+      };
+    };
+    const details = {
+      service: payload.service,
+      model: payload.model,
+      cacheEnabled: payload.cacheEnabled,
+      cacheClassifications: payload.cacheClassifications,
+      cacheStatus: payload.cacheStatus,
+      queue:
+        payload.queue &&
+        typeof payload.queue.concurrency === "number" &&
+        typeof payload.queue.active === "number" &&
+        typeof payload.queue.pending === "number"
+          ? {
+              concurrency: payload.queue.concurrency,
+              active: payload.queue.active,
+              pending: payload.queue.pending,
+            }
+          : undefined,
+    };
     if (payload.enabled === false) {
       return {
         status: "disabled",
         message: "Сервис доступен, но ИИ-проверка выключена.",
-        model: payload.model,
-        cacheEnabled: payload.cacheEnabled,
+        ...details,
       };
     }
 
     return {
       status: "available",
       message: `ИИ-проверка подключена${payload.model ? ` · модель ${payload.model}` : ""}.`,
-      model: payload.model,
-      cacheEnabled: payload.cacheEnabled,
+      ...details,
     };
   } catch {
     return { status: "unavailable", message: "Не удалось подключиться к сервису ИИ. Проверьте адрес и что сервис запущен." };

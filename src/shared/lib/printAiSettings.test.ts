@@ -3,9 +3,11 @@ import {
   DEFAULT_PRINT_AI_BACKEND_URL,
   checkPrintAiConnection,
   getPrintAiSettings,
+  getPrintAiStoredHealth,
   isPrintAiEnabled,
   setPrintAiEnabled,
   setPrintAiSettings,
+  setPrintAiStoredHealth,
 } from "./printAiSettings";
 
 function installMockWindow() {
@@ -71,6 +73,19 @@ describe("print AI settings", () => {
       apiKey: "secret",
     });
   });
+
+  it("persists the last health check for the same service settings", () => {
+    installMockWindow();
+    setPrintAiSettings({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" });
+
+    const settings = getPrintAiSettings();
+    setPrintAiStoredHealth(settings, { status: "available", message: "ok", model: "qwen3:4b" });
+
+    expect(getPrintAiStoredHealth(settings)?.result).toMatchObject({ status: "available", model: "qwen3:4b" });
+    expect(getPrintAiStoredHealth({ ...settings, backendUrl: "http://other:8787" })).toBeNull();
+    expect(getPrintAiStoredHealth({ ...settings, apiKey: "other" })).toBeNull();
+    expect(getPrintAiStoredHealth({ ...settings, apiKey: "szzzet" })).toBeNull();
+  });
   it("returns a stable snapshot for React external store", () => {
     installMockWindow();
     setPrintAiSettings({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" });
@@ -85,12 +100,24 @@ describe("print AI settings", () => {
   });
 
   it("checks available backend connection", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(response(200, { enabled: true, model: "qwen3:4b", cacheEnabled: true }));
+    const fetchImpl = vi.fn().mockResolvedValue(
+      response(200, {
+        enabled: true,
+        service: "print-llm",
+        model: "qwen3:4b",
+        cacheEnabled: true,
+        cacheClassifications: 42,
+        queue: { concurrency: 1, active: 0, pending: 2 },
+      }),
+    );
 
     await expect(checkPrintAiConnection({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" }, fetchImpl)).resolves.toMatchObject({
       status: "available",
+      service: "print-llm",
       model: "qwen3:4b",
       cacheEnabled: true,
+      cacheClassifications: 42,
+      queue: { concurrency: 1, active: 0, pending: 2 },
     });
     expect(fetchImpl).toHaveBeenCalledWith("http://server:8787/health", {
       method: "GET",

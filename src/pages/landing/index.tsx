@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ClipboardCheck, ClipboardList, FileSpreadsheet, Headphones, Printer, SearchCheck, ShieldCheck } from "lucide-react";
-import { Button } from "../../shared/ui/shadcn/button";
-import { Badge } from "../../shared/ui/shadcn/badge";
-import { DashboardHeader, ErrorState, FileDropZone, FilterStatusBar, IconLabel, PageShell } from "../../shared/ui";
+import { FileSpreadsheet } from "lucide-react";
+import { DashboardHeader, ErrorState, FileDropZone, PageShell } from "../../shared/ui";
 import { readWorkbookFile } from "../../features/ssz/import/readWorkbook";
 import type { ImportedReport } from "../../features/ssz/import/types";
 import { readTessaReportFile } from "../../features/tessa/import/readReportFile";
@@ -22,40 +20,6 @@ import { HistoryManager } from "./components/HistoryManager";
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 const SUPPORTED_EXTENSIONS = [".csv", ".xls", ".xlsx"];
 const LANDING_FILE_INPUT_ID = "landing-file-input";
-const SUPPORTED_REPORTS = [
-  {
-    id: "ssz",
-    title: "ССЗ",
-    subtitle: "Качество оформления сменно-суточных заданий",
-    description:
-      "Помогает увидеть, насколько работы оформляются по технологии. Показывает общую долю по нормо-часам, проблемные цеха и операции, а также динамику по месяцам.",
-    Icon: ClipboardList,
-  },
-  {
-    id: "tessa",
-    title: "Tessa",
-    subtitle: "Исполнительская дисциплина",
-    description:
-      "Показывает, где согласования застряли в работе, кто отвечает за просрочки и какие задания требуют внимания в ближайшие дни.",
-    Icon: ClipboardCheck,
-  },
-  {
-    id: "print",
-    title: "Печать",
-    subtitle: "Контроль печати",
-    description:
-      "Помогает контролировать расходы на печать. Находит цветную и одностороннюю печать, избыточные задания, личные материалы и показывает оценку затрат.",
-    Icon: Printer,
-  },
-  {
-    id: "support",
-    title: "Техподдержка",
-    subtitle: "SLA закрытых заявок",
-    description:
-      "Показывает выполнение SLA по закрытым заявкам, темы с наибольшими нарушениями, длинный хвост просрочек и проблемы качества данных.",
-    Icon: Headphones,
-  },
-];
 
 type LandingStatus = "idle" | "dragging" | "reading" | "detecting" | "matched" | "ambiguous" | "error";
 type ReportMatch = SnapshotReportMatch;
@@ -83,10 +47,10 @@ function statusText(status: LandingStatus) {
 }
 
 function reportLabel(type: DetectedReportType): ReportMatch {
-  if (type === "ssz") return "ССЗ";
-  if (type === "tessa") return "Tessa";
-  if (type === "print") return "Print";
-  return "Техподдержка";
+  if (type === "ssz") return "ssz";
+  if (type === "tessa") return "tessa";
+  if (type === "print") return "print";
+  return "support";
 }
 
 export function LandingPage() {
@@ -141,10 +105,6 @@ export function LandingPage() {
     timersRef.current = [];
   }
 
-  function openFilePicker() {
-    const input = document.getElementById(LANDING_FILE_INPUT_ID) as HTMLInputElement | null;
-    input?.click();
-  }
 
   async function handleFileSelect(file: File | null) {
     clearTimers();
@@ -266,62 +226,38 @@ export function LandingPage() {
           </div>
         }
         description="Загрузите Excel или CSV-отчет — Рапорт определит тип, откроет нужный дашборд и покажет ключевые показатели, отклонения и зоны внимания."
-        actions={<Button onClick={openFilePicker}>Загрузить отчет</Button>}
       />
 
       <div className="grid gap-4">
-        <FilterStatusBar title="Готовность" chips={statusChips} />
-
         <FileDropZone
-          title="Кликните сюда или перетащите отчет"
-          hint="Рапорт сам определит тип отчета и откроет нужный дашборд."
+          title="Перетащите отчет сюда"
+          hint="Нажмите на область, чтобы выбрать файл."
           accept=".csv,.xls,.xlsx"
           inputId={LANDING_FILE_INPUT_ID}
           selectedFileName={selectedFile?.name}
           onFileSelect={handleFileSelect}
           onDragStateChange={(isDragging) => setStatus(isDragging ? "dragging" : "idle")}
           showPickButton={false}
-          className="flex min-h-[340px] flex-col justify-center p-8 md:min-h-[400px] md:p-10 [&>h2]:text-2xl md:[&>h2]:text-3xl [&>p]:mx-auto [&>p]:max-w-2xl [&>svg:first-of-type]:mb-4 [&>svg:first-of-type]:h-14 [&>svg:first-of-type]:w-14 hover:bg-raport-primary/5 hover:border-raport-primary transition-all duration-300 group"
+          className="raport-dropzone-pulse flex min-h-[430px] flex-col justify-center p-8 md:min-h-[470px] md:p-10 [&>h2]:text-3xl md:[&>h2]:text-4xl [&>p]:mx-auto [&>p]:max-w-2xl [&>p]:text-base [&>svg:first-of-type]:mb-5 [&>svg:first-of-type]:h-16 [&>svg:first-of-type]:w-16 hover:bg-raport-primary/5 hover:border-raport-primary transition-colors duration-300"
           footer={
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
-              <IconLabel Icon={ShieldCheck}>Локально: файл не отправляется на сервер</IconLabel>
-              <IconLabel Icon={SearchCheck}>Автоматически: тип отчета определяется по структуре</IconLabel>
-              <Badge variant="secondary">CSV</Badge>
-              <Badge variant="secondary">XLS</Badge>
-              <Badge variant="secondary">XLSX</Badge>
-              <Badge variant="secondary">до 20 Мб</Badge>
+            <div className="mt-6 grid justify-items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {statusChips.map((chip) => (
+                  <span
+                    key={chip.label}
+                    className="inline-flex min-h-7 items-center rounded-full border border-raport-action-border bg-raport-action-bg px-3 py-1 text-xs font-bold text-raport-primary"
+                  >
+                    {chip.label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid justify-items-center gap-1 text-sm font-semibold text-raport-muted">
+                <p>Подходит для Excel и CSV-файлов до 20 Мб, обработка идет в браузере</p>
+                <p>Рапорт сам определит отчет: ССЗ, Tessa, Печать или Техподдержка</p>
+              </div>
             </div>
           }
         />
-
-        <div className="grid min-w-0 gap-8 overflow-hidden rounded-card border border-raport-border bg-raport-surface p-6 shadow-card md:p-8">
-          <div className="flex items-start gap-4 border-b border-raport-border pb-6">
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface-soft text-raport-primary">
-              <SearchCheck className="h-6 w-6" strokeWidth={2} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Возможности</p>
-              <h2 className="mt-1 text-xl font-extrabold text-raport-text">Поддерживаемые дашборды</h2>
-            </div>
-          </div>
-
-          <div className="grid gap-8 md:grid-cols-2 lg:gap-10">
-            {SUPPORTED_REPORTS.map(({ id, title, subtitle, description, Icon }) => (
-              <div key={id} className="flex min-w-0 items-start gap-4">
-                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-raport-surface-soft text-raport-primary">
-                  <Icon className="h-6 w-6" strokeWidth={2} />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-extrabold text-raport-text">{title}</h3>
-                  <span className="mb-2 block text-xs font-semibold text-raport-primary/80">{subtitle}</span>
-                  <p className="text-sm font-medium leading-relaxed text-raport-muted">
-                    {description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         <HistoryManager />
 

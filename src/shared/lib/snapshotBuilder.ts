@@ -8,7 +8,7 @@ import { calculateSupportKpis, overdueQuantiles, resolutionQuantiles } from "../
 import type { SupportImportResult, SupportQuantiles, SupportTicket } from "../../features/support/supportTypes";
 import type { DashboardSnapshot, DashboardType } from "./historyDB";
 
-export type SnapshotReportMatch = "ССЗ" | "Tessa" | "Print" | "Техподдержка";
+export type SnapshotReportMatch = "ssz" | "tessa" | "print" | "support";
 
 export type SnapshotInput = ImportedReport | TessaImportResult | PrintImportResult | SupportImportResult;
 
@@ -23,10 +23,10 @@ type MonthlyGroup<T> = {
 };
 
 const MATCH_TO_DASHBOARD_TYPE: Record<SnapshotReportMatch, DashboardType> = {
-  ССЗ: "ssz",
-  Tessa: "tessa",
-  Print: "print",
-  Техподдержка: "support",
+  ssz: "ssz",
+  tessa: "tessa",
+  print: "print",
+  support: "support",
 };
 
 function roundMetric(value: number): number {
@@ -315,4 +315,3 @@ export function buildSnapshotData(match: SnapshotReportMatch, parsedData: Snapsh
   if (dashboardType === "print") return buildPrintMonthlySnapshots(parsedData as PrintImportResult);
   return buildSupportMonthlySnapshots(parsedData as SupportImportResult);
 }
-
