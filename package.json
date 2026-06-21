@@ -10,8 +10,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "print-llm:server": "node server/print-llm/server.mjs",
-    "print-llm:evaluate": "node scripts/print-llm/evaluate.mjs"
+    "backend:print-llm": "node backend/print-llm/server.mjs",
+    "backend:print-llm:evaluate": "node backend/print-llm/scripts/evaluate.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

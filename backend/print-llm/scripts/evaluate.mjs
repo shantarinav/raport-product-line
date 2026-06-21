@@ -163,7 +163,7 @@ async function main() {
   const input = args.get("input") || positionalInput;
   if (!input) {
     console.error(
-      "Usage: npm run print-llm:evaluate -- --input labeled.csv [--output result.json] [--proxy http://127.0.0.1:8787/api/print/classify-personal] [--batch-size 10] [--request-timeout-ms 300000]",
+      "Usage: npm run backend:print-llm:evaluate -- --input labeled.csv [--output result.json] [--proxy http://127.0.0.1:8787/api/print/classify-personal] [--batch-size 10] [--request-timeout-ms 300000]",
     );
     process.exitCode = 1;
     return;

@@ -10,3 +10,6 @@ load_file/
 .env
 .env.*
 !.env.example
+
+.cache/
+backend/print-llm/.cache/

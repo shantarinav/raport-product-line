@@ -228,6 +228,8 @@ npm run preview
 
 ## Локальная LLM-классификация Print
 
+Frontend Рапорта остается самостоятельным статическим приложением: production-публикация `dist/` не требует Node backend, Ollama или SQLite. Локальная LLM-классификация — optional backend extension для Print и находится в `backend/print-llm/`.
+
 В дашборде Print есть опциональный локальный слой классификации потенциально личной тематики печати. По умолчанию он выключен, поэтому базовая работа дашборда остается прежней и использует словарные правила.
 
 Принцип работы:
@@ -241,13 +243,13 @@ npm run preview
 Локальный запуск:
 
 ```bash
-npm run print-llm:server
+npm run backend:print-llm
 ```
 
-Переменные окружения см. в `.env.example`.
+Frontend-флаги см. в корневом `.env.example`. Backend-переменные окружения см. в `backend/print-llm/.env.example`.
 
 Для оценки качества на размеченной выборке:
 
 ```bash
-npm run print-llm:evaluate -- --input path/to/labeled.csv --proxy http://127.0.0.1:8787/api/print/classify-personal
+npm run backend:print-llm:evaluate -- --input path/to/labeled.csv --proxy http://127.0.0.1:8787/api/print/classify-personal
 ```
