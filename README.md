@@ -251,6 +251,18 @@ Backend-переменные окружения см. в `backend/print-llm/.env
 
 Backend можно запускать локально на ПК пользователя или как небольшой сервис в корпоративной сети для 2-5 пользователей. Для сетевого режима настрой `PRINT_LLM_HOST`, `PRINT_LLM_ALLOWED_ORIGINS` и опциональный `PRINT_LLM_API_KEY`; пользователи указывают URL/API-ключ в интерфейсе. Подробности см. в `backend/print-llm/README.md`.
 
+### Развертывание ИИ-backend
+
+Backend для ИИ-проверки Print можно запустить локально или разместить на небольшом сервере в корпоративной сети. Автоматизация запуска, проверка состояния и сценарий автозапуска Windows описаны в `backend/print-llm/DEPLOYMENT.md`.
+
+Быстрый локальный сценарий:
+
+```bash
+npm run backend:print-llm:init:local
+npm run backend:print-llm:start
+npm run backend:print-llm:status
+```
+
 Для оценки качества на размеченной выборке:
 
 ```bash

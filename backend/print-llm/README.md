@@ -110,6 +110,19 @@ PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=<PRINT_LLM_SQLITE_BUSY_TIMEOUT_MS>;
 ```
 
+## Автоматизация запуска
+
+Для Windows добавлены скрипты в `deploy/print-llm/`:
+
+```powershell
+npm run backend:print-llm:init:local
+npm run backend:print-llm:start
+npm run backend:print-llm:status
+npm run backend:print-llm:stop
+```
+
+Для сетевого режима и автозапуска через Windows Task Scheduler см. `backend/print-llm/DEPLOYMENT.md`.
+
 ## API
 
 ```text
