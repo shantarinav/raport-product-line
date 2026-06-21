@@ -114,6 +114,8 @@ PRAGMA busy_timeout=<PRINT_LLM_SQLITE_BUSY_TIMEOUT_MS>;
 
 Для Windows добавлены скрипты в `deploy/print-llm/`:
 
+Для запуска двойным кликом используйте CMD-обертки из той же папки: `01-init-local.cmd`, `02-start.cmd`, `03-status.cmd`, `04-stop.cmd`, `run-console.cmd`.
+
 ```powershell
 npm run backend:print-llm:init:local
 npm run backend:print-llm:start
