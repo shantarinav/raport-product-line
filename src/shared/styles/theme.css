@@ -27,6 +27,9 @@
   --raport-radius-card: 16px;
   --raport-radius-control: 10px;
   --raport-shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --raport-dropzone-pulse-soft: rgba(37, 99, 235, 0.08);
+  --raport-dropzone-pulse-strong: rgba(37, 99, 235, 0.16);
+  --raport-dropzone-pulse-mid: rgba(37, 99, 235, 0.1);
 }
 
 .dark {
@@ -57,6 +60,9 @@
   --raport-info-muted: rgba(96, 165, 250, 0.1);
   --raport-info-border: rgba(96, 165, 250, 0.25);
   --raport-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 10px 24px -2px rgba(0, 0, 0, 0.4);
+  --raport-dropzone-pulse-soft: rgba(96, 165, 250, 0.22);
+  --raport-dropzone-pulse-strong: rgba(96, 165, 250, 0.38);
+  --raport-dropzone-pulse-mid: rgba(96, 165, 250, 0.28);
 }
 
 * {
@@ -247,3 +253,38 @@ progress[class]::-webkit-progress-bar {
 .dark .text-cyan-600 {
   color: var(--raport-primary);
 }
+
+
+@keyframes raport-dropzone-pulse {
+  0%, 100% {
+    border-color: var(--raport-border);
+    box-shadow: var(--raport-shadow-card), 0 0 0 0 var(--raport-dropzone-pulse-soft);
+  }
+  30% {
+    border-color: var(--raport-primary);
+    box-shadow: var(--raport-shadow-card), 0 0 0 8px var(--raport-dropzone-pulse-strong);
+  }
+  60% {
+    border-color: var(--raport-primary);
+    box-shadow: var(--raport-shadow-card), 0 0 0 4px var(--raport-dropzone-pulse-mid);
+  }
+}
+
+.raport-dropzone-pulse {
+  animation: raport-dropzone-pulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.raport-dropzone-pulse:hover,
+.raport-dropzone-pulse:focus-within {
+  animation: none;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .raport-dropzone-pulse {
+    animation: none;
+  }
+}
+
+
+

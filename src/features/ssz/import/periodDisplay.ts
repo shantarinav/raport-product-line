@@ -12,12 +12,12 @@ export function formatReportPeriod(period: ReportPeriod): string {
   const end = formatDate(period.end);
 
   if (start && end) return `${start} - ${end}`;
-  return period.label || "�� ��������";
+  return period.label || "Нет периода";
 }
 
 export function formatImportedAt(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "�� ����������";
+  if (Number.isNaN(date.getTime())) return "Дата не определена";
 
   return date.toLocaleString("ru-RU", {
     day: "2-digit",

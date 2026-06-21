@@ -3,9 +3,11 @@ import {
   DEFAULT_PRINT_AI_BACKEND_URL,
   checkPrintAiConnection,
   getPrintAiSettings,
+  getPrintAiStoredHealth,
   isPrintAiEnabled,
   setPrintAiEnabled,
   setPrintAiSettings,
+  setPrintAiStoredHealth,
 } from "./printAiSettings";
 
 function installMockWindow() {
@@ -70,6 +72,19 @@ describe("print AI settings", () => {
       backendUrl: "http://server:8787",
       apiKey: "secret",
     });
+  });
+
+  it("persists the last health check for the same service settings", () => {
+    installMockWindow();
+    setPrintAiSettings({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" });
+
+    const settings = getPrintAiSettings();
+    setPrintAiStoredHealth(settings, { status: "available", message: "ok", model: "qwen3:4b" });
+
+    expect(getPrintAiStoredHealth(settings)?.result).toMatchObject({ status: "available", model: "qwen3:4b" });
+    expect(getPrintAiStoredHealth({ ...settings, backendUrl: "http://other:8787" })).toBeNull();
+    expect(getPrintAiStoredHealth({ ...settings, apiKey: "other" })).toBeNull();
+    expect(getPrintAiStoredHealth({ ...settings, apiKey: "szzzet" })).toBeNull();
   });
   it("returns a stable snapshot for React external store", () => {
     installMockWindow();
