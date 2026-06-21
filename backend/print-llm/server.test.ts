@@ -83,11 +83,22 @@ describe("createPrintLlmServer", () => {
     expect(response.headers.get("access-control-allow-headers")).toContain("x-raport-backend-key");
   });
 
+  it("requires API key for health checks when configured", async () => {
+    const server = createPrintLlmServer(config({ apiKey: "secret" }));
+    const baseUrl = await listen(server);
+
+    const unauthorized = await fetch(baseUrl + "/health");
+    const authorized = await fetch(baseUrl + "/health", { headers: { "x-raport-backend-key": "secret" } });
+
+    expect(unauthorized.status).toBe(401);
+    expect(authorized.status).toBe(200);
+  });
+
   it("requires API key when configured", async () => {
     const server = createPrintLlmServer(config({ apiKey: "secret" }));
     const baseUrl = await listen(server);
 
-    const response = await fetch(`${baseUrl}/api/print/classifications/lookup`, {
+    const response = await fetch(baseUrl + "/api/print/classifications/lookup", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ items: [] }),

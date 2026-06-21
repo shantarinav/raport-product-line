@@ -6,7 +6,7 @@ Frontend Рапорта не зависит от этого backend:
 
 - `npm run dev`, `npm run check`, `npm run build` работают без запущенного backend;
 - опубликованный `dist/` открывает дашборды без Node-сервиса;
-- ИИ-проверка личной печати выключена по умолчанию и включается пользователем в `История и возможности`;
+- ИИ-проверка личной печати выключена по умолчанию и включается пользователем в `Настройки`;
 - если backend недоступен, Print остается работоспособным в словарном режиме.
 
 ## Назначение
@@ -75,7 +75,7 @@ PRINT_LLM_CACHE_DB_PATH=C:\\raport-cache\\print-llm-cache.sqlite
 PRINT_LLM_SQLITE_BUSY_TIMEOUT_MS=5000
 ```
 
-Frontend можно настроить без пересборки: на главной странице открой `История и возможности`, включи `ИИ-проверка личной печати`, укажи backend URL и API-ключ. Env-переменные ниже остаются полезны для dev/default-сценариев:
+Frontend можно настроить без пересборки: на главной странице открой `Настройки`, включи `Личная печать с ИИ`, укажи адрес сервиса ИИ и API-ключ. Env-переменные ниже остаются полезны для dev/default-сценариев:
 
 ```bash
 VITE_PRINT_LLM_CLASSIFIER_ENABLED=true
@@ -158,7 +158,7 @@ npm run backend:print-llm:evaluate -- --input path/to/labeled.csv --proxy http:/
 3. Правильно ли указан `PRINT_LLM_HOST`.
 4. Совпадает ли frontend URL с backend host/port.
 5. Разрешен ли frontend origin в `PRINT_LLM_ALLOWED_ORIGINS`.
-6. Совпадают ли `PRINT_LLM_API_KEY` на backend и API-ключ, сохраненный в `История и возможности`, если ключ включен.
+6. Совпадают ли `PRINT_LLM_API_KEY` на backend и ключ доступа, сохраненный в `Настройки`, если ключ включен.
 7. Запущена ли Ollama.
 8. Доступна ли модель `qwen3:4b`.
 

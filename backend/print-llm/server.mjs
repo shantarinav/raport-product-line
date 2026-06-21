@@ -60,6 +60,10 @@ export function createPrintLlmServer(config = readPrintLlmConfig(), dependencies
     }
 
     if (request.method === "GET" && pathname === "/health") {
+      if (!isAuthorized(request, config)) {
+        sendJson(response, 401, { error: "Unauthorized" }, request, config);
+        return;
+      }
       sendJson(response, 200, healthPayload(config, queue), request, config);
       return;
     }

@@ -179,9 +179,8 @@ async function classifyOne(item, config, dependencies) {
 
   if (config.cacheEnabled) {
     const cached = dependencies.cache.get(key);
-    if (cached) {
-      const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
-      return { id: item.id, normalized_title: normalizedTitle, ...effectiveCached, cache_hit: true };
+    if (cached?.source === "llm") {
+      return { id: item.id, normalized_title: normalizedTitle, ...postprocessRisk(cached), cache_hit: true };
     }
   }
 
@@ -239,9 +238,8 @@ export async function lookupPrintPersonalClassifications(items, config, dependen
 
     keysByItem.forEach(({ item, key, normalizedTitle }) => {
       const cached = cachedByKey.get(key);
-      if (cached) {
-        const effectiveCached = cached.source === "llm" ? postprocessRisk(cached) : cached;
-        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...effectiveCached, cache_hit: true });
+      if (cached?.source === "llm") {
+        found.push({ id: item.id, normalized_title: cached.normalized_title ?? normalizedTitle, ...postprocessRisk(cached), cache_hit: true });
       } else {
         missing.push(item);
       }

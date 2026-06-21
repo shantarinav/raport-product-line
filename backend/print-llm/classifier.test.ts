@@ -285,6 +285,26 @@ describe("classifyPrintPersonalItems", () => {
     expect(second.items[0]).toMatchObject({ id: "second", source: "llm", primary_category: "education", cache_hit: true });
   });
 
+  it("ignores stale non-LLM cache entries and asks the model", async () => {
+    const cache = new MemoryCache();
+    cache.get = vi.fn(() => ({
+      source: "rules_fallback",
+      is_personal: false,
+      primary_category: "unknown",
+      confidence_raw: 0,
+      needs_review: true,
+      reason_short: "Ошибка классификации",
+      signals: ["unknown"],
+      risk_level: "unknown",
+    }));
+    const callOllama = vi.fn().mockResolvedValue(validResponse());
+
+    const result = await classifyPrintPersonalItems([item("diploma", "диплом.pdf")], config(), { callOllama, cache });
+
+    expect(callOllama).toHaveBeenCalledTimes(1);
+    expect(result.items[0]).toMatchObject({ id: "diploma", source: "llm", primary_category: "education" });
+  });
+
   it("classifies batches", async () => {
     const callOllama = vi.fn().mockResolvedValue(validResponse());
     const result = await classifyPrintPersonalItems([item("1"), item("2"), item("3")], config({ batchSize: 2, cacheEnabled: false }), {
@@ -498,5 +518,28 @@ describe("document classification lookup", () => {
       primary_category: "work",
       risk_level: "low",
     });
+  });
+
+  it("treats stale non-LLM document cache records as missing", async () => {
+    const cache = new MemoryCache();
+    cache.getClassifications = (titleHashes) => new Map(titleHashes.map((titleHash) => [
+      titleHash,
+      {
+        source: "rules_fallback",
+        is_personal: false,
+        primary_category: "unknown",
+        confidence_raw: 0,
+        needs_review: true,
+        reason_short: "Ошибка классификации",
+        signals: ["unknown"],
+        risk_level: "unknown",
+      },
+    ]));
+
+    const result = await lookupPrintPersonalClassifications([item("stale", "диплом.pdf")], config(), { callOllama: vi.fn(), cache });
+
+    expect(result.items).toHaveLength(0);
+    expect(result.missing).toHaveLength(1);
+    expect(result.missing[0]).toMatchObject({ id: "stale" });
   });
 });

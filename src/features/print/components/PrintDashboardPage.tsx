@@ -284,7 +284,9 @@ function PrintAiReviewSummary({
       ? `Проверено ${formatInteger(progress.processed)} из ${formatInteger(progress.total)} документов-кандидатов: из кэша ${formatInteger(progress.cacheHits)}, через модель ${formatInteger(progress.modelRequests)}.`
       : printAiStatusText(status);
   const statusBadge = printAiStatusChip(status, progress);
-  const checkedCandidateCount = progress && progress.total > 0 ? (status === "loading" ? progress.processed : progress.total) : stats.checked;
+  const checkedCandidateCount = progress?.items.length
+    ? new Set(progress.items.filter((item) => item.source === "llm").map((item) => item.normalized_title || item.id)).size
+    : stats.checked;
 
   return (
     <div className="mb-3 grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-3">
