@@ -1,4 +1,5 @@
-﻿import type { PrintJob } from "../../types";
+import { getPrintAiSettings } from "../../../../shared/lib/printAiSettings";
+import type { PrintJob } from "../../types";
 import { normalizeDocumentTitle } from "./normalizeDocumentTitle";
 import { buildPrintPersonalClassifierRequestItems, shouldClassifyPrintJobWithLlm } from "./requestBuilder";
 import type { PrintPersonalClassifierResponse, PrintPersonalClassifierResponseItem } from "./types";
@@ -53,6 +54,20 @@ export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import
   };
 }
 
+export function readPrintLlmRuntimeConfig(env: Record<string, unknown> = import.meta.env): PrintLlmFrontendConfig {
+  const envConfig = readPrintLlmFrontendConfig(env);
+  const settings = getPrintAiSettings();
+  const baseUrl = settings.backendUrl.replace(/\/+$/, "");
+
+  return {
+    ...envConfig,
+    enabled: settings.enabled,
+    url: `${baseUrl}/api/print/classify-personal`,
+    lookupUrl: `${baseUrl}/api/print/classifications/lookup`,
+    classifyMissingUrl: `${baseUrl}/api/print/classifications/classify-missing`,
+    apiKey: settings.apiKey,
+  };
+}
 function buildPrintLlmRequestHeaders(config: PrintLlmFrontendConfig): HeadersInit {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (config.apiKey) headers["x-raport-backend-key"] = config.apiKey;

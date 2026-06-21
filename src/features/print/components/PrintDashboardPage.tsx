@@ -51,7 +51,7 @@ import {
 } from "./PrintControls";
 import { PrintPagesTrendChart } from "./PrintPagesTrendChart";
 import { BarList, RiskJobList } from "./PrintWidgets";
-import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig, type PrintLlmProgress } from "../logic/personalPrint/frontendClient";
+import { classifyPrintJobsWithProxy, readPrintLlmRuntimeConfig, type PrintLlmProgress } from "../logic/personalPrint/frontendClient";
 import { enrichPrintJobsWithClassifications, type PrintLlmStatus } from "../logic/personalPrint/enrichPrintJobs";
 import { buildPrintClassificationCsv, downloadTextFile } from "../logic/personalPrint/exportClassification";
 
@@ -352,7 +352,7 @@ export function PrintDashboardPage() {
   useEffect(() => {
     if (!report) return;
     let isMounted = true;
-    const config = readPrintLlmFrontendConfig();
+    const config = readPrintLlmRuntimeConfig();
 
     if (!printAiEnabled || !config.enabled) {
       setAiStatus("disabled");

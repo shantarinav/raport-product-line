@@ -1,8 +1,25 @@
-﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { Bot, CircleOff, Database, History, RefreshCcw, Trash2, TrendingUp, X } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  CircleOff,
+  Database,
+  History,
+  KeyRound,
+  Loader2,
+  PlugZap,
+  RefreshCcw,
+  Server,
+  ShieldCheck,
+  Trash2,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui/shadcn/card";
+import { Input } from "../../../shared/ui/shadcn/input";
 import {
   clearDashboardHistory,
   deleteSnapshot,
@@ -11,7 +28,13 @@ import {
   type DashboardType,
 } from "../../../shared/lib/historyDB";
 import { useTrendsEnabled } from "../../../shared/lib/trendSettings";
-import { usePrintAiEnabled } from "../../../shared/lib/printAiSettings";
+import {
+  checkPrintAiConnection,
+  DEFAULT_PRINT_AI_BACKEND_URL,
+  type PrintAiHealthResult,
+  type PrintAiSettings,
+  usePrintAiSettings,
+} from "../../../shared/lib/printAiSettings";
 import { cn } from "../../../shared/ui/cn";
 
 const DASHBOARD_TYPES: DashboardType[] = ["ssz", "tessa", "print", "support"];
@@ -120,7 +143,7 @@ function SettingCard({
         className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface p-1 justify-self-start sm:justify-self-end"
         role="group"
         aria-label={title}
-        title={isEnabled ? enableLabel : disableLabel}
+        title={isEnabled ? disableLabel : enableLabel}
       >
         <button
           type="button"
@@ -151,13 +174,36 @@ function SettingCard({
   );
 }
 
+function healthBadgeClass(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
+  if (isChecking) return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-300";
+  if (!isEnabled) return "border-raport-border bg-raport-surface text-raport-muted";
+  if (!result) return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300";
+  if (result.status === "available") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300";
+  if (result.status === "disabled") return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300";
+  return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-300";
+}
+
+function healthLabel(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
+  if (isChecking) return "проверка";
+  if (!isEnabled) return "выключено";
+  if (!result) return "настроено";
+  if (result.status === "available") return "доступен";
+  if (result.status === "disabled") return "выключен на сервере";
+  if (result.status === "unauthorized") return "ключ не принят";
+  return "недоступен";
+}
+
 export function HistoryManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeType, setActiveType] = useState<DashboardType>("ssz");
   const [showAll, setShowAll] = useState(false);
   const [state, setState] = useState<HistoryState>({ snapshots: [], isLoading: false, error: "" });
   const [trendsEnabled, setTrendsEnabled] = useTrendsEnabled();
-  const [printAiEnabled, setPrintAiEnabled] = usePrintAiEnabled();
+  const [printAiSettings, setPrintAiSettings] = usePrintAiSettings();
+  const [printAiDraft, setPrintAiDraft] = useState<PrintAiSettings>(printAiSettings);
+  const [isPrintAiEditorOpen, setIsPrintAiEditorOpen] = useState(false);
+  const [printAiHealth, setPrintAiHealth] = useState<PrintAiHealthResult | null>(null);
+  const [isCheckingPrintAi, setIsCheckingPrintAi] = useState(false);
 
   const grouped = useMemo(() => groupByDashboard(state.snapshots), [state.snapshots]);
   const activeSnapshots = grouped[activeType];
@@ -170,6 +216,11 @@ export function HistoryManager() {
   useEffect(() => {
     setShowAll(false);
   }, [activeType]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setPrintAiDraft(printAiSettings);
+  }, [isOpen, printAiSettings]);
 
   async function loadHistory() {
     setState((current) => ({ ...current, isLoading: true, error: "" }));
@@ -221,6 +272,24 @@ export function HistoryManager() {
     }
   }
 
+  async function handleCheckPrintAiConnection() {
+    setIsCheckingPrintAi(true);
+    const result = await checkPrintAiConnection(printAiDraft);
+    setPrintAiHealth(result);
+    setIsCheckingPrintAi(false);
+  }
+
+  function handleSavePrintAiSettings() {
+    setPrintAiSettings({ ...printAiDraft, enabled: true });
+    setIsPrintAiEditorOpen(false);
+  }
+
+  function handleDisablePrintAi() {
+    setPrintAiSettings({ enabled: false });
+    setPrintAiDraft((current) => ({ ...current, enabled: false }));
+    setPrintAiHealth(null);
+  }
+
   return (
     <>
       <div className="flex justify-end">
@@ -230,7 +299,7 @@ export function HistoryManager() {
           onClick={() => setIsOpen(true)}
         >
           <History className="h-4 w-4" strokeWidth={2} />
-          История и настройки
+          История и возможности
         </button>
       </div>
 
@@ -247,10 +316,10 @@ export function HistoryManager() {
               <div className="min-w-0">
                 <CardTitle id="history-manager-title" className="flex items-center gap-2">
                   <History className="h-5 w-5 text-raport-primary" strokeWidth={2} />
-                  История и настройки
+                  История и возможности Рапорта
                 </CardTitle>
                 <p className="mt-1 max-w-3xl text-sm text-raport-muted">
-                  Локальные функции Рапорта работают только в этом браузере. Сырые отчеты не сохраняются.
+                  Локальные усилители анализа: ИИ-проверка Print, месячные тренды и сохраненные KPI. Сырые отчеты не сохраняются.
                 </p>
               </div>
               <Button variant="ghost" className="h-10 w-10 shrink-0 px-0 py-0" aria-label="Закрыть" onClick={() => setIsOpen(false)}>
@@ -260,48 +329,122 @@ export function HistoryManager() {
 
             <CardContent className="max-h-[calc(86vh-92px)] overflow-auto px-4 pb-4 pt-5">
               <div className="grid gap-4">
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <SettingCard
-                    icon={<Bot className="h-4 w-4" strokeWidth={2} />}
-                    title="ИИ-проверка личной печати"
-                    description={
-                      printAiEnabled
-                        ? "Print уточняет личные тематики через локальный ИИ-сервис, если он доступен. Без сервиса дашборд продолжит работать."
-                        : "Print работает без ИИ-бекенда и без ИИ-артефактов. Включите, если нужно уточнять личную печать локальной моделью."
-                    }
-                    status={printAiEnabled ? "включено" : "выключено"}
-                    isEnabled={printAiEnabled}
-                    onDisable={() => setPrintAiEnabled(false)}
-                    onEnable={() => setPrintAiEnabled(true)}
-                    disableLabel="Выключить ИИ-проверку личной печати"
-                    enableLabel="Включить ИИ-проверку личной печати"
-                  />
-                  <SettingCard
-                    icon={<TrendingUp className="h-4 w-4" strokeWidth={2} />}
-                    title="Сбор трендов"
-                    description={
-                      trendsEnabled
-                        ? "Рапорт сохраняет только месячные KPI для динамики показателей. Исходные строки отчетов не попадают в историю."
-                        : "Отчеты открываются без сохранения KPI. Уже сохраненные снимки остаются доступными, пока вы их не удалите."
-                    }
-                    status={trendsEnabled ? "включено" : "выключено"}
-                    isEnabled={trendsEnabled}
-                    onDisable={() => setTrendsEnabled(false)}
-                    onEnable={() => setTrendsEnabled(true)}
-                    disableLabel="Выключить сбор трендов"
-                    enableLabel="Включить сбор трендов"
-                  />
-                </div>
+                <section className="rounded-control border border-raport-border bg-raport-surface-soft p-4">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface text-raport-primary">
+                        <Bot className="h-5 w-5" strokeWidth={2} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-black text-raport-text">ИИ-проверка личной печати</h3>
+                          <span
+                            className={cn(
+                              "rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]",
+                              healthBadgeClass(printAiHealth, isCheckingPrintAi, printAiSettings.enabled),
+                            )}
+                          >
+                            {healthLabel(printAiHealth, isCheckingPrintAi, printAiSettings.enabled)}
+                          </span>
+                        </div>
+                        <p className="mt-2 max-w-2xl text-xs font-semibold leading-relaxed text-raport-muted">
+                          По умолчанию Print работает без backend и без ИИ-артефактов. Подключение нужно только если вы хотите уточнять найденные словарем личные тематики через локальную модель.
+                        </p>
+                        {printAiHealth ? <p className="mt-2 text-xs font-semibold text-raport-muted">{printAiHealth.message}</p> : null}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <Button
+                        variant="outline"
+                        className="min-h-9"
+                        onClick={() => {
+                          setPrintAiDraft(printAiSettings);
+                          setIsPrintAiEditorOpen((current) => !current);
+                        }}
+                      >
+                        <PlugZap className="h-4 w-4" strokeWidth={2} />
+                        {printAiSettings.enabled ? "Изменить подключение" : "Подключить ИИ"}
+                      </Button>
+                      {printAiSettings.enabled ? (
+                        <Button variant="ghost" className="min-h-9 text-raport-muted" onClick={handleDisablePrintAi}>
+                          <CircleOff className="h-4 w-4" strokeWidth={2} />
+                          Выключить
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {isPrintAiEditorOpen ? (
+                    <div className="mt-4 grid gap-3 border-t border-raport-border pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+                      <label className="grid gap-1 text-xs font-semibold text-raport-muted">
+                        <span className="inline-flex items-center gap-1">
+                          <Server className="h-3.5 w-3.5" strokeWidth={2} />
+                          Адрес backend
+                        </span>
+                        <Input
+                          value={printAiDraft.backendUrl}
+                          placeholder={DEFAULT_PRINT_AI_BACKEND_URL}
+                          onChange={(event) => setPrintAiDraft((current) => ({ ...current, backendUrl: event.target.value }))}
+                        />
+                      </label>
+                      <label className="grid gap-1 text-xs font-semibold text-raport-muted">
+                        <span className="inline-flex items-center gap-1">
+                          <KeyRound className="h-3.5 w-3.5" strokeWidth={2} />
+                          API-ключ, если задан на сервере
+                        </span>
+                        <Input
+                          value={printAiDraft.apiKey}
+                          type="password"
+                          autoComplete="off"
+                          placeholder="необязательно"
+                          onChange={(event) => setPrintAiDraft((current) => ({ ...current, apiKey: event.target.value }))}
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2 lg:justify-end">
+                        <Button variant="outline" className="min-h-9" onClick={() => void handleCheckPrintAiConnection()} disabled={isCheckingPrintAi}>
+                          {isCheckingPrintAi ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} /> : <ShieldCheck className="h-4 w-4" strokeWidth={2} />}
+                          Проверить
+                        </Button>
+                        <Button className="min-h-9" onClick={handleSavePrintAiSettings}>
+                          <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
+                          Сохранить
+                        </Button>
+                      </div>
+                      {printAiHealth && printAiHealth.status !== "available" ? (
+                        <p className="flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 lg:col-span-3 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
+                          {printAiHealth.message}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </section>
+
+                <SettingCard
+                  icon={<TrendingUp className="h-4 w-4" strokeWidth={2} />}
+                  title="Сбор трендов"
+                  description={
+                    trendsEnabled
+                      ? "Рапорт сохраняет только месячные KPI для динамики показателей. Исходные строки отчетов не попадают в историю."
+                      : "Отчеты открываются без сохранения KPI. Уже сохраненные снимки остаются доступными, пока вы их не удалите."
+                  }
+                  status={trendsEnabled ? "включено" : "выключено"}
+                  isEnabled={trendsEnabled}
+                  onDisable={() => setTrendsEnabled(false)}
+                  onEnable={() => setTrendsEnabled(true)}
+                  disableLabel="Выключить сбор трендов"
+                  enableLabel="Включить сбор трендов"
+                />
 
                 <section className="grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <Database className="h-4 w-4 text-raport-primary" strokeWidth={2} />
-                        <h3 className="text-sm font-black text-raport-text">Локальная история · {totalSnapshots} снимков</h3>
+                        <h3 className="text-sm font-black text-raport-text">Месячные снимки KPI по дашбордам · {totalSnapshots}</h3>
                       </div>
                       <p className="mt-1 text-xs font-semibold leading-relaxed text-raport-muted">
-                        Месячные снимки KPI по дашбордам. Можно удалить отдельный период или очистить историю выбранного дашборда.
+                        Здесь можно проверить, какие месячные KPI сохранены локально, удалить отдельный период или очистить историю дашборда.
                       </p>
                     </div>
                     <Button variant="ghost" className="min-h-8 px-2 py-1 text-xs" onClick={() => void loadHistory()}>

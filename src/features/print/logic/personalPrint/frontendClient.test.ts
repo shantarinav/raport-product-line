@@ -1,7 +1,29 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../../types";
-import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig } from "./frontendClient";
+import { setPrintAiSettings } from "../../../../shared/lib/printAiSettings";
+import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig, readPrintLlmRuntimeConfig } from "./frontendClient";
 
+function installMockWindow() {
+  const storage = new Map<string, string>();
+  const events = new EventTarget();
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
+      addEventListener: events.addEventListener.bind(events),
+      removeEventListener: events.removeEventListener.bind(events),
+      dispatchEvent: events.dispatchEvent.bind(events),
+    },
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(globalThis, "window");
+});
 function job(index: number, overrides: Partial<PrintJob> = {}): PrintJob {
   return {
     date: null,
@@ -87,6 +109,25 @@ describe("print LLM frontend client", () => {
 
   it("uses a small default batch size for responsive local LLM updates", () => {
     expect(readPrintLlmFrontendConfig({ VITE_PRINT_LLM_CLASSIFIER_ENABLED: "true" }).batchSize).toBe(3);
+  });
+  it("builds runtime backend URLs and API key from local Print AI settings", () => {
+    installMockWindow();
+    setPrintAiSettings({ enabled: true, backendUrl: "http://print-ai.local:8787/", apiKey: "runtime-secret" });
+
+    expect(
+      readPrintLlmRuntimeConfig({
+        VITE_PRINT_LLM_BATCH_SIZE: "7",
+        VITE_PRINT_LLM_MAX_CANDIDATES: "25",
+      }),
+    ).toEqual({
+      enabled: true,
+      url: "http://print-ai.local:8787/api/print/classify-personal",
+      lookupUrl: "http://print-ai.local:8787/api/print/classifications/lookup",
+      classifyMissingUrl: "http://print-ai.local:8787/api/print/classifications/classify-missing",
+      batchSize: 7,
+      maxCandidates: 25,
+      apiKey: "runtime-secret",
+    });
   });
 
   it("sends candidate jobs to proxy in batches", async () => {
