@@ -85,12 +85,24 @@ describe("print AI settings", () => {
   });
 
   it("checks available backend connection", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(response(200, { enabled: true, model: "qwen3:4b", cacheEnabled: true }));
+    const fetchImpl = vi.fn().mockResolvedValue(
+      response(200, {
+        enabled: true,
+        service: "print-llm",
+        model: "qwen3:4b",
+        cacheEnabled: true,
+        cacheClassifications: 42,
+        queue: { concurrency: 1, active: 0, pending: 2 },
+      }),
+    );
 
     await expect(checkPrintAiConnection({ enabled: true, backendUrl: "http://server:8787", apiKey: "secret" }, fetchImpl)).resolves.toMatchObject({
       status: "available",
+      service: "print-llm",
       model: "qwen3:4b",
       cacheEnabled: true,
+      cacheClassifications: 42,
+      queue: { concurrency: 1, active: 0, pending: 2 },
     });
     expect(fetchImpl).toHaveBeenCalledWith("http://server:8787/health", {
       method: "GET",

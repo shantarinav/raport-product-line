@@ -186,7 +186,7 @@ function healthBadgeClass(result: PrintAiHealthResult | null, isChecking: boolea
 function healthLabel(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
   if (isChecking) return "проверяем";
   if (!isEnabled) return "выключено";
-  if (!result) return "включено";
+  if (!result) return "проверьте";
   if (result.status === "available") return "готово";
   if (result.status === "disabled") return "нужна настройка";
   if (result.status === "unauthorized") return "проверьте ключ";
@@ -194,13 +194,67 @@ function healthLabel(result: PrintAiHealthResult | null, isChecking: boolean, is
 }
 
 function printAiUserMessage(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
-  if (!isEnabled) return "Рапорт ищет личную печать по словарю. ИИ не используется.";
-  if (isChecking) return "Проверяем, готов ли ИИ к уточнению личной печати.";
-  if (!result) return "ИИ включен. При необходимости проверьте, готова ли локальная проверка.";
-  if (result.status === "available") return "ИИ готов к работе" + (result.model ? " · модель " + result.model : "") + ".";
-  if (result.status === "disabled") return "ИИ отвечает, но проверка выключена в его настройках. Рапорт продолжит работу по словарю.";
-  if (result.status === "unauthorized") return "Ключ доступа не принят. Проверьте ключ в технических настройках.";
-  return "ИИ сейчас не отвечает. Рапорт продолжит работу по словарю.";
+  if (!isEnabled) return "Рапорт работает по словарю. Личные тематики ищутся без ИИ.";
+  if (isChecking) return "Проверяем подключение к ИИ.";
+  if (!result) return "ИИ включен. Проверьте подключение перед загрузкой отчета.";
+  if (result.status === "available") return "ИИ готов к работе. Print будет уточнять личную печать.";
+  if (result.status === "disabled") return "Сервис ИИ отвечает, но проверка выключена в его настройках. Print продолжит работу по словарю.";
+  if (result.status === "unauthorized") return "Сервис найден, но ключ доступа не принят.";
+  return "ИИ не отвечает. Print продолжит работу по словарю.";
+}
+
+function printAiQueueLabel(result: PrintAiHealthResult | null): string {
+  if (!result?.queue) return "нет данных";
+  return "активно " + result.queue.active + " · ожидает " + result.queue.pending + " · потоков " + result.queue.concurrency;
+}
+
+function printAiCacheLabel(result: PrintAiHealthResult | null): string {
+  if (!result) return "нет данных";
+  if (result.cacheStatus === "error") return "ошибка чтения";
+  if (result.cacheEnabled === false) return "выключен";
+  if (typeof result.cacheClassifications === "number") return result.cacheClassifications.toLocaleString("ru-RU") + " ответов";
+  return "включен";
+}
+
+function printAiStateLabel(result: PrintAiHealthResult | null, isChecking: boolean): string {
+  if (isChecking) return "проверяем связь";
+  if (!result) return "ожидает проверки";
+  if (result.status === "available") return "готов к работе";
+  if (result.status === "disabled") return "нужна настройка сервиса";
+  if (result.status === "unauthorized") return "ключ не принят";
+  return "нет связи";
+}
+
+function PrintAiServiceDiagnostics({
+  result,
+  isChecking,
+  isEnabled,
+}: {
+  result: PrintAiHealthResult | null;
+  isChecking: boolean;
+  isEnabled: boolean;
+}) {
+  if (!isEnabled) return null;
+
+  const items = [
+    { label: "Состояние", value: printAiStateLabel(result, isChecking) },
+    { label: "Модель", value: result?.model ?? "не определена" },
+    { label: "Очередь", value: printAiQueueLabel(result) },
+    { label: "Кэш", value: printAiCacheLabel(result) },
+  ];
+
+  return (
+    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-raport-muted">{item.label}</p>
+          <p className="mt-1 truncate text-xs font-black text-raport-text" title={item.value}>
+            {item.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function HistoryManager() {
@@ -408,14 +462,20 @@ export function HistoryManager() {
                         </button>
                       </div>
                       {printAiSettings.enabled ? (
+                        <Button variant="outline" className="min-h-9" onClick={() => void handleCheckPrintAiConnection()} disabled={isCheckingPrintAi}>
+                          {isCheckingPrintAi ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} /> : <ShieldCheck className="h-4 w-4" strokeWidth={2} />}
+                          {printAiHealth ? "Проверить еще раз" : "Проверить подключение"}
+                        </Button>
+                      ) : null}
+                      {printAiSettings.enabled ? (
                         <Button
                           variant="outline"
                           className={cn(
                             "h-9 w-9 rounded-full border-raport-action-border bg-raport-action-bg px-0 py-0 text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)] hover:bg-raport-action-bg-active hover:text-raport-primary",
                             isPrintAiEditorOpen && "bg-raport-action-bg-active",
                           )}
-                          aria-label="Технические настройки ИИ"
-                          title="Технические настройки ИИ"
+                          aria-label="Подключение сервиса ИИ"
+                          title="Подключение сервиса ИИ"
                           aria-expanded={isPrintAiEditorOpen}
                           onClick={() => {
                             setPrintAiDraft(printAiSettings);
@@ -433,9 +493,9 @@ export function HistoryManager() {
                       <div className="mb-3 flex min-w-0 items-start gap-2">
                         <Server className="mt-0.5 h-4 w-4 shrink-0 text-raport-primary" strokeWidth={2} />
                         <div className="min-w-0">
-                          <p className="text-xs font-black uppercase tracking-[0.14em] text-raport-muted">Технические настройки</p>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-raport-muted">Подключение сервиса</p>
                           <p className="mt-1 text-xs font-semibold leading-relaxed text-raport-muted">
-                            Меняйте эти поля только если ИИ работает не на стандартном адресе или требует ключ доступа.
+                            Укажите адрес сервиса ИИ и ключ доступа, если проверка работает на сервере в сети или защищена ключом.
                           </p>
                         </div>
                       </div>
@@ -465,11 +525,7 @@ export function HistoryManager() {
                           />
                         </label>
                         <div className="flex flex-wrap gap-2 lg:justify-end">
-                          <Button variant="outline" className="min-h-9" onClick={() => void handleCheckPrintAiConnection()} disabled={isCheckingPrintAi}>
-                            {isCheckingPrintAi ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} /> : <ShieldCheck className="h-4 w-4" strokeWidth={2} />}
-                            Проверить ИИ
-                          </Button>
-                          <Button className="min-h-9" onClick={handleSavePrintAiSettings}>
+<Button className="min-h-9" onClick={handleSavePrintAiSettings}>
                             <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
                             Сохранить настройки
                           </Button>
@@ -480,6 +536,12 @@ export function HistoryManager() {
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
                           {printAiUserMessage(printAiHealth, isCheckingPrintAi, printAiSettings.enabled)}
                         </p>
+                      ) : null}
+                      {printAiHealth && printAiHealth.status !== "unauthorized" && printAiHealth.status !== "unavailable" ? (
+                        <div className="mt-3 rounded-control border border-raport-border bg-raport-surface-soft p-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-raport-muted">Для администратора</p>
+                          <PrintAiServiceDiagnostics result={printAiHealth} isChecking={isCheckingPrintAi} isEnabled={printAiSettings.enabled} />
+                        </div>
                       ) : null}
                     </div>
                   ) : null}

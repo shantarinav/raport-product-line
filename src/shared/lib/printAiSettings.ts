@@ -18,8 +18,16 @@ export type PrintAiHealthStatus = "available" | "disabled" | "unauthorized" | "u
 export type PrintAiHealthResult = {
   status: PrintAiHealthStatus;
   message: string;
+  service?: string;
   model?: string;
   cacheEnabled?: boolean;
+  cacheClassifications?: number;
+  cacheStatus?: string;
+  queue?: {
+    concurrency: number;
+    active: number;
+    pending: number;
+  };
 };
 
 let cachedSettings: PrintAiSettings | null = null;
@@ -141,21 +149,49 @@ export async function checkPrintAiConnection(settings: PrintAiSettings, fetchImp
       return { status: "unavailable", message: `Сервис проверки ответил с ошибкой ${response.status}.` };
     }
 
-    const payload = (await response.json()) as { enabled?: boolean; model?: string; cacheEnabled?: boolean };
+    const payload = (await response.json()) as {
+      enabled?: boolean;
+      service?: string;
+      model?: string;
+      cacheEnabled?: boolean;
+      cacheClassifications?: number;
+      cacheStatus?: string;
+      queue?: {
+        concurrency?: number;
+        active?: number;
+        pending?: number;
+      };
+    };
+    const details = {
+      service: payload.service,
+      model: payload.model,
+      cacheEnabled: payload.cacheEnabled,
+      cacheClassifications: payload.cacheClassifications,
+      cacheStatus: payload.cacheStatus,
+      queue:
+        payload.queue &&
+        typeof payload.queue.concurrency === "number" &&
+        typeof payload.queue.active === "number" &&
+        typeof payload.queue.pending === "number"
+          ? {
+              concurrency: payload.queue.concurrency,
+              active: payload.queue.active,
+              pending: payload.queue.pending,
+            }
+          : undefined,
+    };
     if (payload.enabled === false) {
       return {
         status: "disabled",
         message: "Сервис доступен, но ИИ-проверка выключена.",
-        model: payload.model,
-        cacheEnabled: payload.cacheEnabled,
+        ...details,
       };
     }
 
     return {
       status: "available",
       message: `ИИ-проверка подключена${payload.model ? ` · модель ${payload.model}` : ""}.`,
-      model: payload.model,
-      cacheEnabled: payload.cacheEnabled,
+      ...details,
     };
   } catch {
     return { status: "unavailable", message: "Не удалось подключиться к сервису ИИ. Проверьте адрес и что сервис запущен." };
