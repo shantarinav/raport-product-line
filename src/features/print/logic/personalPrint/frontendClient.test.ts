@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PrintJob } from "../../types";
 import { classifyPrintJobsWithProxy, readPrintLlmFrontendConfig } from "./frontendClient";
 
@@ -40,6 +40,7 @@ describe("print LLM frontend client", () => {
         VITE_PRINT_LLM_CLASSIFIER_ENABLED: "true",
         VITE_PRINT_LLM_CLASSIFIER_URL: "http://127.0.0.1:8787/api/print/classify-personal",
         VITE_PRINT_LLM_BATCH_SIZE: "3",
+        VITE_PRINT_LLM_API_KEY: "frontend-secret",
       }),
     ).toEqual({
       enabled: true,
@@ -48,6 +49,39 @@ describe("print LLM frontend client", () => {
       classifyMissingUrl: "http://127.0.0.1:8787/api/print/classifications/classify-missing",
       batchSize: 3,
       maxCandidates: 50,
+      apiKey: "frontend-secret",
+    });
+  });
+
+  it("adds API key header only when configured", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      return {
+        ok: true,
+        json: async () => ({
+          items: body.items.map((item: { id: string }) => ({
+            id: item.id,
+            normalized_title: item.id,
+            source: "llm",
+            is_personal: false,
+            primary_category: "work",
+            risk_level: "low",
+            confidence_raw: 0.9,
+            needs_review: false,
+            reason_short: "Рабочий документ",
+            signals: ["work_like"],
+          })),
+          missing: [],
+        }),
+      } as Response;
+    });
+
+    await classifyPrintJobsWithProxy([job(1)], { enabled: true, url: "/proxy", apiKey: "secret" }, fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][1]?.headers).toMatchObject({
+      "content-type": "application/json",
+      "x-raport-backend-key": "secret",
     });
   });
 
@@ -102,7 +136,7 @@ describe("print LLM frontend client", () => {
             risk_level: "high",
             confidence_raw: 0.9,
             needs_review: true,
-            reason_short: "РџРѕС…РѕР¶Рµ РЅР° СѓС‡РµР±РЅС‹Р№ РјР°С‚РµСЂРёР°Р»",
+            reason_short: "Похоже на учебный материал",
             signals: ["education"],
           })),
         }),
@@ -478,6 +512,3 @@ describe("print LLM frontend client", () => {
   });
 
 });
-
-
-

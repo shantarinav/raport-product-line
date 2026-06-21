@@ -248,6 +248,8 @@ npm run backend:print-llm
 
 Frontend-флаги см. в корневом `.env.example`. Backend-переменные окружения см. в `backend/print-llm/.env.example`.
 
+Backend можно запускать локально на ПК пользователя или как небольшой сервис в корпоративной сети для 2-5 пользователей. Для сетевого режима настрой `PRINT_LLM_HOST`, `PRINT_LLM_ALLOWED_ORIGINS`, опциональный `PRINT_LLM_API_KEY` и frontend `VITE_PRINT_LLM_*`. Подробности см. в `backend/print-llm/README.md`.
+
 Для оценки качества на размеченной выборке:
 
 ```bash

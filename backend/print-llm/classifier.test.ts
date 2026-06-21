@@ -295,6 +295,22 @@ describe("classifyPrintPersonalItems", () => {
     expect(callOllama).toHaveBeenCalledTimes(3);
   });
 
+  it("routes Ollama calls through the queue dependency", async () => {
+    const callOllama = vi.fn().mockResolvedValue(validResponse());
+    const queue = {
+      run: vi.fn((task) => task()),
+    };
+
+    await classifyPrintPersonalItems([item("queued")], config({ cacheEnabled: false }), {
+      callOllama,
+      cache: new MemoryCache(),
+      queue,
+    });
+
+    expect(queue.run).toHaveBeenCalledTimes(1);
+    expect(callOllama).toHaveBeenCalledTimes(1);
+  });
+
   it("upgrades education signals to personal review when there is no work-like signal", async () => {
     const callOllama = vi.fn().mockResolvedValue(workLikeEducationResponse());
     const result = await classifyPrintPersonalItems([item("education")], config({ cacheEnabled: false }), { callOllama, cache: new MemoryCache() });

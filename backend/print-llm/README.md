@@ -1,54 +1,48 @@
 ﻿# Print LLM backend
 
-`backend/print-llm` — optional local backend extension для дашборда Print.
+`backend/print-llm` — optional backend extension для дашборда Print.
 
 Frontend Рапорта не зависит от этого backend:
 
 - `npm run dev`, `npm run check`, `npm run build` работают без запущенного backend;
 - опубликованный `dist/` открывает дашборды без Node-сервиса;
-- ИИ-проверка личной печати выключена по умолчанию и включается пользователем в `История и настройки`.
+- ИИ-проверка личной печати выключена по умолчанию и включается пользователем в `История и настройки`;
+- если backend недоступен, Print остается работоспособным в словарном режиме.
 
 ## Назначение
 
-Backend принимает минимальный безопасный payload по кандидатам личной печати, обращается к локальной Ollama-модели и сохраняет результаты в локальный SQLite cache.
+Backend принимает минимальный безопасный payload по кандидатам личной печати, обращается к локальной или сетевой Ollama-модели и сохраняет результаты в локальный SQLite cache.
 
 Во входной payload не должны уходить сырые print-логи, пользователи, компьютеры, принтеры и другие лишние поля. Frontend передает только данные, нужные для классификации документа.
 
 ## Требования
 
 - Node.js с поддержкой текущего проекта.
-- Локальная Ollama на `http://127.0.0.1:11434`.
+- Ollama на локальном ПК или сервере сети.
 - Загруженная модель, по умолчанию `qwen3:4b`.
+- SQLite cache на локальном диске backend-хоста.
 
-## Настройка
+Не размещай SQLite database на сетевой файловой шаре. Backend включает WAL mode, а WAL требует, чтобы процессы работали с базой на одной машине.
 
-Пример backend env находится в `.env.example`.
+## Local mode
 
-Основные переменные:
+Безопасный режим по умолчанию: backend слушает только `127.0.0.1`.
 
 ```bash
 PRINT_LLM_CLASSIFIER_ENABLED=true
+PRINT_LLM_HOST=127.0.0.1
 PRINT_LLM_PORT=8787
+PRINT_LLM_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+PRINT_LLM_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_CHAT_URL=http://127.0.0.1:11434/api/chat
 PRINT_LLM_MODEL=qwen3:4b
-PRINT_LLM_TIMEOUT_MS=30000
-PRINT_LLM_BATCH_SIZE=20
+PRINT_LLM_CONCURRENCY=1
 PRINT_LLM_CACHE_ENABLED=true
 PRINT_LLM_SCHEMA_VERSION=4
 ```
 
-Если `PRINT_LLM_CACHE_DB_PATH` не задан, SQLite cache создается в:
-
-```text
-backend/print-llm/.cache/print-llm-cache.sqlite
-```
-
-`.cache/` не коммитится.
-
-## Запуск
-
-Из корня репозитория:
+Запуск из корня репозитория:
 
 ```bash
 npm run backend:print-llm
@@ -60,23 +54,90 @@ npm run backend:print-llm
 Print LLM classifier proxy listening on http://127.0.0.1:8787
 ```
 
-## API
+## LAN/server mode
 
-Backend слушает только локальный адрес `127.0.0.1` и поддерживает POST endpoints:
+Для 2-5 пользователей backend можно разместить на обычном ПК или сервере в корпоративной сети.
 
-```text
-/api/print/classifications/lookup
-/api/print/classifications/classify-missing
-/api/print/classify-personal
+Backend env:
+
+```bash
+PRINT_LLM_CLASSIFIER_ENABLED=true
+PRINT_LLM_HOST=0.0.0.0
+PRINT_LLM_PORT=8787
+PRINT_LLM_ALLOWED_ORIGINS=https://bi.ekb.ru,http://server:5173
+PRINT_LLM_API_KEY=<shared-lan-key>
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_CHAT_URL=http://127.0.0.1:11434/api/chat
+PRINT_LLM_MODEL=qwen3:4b
+PRINT_LLM_CONCURRENCY=1
+PRINT_LLM_CACHE_ENABLED=true
+PRINT_LLM_CACHE_DB_PATH=C:\\raport-cache\\print-llm-cache.sqlite
+PRINT_LLM_SQLITE_BUSY_TIMEOUT_MS=5000
 ```
 
-Frontend использует эти endpoints только если включены:
+Frontend env при сборке или запуске:
 
 ```bash
 VITE_PRINT_LLM_CLASSIFIER_ENABLED=true
+VITE_PRINT_LLM_CLASSIFIER_URL=http://server:8787/api/print/classify-personal
+VITE_PRINT_LLM_LOOKUP_URL=http://server:8787/api/print/classifications/lookup
+VITE_PRINT_LLM_CLASSIFY_MISSING_URL=http://server:8787/api/print/classifications/classify-missing
+VITE_PRINT_LLM_API_KEY=<shared-lan-key>
 ```
 
-и пользователь включил ИИ-проверку в интерфейсе.
+`PRINT_LLM_API_KEY` — не полноценная пользовательская авторизация. Это практический защитный ключ для локальной сети. Если нужна настоящая auth-модель, это отдельная задача.
+
+## Concurrency
+
+`PRINT_LLM_CONCURRENCY=1` по умолчанию. Это намеренно: локальная Ollama на CPU часто плохо переносит много параллельных запросов. Для более мощного сервера можно попробовать `2`, но сначала проверить задержки и стабильность.
+
+Lookup SQLite cache не ставится в очередь. В очередь попадают только новые обращения к Ollama.
+
+## SQLite cache
+
+Если `PRINT_LLM_CACHE_DB_PATH` не задан, SQLite cache создается в:
+
+```text
+backend/print-llm/.cache/print-llm-cache.sqlite
+```
+
+`.cache/` не коммитится.
+
+Backend включает:
+
+```sql
+PRAGMA journal_mode=WAL;
+PRAGMA busy_timeout=<PRINT_LLM_SQLITE_BUSY_TIMEOUT_MS>;
+```
+
+## API
+
+```text
+GET  /health
+POST /api/print/classifications/lookup
+POST /api/print/classifications/classify-missing
+POST /api/print/classify-personal
+```
+
+`/health` не раскрывает секреты и подходит для проверки доступности сервиса.
+
+Пример:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8787/health
+```
+
+## CORS
+
+`PRINT_LLM_ALLOWED_ORIGINS` должен содержать origin фронтенда. Для production не используй `*`, если backend доступен из сети.
+
+Примеры origin:
+
+```text
+https://bi.ekb.ru
+http://server:5173
+http://127.0.0.1:5173
+```
 
 ## Оценка качества
 
@@ -93,9 +154,12 @@ npm run backend:print-llm:evaluate -- --input path/to/labeled.csv --proxy http:/
 Проверь по порядку:
 
 1. Запущен ли backend: `npm run backend:print-llm`.
-2. Слушает ли порт `8787`.
-3. Запущена ли Ollama.
-4. Доступна ли модель `qwen3:4b`.
-5. Совпадают ли `VITE_PRINT_LLM_*` frontend URLs с backend port.
+2. Отвечает ли `/health`.
+3. Правильно ли указан `PRINT_LLM_HOST`.
+4. Совпадает ли frontend URL с backend host/port.
+5. Разрешен ли frontend origin в `PRINT_LLM_ALLOWED_ORIGINS`.
+6. Совпадают ли `PRINT_LLM_API_KEY` и `VITE_PRINT_LLM_API_KEY`, если ключ включен.
+7. Запущена ли Ollama.
+8. Доступна ли модель `qwen3:4b`.
 
 Если backend недоступен, Print остается работоспособным и использует словарный режим.

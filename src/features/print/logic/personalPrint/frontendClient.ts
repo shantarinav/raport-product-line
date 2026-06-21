@@ -10,6 +10,7 @@ export type PrintLlmFrontendConfig = {
   classifyMissingUrl?: string;
   batchSize?: number;
   maxCandidates?: number;
+  apiKey?: string;
 };
 
 export type PrintLlmProgress = {
@@ -48,9 +49,15 @@ export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import
     classifyMissingUrl: typeof env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL : derivePrintLlmEndpoint(url, "classify-missing"),
     batchSize: Number(env.VITE_PRINT_LLM_BATCH_SIZE || 3),
     maxCandidates: Number(env.VITE_PRINT_LLM_MAX_CANDIDATES || 50),
+    apiKey: typeof env.VITE_PRINT_LLM_API_KEY === "string" ? env.VITE_PRINT_LLM_API_KEY : "",
   };
 }
 
+function buildPrintLlmRequestHeaders(config: PrintLlmFrontendConfig): HeadersInit {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (config.apiKey) headers["x-raport-backend-key"] = config.apiKey;
+  return headers;
+}
 function isLocalPersonalTopicCandidate(job: PrintJob): boolean {
   return job.riskReasonCodes.includes("excess-personal") || job.excessCategories.includes("Личные тематики");
 }
@@ -131,7 +138,7 @@ export async function classifyPrintJobsWithProxy(
     const batchGroups = candidateGroups.slice(index, index + batchSize);
     const lookupResponse = await fetchImpl(lookupUrl, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: buildPrintLlmRequestHeaders(config),
       body: JSON.stringify({ items: batchGroups.map((group) => group.requestItem) }),
     });
 
@@ -156,7 +163,7 @@ export async function classifyPrintJobsWithProxy(
     const batchGroups = missingGroups.slice(index, index + batchSize);
     const response = await fetchImpl(classifyMissingUrl, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: buildPrintLlmRequestHeaders(config),
       body: JSON.stringify({ items: batchGroups.map((group) => group.requestItem) }),
     });
 

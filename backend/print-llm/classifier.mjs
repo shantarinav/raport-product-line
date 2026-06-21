@@ -129,12 +129,13 @@ function documentClassificationHash(item, config) {
 }
 
 function ownDependencies(config, dependencies) {
-  const ownedCache = dependencies.cache ? null : new PrintLlmSqliteCache(config.cacheDbPath);
+  const ownedCache = dependencies.cache ? null : new PrintLlmSqliteCache(config.cacheDbPath, { busyTimeoutMs: config.sqliteBusyTimeoutMs });
   return {
     ownedCache,
     deps: {
       callOllama: dependencies.callOllama ?? callOllamaChat,
       cache: dependencies.cache ?? ownedCache,
+      queue: dependencies.queue ?? { run: (task) => task() },
     },
   };
 }
@@ -194,13 +195,15 @@ async function classifyOne(item, config, dependencies) {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const text = await dependencies.callOllama({
-        chatUrl: config.ollamaChatUrl,
-        model: config.model,
-        prompt,
-        schema: PRINT_LLM_JSON_SCHEMA,
-        timeoutMs: config.timeoutMs,
-      });
+      const text = await dependencies.queue.run(() =>
+        dependencies.callOllama({
+          chatUrl: config.ollamaChatUrl,
+          model: config.model,
+          prompt,
+          schema: PRINT_LLM_JSON_SCHEMA,
+          timeoutMs: config.timeoutMs,
+        }),
+      );
       const validated = validateLlmClassification(parseOllamaJson(text));
       if (!validated) continue;
       const result = {

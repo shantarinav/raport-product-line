@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+﻿import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -94,4 +94,15 @@ describe("PrintLlmSqliteCache", () => {
     cache.close();
   });
 
+  it("enables WAL mode and busy timeout", () => {
+    const cache = new PrintLlmSqliteCache(tempDbPath(), { busyTimeoutMs: 1234 });
+    const db = cache.open();
+
+    const journalMode = db.prepare("PRAGMA journal_mode").get();
+    const busyTimeout = db.prepare("PRAGMA busy_timeout").get();
+
+    expect(String(journalMode?.journal_mode || journalMode?.[0]).toLowerCase()).toBe("wal");
+    expect(Number(busyTimeout?.timeout ?? busyTimeout?.busy_timeout ?? busyTimeout?.[0])).toBe(1234);
+    cache.close();
+  });
 });

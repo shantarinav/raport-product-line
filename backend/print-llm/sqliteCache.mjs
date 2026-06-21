@@ -1,10 +1,11 @@
-import { mkdirSync } from "node:fs";
+﻿import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 export class PrintLlmSqliteCache {
-  constructor(filePath = resolve(".cache", "print-llm-cache.sqlite")) {
+  constructor(filePath = resolve(".cache", "print-llm-cache.sqlite"), options = {}) {
     this.filePath = filePath;
+    this.busyTimeoutMs = Math.max(1, Math.floor(Number(options.busyTimeoutMs) || 5000));
     this.db = null;
   }
 
@@ -13,6 +14,9 @@ export class PrintLlmSqliteCache {
     mkdirSync(dirname(this.filePath), { recursive: true });
     this.db = new DatabaseSync(this.filePath);
     this.db.exec(`
+      PRAGMA journal_mode=WAL;
+      PRAGMA busy_timeout=${this.busyTimeoutMs};
+
       CREATE TABLE IF NOT EXISTS print_llm_classifications (
         cache_key TEXT PRIMARY KEY,
         payload TEXT NOT NULL,
