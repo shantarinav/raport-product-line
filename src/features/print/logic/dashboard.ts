@@ -11,6 +11,7 @@ import type {
   PrintUserAggregate,
   RiskReasonCode,
 } from "../types";
+import { classifyExcessPrintByRules, EXCESS_CATEGORIES } from "./personalPrint/ruleClassifier";
 
 export const PRINT_REQUIRED_COLUMNS = [
   "Дата",
@@ -32,8 +33,6 @@ export const PRINT_REQUIRED_COLUMNS = [
 export const PAPER_BUCKETS: PaperBucket[] = ["до A4 включительно", "A3", "от A2 и выше", "Не определено"];
 export const DOC_TYPES: DocumentType[] = ["PDF", "Word", "Excel/табличный", "Outlook", "Изображение", "Другое", "Нет имени документа"];
 export const PDF_PRINTER = "Microsoft Print to PDF";
-export const EXCESS_CATEGORIES = ["Личные тематики", "Нормативные документы", "Служебные записки"];
-
 export const RISK_REASON_OPTIONS: Array<{ value: RiskReasonCode; label: string }> = [
   { value: "big-job", label: "Задание от 100 стр." },
   { value: "no-duplex", label: "Многостраничная без двусторонней печати" },
@@ -56,44 +55,6 @@ export const DEFAULT_TABLE_LIMITS = {
 };
 
 const DEFAULT_PAPER_BUCKETS: PaperBucket[] = ["до A4 включительно", "Не определено"];
-
-const EXCESS_KEYWORDS: Array<{ category: string; label: string; pattern: RegExp }> = [
-  { category: "Личные тематики", label: "книги", pattern: /учебник|пособи[ея]|повесть|рассказ|\.fb2\b|\.epub\b|\.djvu\b/iu },
-  {
-    category: "Личные тематики",
-    label: "учебные работы",
-    pattern:
-      /реферат|курсов(ая|ой|ик)|диплом|дипломная|(?:^|[^а-яёa-z0-9])вкр(?:$|[^а-яёa-z0-9])|контрольная|лабораторная|эссе|практическая работа/iu,
-  },
-  {
-    category: "Личные тематики",
-    label: "праздники",
-    pattern:
-      /пасха|нов(?:ый|ого)\s+год|новогодн|рождество|8\s*марта|23\s*февраля|день\s+рождения|юбилей|поздравлен|открытк|валентинк|свадьб/iu,
-  },
-  { category: "Личные тематики", label: "хобби и быт", pattern: /рецепт|меню|вязани|выкройк|путеводител/iu },
-  {
-    category: "Личные тематики",
-    label: "детские/школьные материалы",
-    pattern: /раскраск|пропис[ьи]|домашн(?:ее|яя)\s+задани|детск(?:ий|ого|ом)?\s+сад|садик|школ[ауыое]?|олимпиад|егэ|огэ/iu,
-  },
-  { category: "Нормативные документы", label: "ГОСТ", pattern: /(?:^|[^а-яёa-z0-9])гост(?:\s*р)?(?:$|[^а-яёa-z0-9])/iu },
-  { category: "Нормативные документы", label: "СНиП", pattern: /снип/iu },
-  { category: "Нормативные документы", label: "СП", pattern: /(?:^|[^а-яёa-z0-9])сп\s*\d+(?:\.\d+)?/iu },
-  { category: "Нормативные документы", label: "СанПиН", pattern: /санпин/iu },
-  { category: "Нормативные документы", label: "ФНП", pattern: /(?:^|[^а-яёa-z0-9])фнп(?:$|[^а-яёa-z0-9])/iu },
-  { category: "Нормативные документы", label: "РД", pattern: /(?:^|[^а-яёa-z0-9])рд\s*\d+/iu },
-  { category: "Нормативные документы", label: "ПБ", pattern: /(?:^|[^а-яёa-z0-9])пб\s*\d+/iu },
-  { category: "Нормативные документы", label: "НПБ", pattern: /(?:^|[^а-яёa-z0-9])нпб(?:$|[^а-яёa-z0-9])/iu },
-  { category: "Нормативные документы", label: "ТР ТС", pattern: /тр\s*тс|техническ(?:ий|ого)\s+регламент/iu },
-  { category: "Нормативные документы", label: "ISO/IEC", pattern: /(?:^|[^a-zа-яё0-9])(?:iso|iec)\s*\d*/iu },
-  { category: "Нормативные документы", label: "стандарты", pattern: /стандарт|норматив|правила безопасности/iu },
-  {
-    category: "Служебные записки",
-    label: "служебная записка",
-    pattern: /служебн(?:ая|ой|ую|ые|ых|ым|ыми)?\s+записк|служебн(?:ая|ой|ую|ые|ых|ым|ыми)?\s+запис|служебка|сл\.?\s*записк|служ\.?\s*записк/iu,
-  },
-];
 
 export function normalizeHeaderCell(value: string) {
   return value.replace(/^\uFEFF/, "").trim().toLowerCase();
@@ -190,19 +151,7 @@ export function classifyPaperFormat(row: PrintRawRecord): PaperBucket {
 }
 
 export function classifyExcessPrint(documentName: unknown): Array<{ category: string; label: string }> {
-  const name = String(documentName || "");
-  const seen = new Set<string>();
-  const matches: Array<{ category: string; label: string }> = [];
-
-  EXCESS_KEYWORDS.forEach((keyword) => {
-    if (!keyword.pattern.test(name)) return;
-    const key = `${keyword.category}:${keyword.label}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    matches.push({ category: keyword.category, label: keyword.label });
-  });
-
-  return matches;
+  return classifyExcessPrintByRules(documentName);
 }
 
 export function normalizePrintRow(row: PrintRawRecord): PrintJob {
@@ -319,6 +268,7 @@ export function applyPrintFilters(rows: PrintJob[], filters: PrintFilters): Prin
   const userQuery = filters.user.toLowerCase();
   const computerQuery = filters.computer.toLowerCase();
   const docQuery = filters.documentText.toLowerCase();
+  const hasLlmPersonalReview = rows.some((row) => row.personalPrintClassification?.source === "llm");
 
   return rows.filter((row) => {
     if (filters.excludePdfPrinter && row.isPdfPrinter) return false;
@@ -331,9 +281,101 @@ export function applyPrintFilters(rows: PrintJob[], filters: PrintFilters): Prin
     if (filters.color && row.color !== filters.color) return false;
     if (filters.duplex && row.duplex !== filters.duplex) return false;
     if (filters.paperBuckets.length > 0 && !filters.paperBuckets.includes(row.paperBucket)) return false;
-    if (filters.riskReason && !row.riskReasonCodes.includes(filters.riskReason as RiskReasonCode)) return false;
+    if (filters.riskReason === "excess-personal") {
+      if (hasLlmPersonalReview) {
+        return row.personalPrintClassification?.source === "llm" && row.personalPrintClassification.is_personal;
+      }
+      if (!getEffectivePersonalPrintStatus(row).isPersonal) return false;
+    }
+    if (filters.riskReason && filters.riskReason !== "excess-personal" && !row.riskReasonCodes.includes(filters.riskReason as RiskReasonCode)) return false;
     return true;
   });
+}
+
+export function getEffectivePersonalPrintStatus(row: PrintJob): {
+  isPersonal: boolean;
+  source: "llm" | "rules" | "none";
+  confidence: number | null;
+  riskLevel: string | null;
+} {
+  const classification = row.personalPrintClassification;
+  if (classification?.source === "llm") {
+    return {
+      isPersonal: classification.is_personal,
+      source: "llm",
+      confidence: classification.confidence_raw,
+      riskLevel: classification.risk_level,
+    };
+  }
+
+  if (row.riskReasonCodes.includes("excess-personal")) {
+    return {
+      isPersonal: true,
+      source: "rules",
+      confidence: null,
+      riskLevel: "medium",
+    };
+  }
+
+  return {
+    isPersonal: false,
+    source: "none",
+    confidence: null,
+    riskLevel: null,
+  };
+}
+
+export type PersonalPrintReviewStats = {
+  dictionaryCandidates: number;
+  checked: number;
+  confirmed: number;
+  rejected: number;
+  unchecked: number;
+  confirmedPages: number;
+  rejectedPages: number;
+  uncheckedPages: number;
+};
+
+export function calculatePersonalPrintReviewStats(rows: PrintJob[]): PersonalPrintReviewStats {
+  return rows.reduce<PersonalPrintReviewStats>(
+    (stats, row) => {
+      const hasDictionaryPersonalSignal = row.riskReasonCodes.includes("excess-personal");
+      const classification = row.personalPrintClassification;
+
+      if (hasDictionaryPersonalSignal) {
+        stats.dictionaryCandidates += 1;
+      }
+
+      if (classification?.source === "llm") {
+        stats.checked += 1;
+        if (classification.is_personal) {
+          stats.confirmed += 1;
+          stats.confirmedPages += row.totalPages;
+        } else {
+          stats.rejected += 1;
+          stats.rejectedPages += row.totalPages;
+        }
+        return stats;
+      }
+
+      if (hasDictionaryPersonalSignal) {
+        stats.unchecked += 1;
+        stats.uncheckedPages += row.totalPages;
+      }
+
+      return stats;
+    },
+    {
+      dictionaryCandidates: 0,
+      checked: 0,
+      confirmed: 0,
+      rejected: 0,
+      unchecked: 0,
+      confirmedPages: 0,
+      rejectedPages: 0,
+      uncheckedPages: 0,
+    },
+  );
 }
 
 export function calculatePrintKpis(rows: PrintJob[], tariffs: PrintTariffs): PrintKpis {
