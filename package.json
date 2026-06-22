@@ -11,7 +11,13 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "backend:print-llm": "node backend/print-llm/server.mjs",
-    "backend:print-llm:evaluate": "node backend/print-llm/scripts/evaluate.mjs"
+    "backend:print-llm:evaluate": "node backend/print-llm/scripts/evaluate.mjs",
+    "backend:print-llm:init:local": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/init-env.ps1 -Mode Local",
+    "backend:print-llm:init:lan": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/init-env.ps1 -Mode Lan",
+    "backend:print-llm:run": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/run.ps1",
+    "backend:print-llm:start": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/start.ps1",
+    "backend:print-llm:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/stop.ps1",
+    "backend:print-llm:status": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/print-llm/status.ps1"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
