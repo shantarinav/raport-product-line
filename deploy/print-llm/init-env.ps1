@@ -44,12 +44,23 @@ if (-not $FrontendOrigin) {
 $envPath = Get-PrintLlmEnvPath
 if ((Test-Path -LiteralPath $envPath) -and -not $Force) {
   Write-Host "Файл настроек уже существует: $envPath" -ForegroundColor Yellow
-  Write-Host "Чтобы пересоздать его, добавьте параметр -Force."
+  Write-Host "Чтобы пересоздать настройки, запустите этот скрипт с параметром -Force."
   if ($InteractiveHelp) {
     Write-Host ""
     Write-Host "Что делать дальше:"
-    Write-Host "1. Если настройки верные, запустите 02-start.cmd."
-    Write-Host "2. Если нужно пересоздать настройки, удалите .env или запустите init-env.ps1 с -Force."
+    Write-Host "Если настройки верные:"
+    Write-Host "1. Запустите 02-start.cmd."
+    Write-Host ""
+    Write-Host "Если нужно пересоздать настройки вручную из PowerShell:"
+    Write-Host "1. Откройте PowerShell в папке deploy\print-llm."
+    Write-Host "2. Для локального режима выполните:"
+    Write-Host "   .\init-env.ps1 -Mode Local -Force -InteractiveHelp" -ForegroundColor Cyan
+    Write-Host "3. Для сетевого режима выполните:"
+    Write-Host "   .\init-env.ps1 -Mode Lan -Force -InteractiveHelp" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Если хотите запускать двойным кликом:"
+    Write-Host "1. Используйте 01-init-local.cmd для локального режима."
+    Write-Host "2. Используйте 01-init-lan.cmd для сетевого режима."
   }
   exit 0
 }
@@ -112,3 +123,4 @@ if ($InteractiveHelp) {
     Write-Host "3. В Рапорте откройте Настройки и укажите адрес http://127.0.0.1:$Port."
   }
 }
+
