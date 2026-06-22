@@ -1,22 +1,56 @@
 ﻿param(
   [ValidateSet("Local", "Lan")]
   [string]$Mode = "Local",
-  [string]$FrontendOrigin = "http://127.0.0.1:5173",
+  [string]$FrontendOrigin,
   [string]$HostName,
   [int]$Port = 8787,
   [string]$ApiKey,
   [string]$OllamaBaseUrl = "http://127.0.0.1:11434",
   [string]$Model = "qwen3:4b",
-  [switch]$Force
+  [switch]$Force,
+  [switch]$InteractiveHelp
 )
 
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\common.ps1"
 
+if ($InteractiveHelp) {
+  if ($Mode -eq "Lan") {
+    Write-Host "Рапорт: настройка общего ИИ-сервиса Print в сети" -ForegroundColor Cyan
+    Write-Host "Этот режим нужен, если одним ИИ-сервисом будут пользоваться несколько человек."
+    Write-Host "Пример адреса сайта Рапорта: https://bi.ekb.ru"
+    Write-Host "Вводите только origin: схема + домен + порт, без /#/print и без путей."
+    Write-Host ""
+  } else {
+    Write-Host "Рапорт: настройка ИИ-сервиса Print на этом компьютере" -ForegroundColor Cyan
+    Write-Host "Этот режим подходит, если Рапорт и ИИ-сервис запускаются на одном ПК."
+    Write-Host "Будет создан файл backend\print-llm\.env для http://127.0.0.1:8787."
+    Write-Host ""
+  }
+}
+
+if ($Mode -eq "Lan" -and -not $FrontendOrigin) {
+  $FrontendOrigin = Read-Host "Введите адрес сайта Рапорта"
+  if (-not $FrontendOrigin) {
+    Write-Host "Адрес сайта Рапорта обязателен." -ForegroundColor Red
+    exit 1
+  }
+}
+
+if (-not $FrontendOrigin) {
+  $FrontendOrigin = "http://127.0.0.1:5173"
+}
+
 $envPath = Get-PrintLlmEnvPath
 if ((Test-Path -LiteralPath $envPath) -and -not $Force) {
   Write-Host "Файл настроек уже существует: $envPath" -ForegroundColor Yellow
   Write-Host "Чтобы пересоздать его, добавьте параметр -Force."
+  if ($InteractiveHelp) {
+    Write-Host ""
+    Write-Host "Что делать дальше:"
+    Write-Host "1. Если настройки верные, запустите 02-start.cmd."
+    Write-Host "2. Если нужно пересоздать настройки, удалите .env или запустите init-env.ps1 с -Force."
+  }
   exit 0
 }
 
@@ -61,4 +95,20 @@ Write-Host "Создан файл настроек: $envPath" -ForegroundColor G
 if ($Mode -eq "Lan") {
   Write-Host "Сохраните API-ключ и укажите его на главной странице Рапорта в настройках ИИ." -ForegroundColor Yellow
   Write-Host "API-ключ: $ApiKey"
+}
+
+if ($InteractiveHelp) {
+  Write-Host ""
+  Write-Host "Что делать дальше:"
+  if ($Mode -eq "Lan") {
+    Write-Host "1. Сохраните API-ключ, который показан выше."
+    Write-Host "2. Запустите 02-start.cmd на этом сервере или ПК."
+    Write-Host "3. Запустите 03-status.cmd и проверьте, что сервис готов."
+    Write-Host "4. В Рапорте укажите адрес сервиса, например http://server:8787, и API-ключ."
+    Write-Host "5. Если сервис недоступен с других ПК, проверьте Windows Firewall для порта $Port."
+  } else {
+    Write-Host "1. Запустите 02-start.cmd."
+    Write-Host "2. Затем запустите 03-status.cmd и проверьте, что сервис готов."
+    Write-Host "3. В Рапорте откройте Настройки и укажите адрес http://127.0.0.1:$Port."
+  }
 }
