@@ -20,7 +20,8 @@ $config = Get-PrintLlmConfigFromEnv
 $health = Invoke-PrintLlmHealth -Quiet
 if (-not $health) {
   Write-Host "ИИ-сервис недоступен." -ForegroundColor Yellow
-  Write-Host "Проверяемый адрес: $($config.HealthUrl)"
+  Write-Host "Адрес для Рапорта: $($config.BaseUrl)"
+  Write-Host "Адрес проверки: $($config.HealthUrl)"
   Write-Host "Запуск: 02-start.cmd"
   if ($InteractiveHelp) {
     Write-Host ""
@@ -34,7 +35,8 @@ if (-not $health) {
 }
 
 Write-Host "ИИ-сервис готов к работе." -ForegroundColor Green
-Write-Host "Адрес: $($config.HealthUrl)"
+Write-Host "Адрес для Рапорта: $($config.BaseUrl)"
+Write-Host "Адрес проверки: $($config.HealthUrl)"
 Write-Host "Модель: $($health.model)"
 Write-Host "Классификация: $(if ($health.enabled) { 'включена' } else { 'выключена' })"
 if ($health.queue) {
@@ -51,7 +53,8 @@ if ($InteractiveHelp) {
   Write-Host "Как читать результат:"
   Write-Host "- 'ИИ-сервис готов к работе' означает, что backend отвечает."
   Write-Host "- Модель и очередь показывают состояние backend, а не frontend-дашборда."
-  Write-Host "- Теперь можно открыть Рапорт и проверить подключение в Настройках."
+  Write-Host "- В настройках Рапорта указывайте адрес без /health: $($config.BaseUrl)."
+  Write-Host "- Адрес с /health нужен только для технической проверки."
   Write-Host ""
   Write-Host "Как изменить модель, адрес Ollama или производительность:" -ForegroundColor Cyan
   Write-Host "1. Откройте файл backend\print-llm\.env."
@@ -59,4 +62,5 @@ if ($InteractiveHelp) {
   Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
   Write-Host "4. Проверьте состояние: 03-status.cmd."
 }
+
 
