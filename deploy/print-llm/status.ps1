@@ -52,4 +52,11 @@ if ($InteractiveHelp) {
   Write-Host "- 'ИИ-сервис готов к работе' означает, что backend отвечает."
   Write-Host "- Модель и очередь показывают состояние backend, а не frontend-дашборда."
   Write-Host "- Теперь можно открыть Рапорт и проверить подключение в Настройках."
+  Write-Host ""
+  Write-Host "Как изменить модель, адрес Ollama или производительность:" -ForegroundColor Cyan
+  Write-Host "1. Откройте файл backend\print-llm\.env."
+  Write-Host "2. Измените OLLAMA_BASE_URL, OLLAMA_CHAT_URL, PRINT_LLM_MODEL, PRINT_LLM_BATCH_SIZE или PRINT_LLM_CONCURRENCY."
+  Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
+  Write-Host "4. Проверьте состояние: 03-status.cmd."
 }
+
