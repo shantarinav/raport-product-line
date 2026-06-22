@@ -70,7 +70,7 @@ describe("print LLM frontend client", () => {
       lookupUrl: "http://127.0.0.1:8787/api/print/classifications/lookup",
       classifyMissingUrl: "http://127.0.0.1:8787/api/print/classifications/classify-missing",
       batchSize: 3,
-      maxCandidates: 50,
+      maxCandidates: 100,
       apiKey: "frontend-secret",
     });
   });
@@ -130,7 +130,7 @@ describe("print LLM frontend client", () => {
     });
   });
 
-  it("sends candidate jobs to proxy in batches", async () => {
+  it("sends lookup in batches and classifies missing documents one by one for responsive progress", async () => {
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       const isLookup = String(_url).includes("lookup");
@@ -155,7 +155,13 @@ describe("print LLM frontend client", () => {
 
     const result = await classifyPrintJobsWithProxy([job(1), job(2), job(3), job(4), job(5)], { enabled: true, url: "/proxy", batchSize: 2 }, fetchImpl);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(fetchImpl).toHaveBeenCalledTimes(8);
+    const classifyCalls = fetchImpl.mock.calls.filter(([url]) => String(url).includes("classify-missing"));
+    expect(classifyCalls).toHaveLength(5);
+    classifyCalls.forEach(([, init]) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.items).toHaveLength(1);
+    });
     expect(result.items).toHaveLength(5);
   });
 

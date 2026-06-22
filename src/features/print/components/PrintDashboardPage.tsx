@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
+import { AlertTriangle, Download, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -16,7 +16,6 @@ import {
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { Button } from "../../../shared/ui/shadcn/button";
-import { Badge } from "../../../shared/ui/shadcn/badge";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import { usePrintAiEnabled } from "../../../shared/lib/printAiSettings";
@@ -248,26 +247,6 @@ function printAiStatusText(status: PrintLlmStatus): string {
   return "ИИ выключен: показаны только словарные подозрения по личным тематикам.";
 }
 
-function printAiStatusChip(status: PrintLlmStatus, progress: PrintLlmProgress | null) {
-  if (status === "loading") {
-    const cacheLabel = progress && progress.cacheHits > 0 ? ` · из кэша ${progress.cacheHits}` : "";
-    const modelLabel = progress && progress.modelRequests > 0 ? ` · модель ${progress.modelRequests}` : "";
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.processed}/${progress.total}${cacheLabel}${modelLabel}` : "";
-    return { label: `ИИ: классификация выполняется${progressLabel}`, tone: "warning" as const, isLoading: true };
-  }
-  if (status === "ready") {
-    if (progress && progress.total > 0 && progress.modelRequests === 0 && progress.cacheHits === progress.total) {
-      return { label: `ИИ: из кэша · ${progress.cacheHits}/${progress.total}`, tone: "secondary" as const };
-    }
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.total}/${progress.total} · из кэша ${progress.cacheHits} · модель ${progress.modelRequests}` : "";
-    return { label: `ИИ: готово${progressLabel}`, tone: "secondary" as const };
-  }
-  if (status === "fallback") {
-    return { label: "ИИ: недоступен", tone: "danger" as const };
-  }
-  return { label: "ИИ: словарный режим", tone: "secondary" as const };
-}
-
 function PrintAiReviewSummary({
   status,
   progress,
@@ -279,48 +258,56 @@ function PrintAiReviewSummary({
   stats: PersonalPrintReviewStats;
   onExport: () => void;
 }) {
-  const progressLabel =
-    status === "loading" && progress && progress.total > 0
-      ? `Проверено ${formatInteger(progress.processed)} из ${formatInteger(progress.total)} документов-кандидатов: из кэша ${formatInteger(progress.cacheHits)}, через модель ${formatInteger(progress.modelRequests)}.`
+  const progressText = progress && progress.total > 0 ? `${formatInteger(progress.processed)}/${formatInteger(progress.total)}` : "";
+  const statusLabel =
+    status === "loading" && progressText
+      ? `выполняется ${progressText}`
+      : status === "ready" && progressText
+        ? `готово ${progressText}`
+        : "";
+  const summaryLine =
+    progress && progress.total > 0
+      ? `Словарь: ${formatInteger(stats.dictionaryCandidates)} подозрительных заданий · ИИ проверяет TOP-${formatInteger(progress.total)} документов · ${statusLabel}`
       : printAiStatusText(status);
-  const statusBadge = printAiStatusChip(status, progress);
-  const checkedCandidateCount = progress?.items.length
-    ? new Set(progress.items.filter((item) => item.source === "llm").map((item) => item.normalized_title || item.id)).size
-    : stats.checked;
+  const sourceLine =
+    progress && progress.total > 0
+      ? status === "loading" && progress.modelRequests === 0 && progress.cacheHits < progress.total
+        ? `Из кэша ${formatInteger(progress.cacheHits)} · модель обрабатывает новые документы`
+        : `Из кэша ${formatInteger(progress.cacheHits)} · через модель ${formatInteger(progress.modelRequests)}`
+      : null;
 
   return (
-    <div className="mb-3 grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-3">
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+    <div className="mb-3 grid gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2.5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div className="grid gap-1">
           <p className="text-sm font-extrabold text-raport-text">ИИ-проверка личной печати</p>
           <p className="max-w-3xl text-xs font-semibold leading-relaxed text-raport-muted">
-            {progressLabel}
+            {summaryLine}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">
-          <Badge variant={statusBadge.tone === "danger" ? "danger" : statusBadge.tone === "warning" ? "warning" : "secondary"}>
-            {statusBadge.label}
-          </Badge>
           <Button
-            variant="outline"
-            className="min-h-8 px-2 py-1 text-xs"
-            title="CSV с результатами словарной и ИИ-классификации по заданиям"
+            className="h-9 w-9 shrink-0 px-0 py-0"
+            aria-label="Скачать CSV с результатами проверки"
+            title="Скачать CSV с результатами словарной и ИИ-проверки"
             onClick={onExport}
           >
-            CSV проверки
+            <Download className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary">Словарь: {formatInteger(stats.dictionaryCandidates)} заданий</Badge>
-        <Badge variant="secondary">Проверено ИИ: {formatInteger(checkedCandidateCount)} документов</Badge>
-        <Badge variant="warning">Подтверждено: {formatInteger(stats.confirmed)} заданий</Badge>
-        <Badge variant="secondary">Отклонено: {formatInteger(stats.rejected)} заданий</Badge>
-        <Badge variant="secondary">Не проверено: {formatInteger(stats.unchecked)} заданий</Badge>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
+        <span>
+          Подтверждено <span className="tabular-nums text-amber-900">{formatInteger(stats.confirmed)}</span>
+        </span>
+        <span>
+          Отклонено <span className="tabular-nums text-raport-text">{formatInteger(stats.rejected)}</span>
+        </span>
+        <span>
+          Не проверено <span className="tabular-nums text-raport-text">{formatInteger(stats.unchecked)}</span>
+        </span>
+        {sourceLine ? <span className="text-raport-muted">{sourceLine}</span> : null}
       </div>
-      <p className="text-xs font-semibold leading-relaxed text-raport-muted">
-        Фильтр «Личные тематики» после появления ИИ-результатов показывает только кандидатов, которые ИИ подтвердил как личную печать. Если ИИ недоступен, используется словарный режим.
-      </p>
     </div>
   );
 }
@@ -928,7 +915,7 @@ export function PrintDashboardPage() {
               <SortToolbar
                 sortValue={riskSort}
                 sortOptions={[
-                  { value: "riskScore", label: "Балл" },
+                  { value: "riskScore", label: "Риск" },
                   { value: "totalPages", label: "Страницы" },
                 ]}
                 onSortChange={(value) => setRiskSort(value as "riskScore" | "totalPages")}
