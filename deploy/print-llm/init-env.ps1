@@ -109,6 +109,22 @@ if ($Mode -eq "Lan") {
 }
 
 if ($InteractiveHelp) {
+  $backendUrl = if ($Mode -eq "Lan") { "http://<имя-сервера>:$Port" } else { "http://127.0.0.1:$Port" }
+  Write-Host ""
+  Write-Host "Текущие параметры:" -ForegroundColor Cyan
+  Write-Host "- файл настроек: $envPath"
+  Write-Host "- адрес ИИ-сервиса для Рапорта: $backendUrl"
+  Write-Host "- адрес Ollama: $OllamaBaseUrl"
+  Write-Host "- модель: $Model"
+  Write-Host "- размер порции: 20 документов"
+  Write-Host "- параллельных запросов к модели: 1"
+  Write-Host ""
+  Write-Host "Как изменить модель, адрес Ollama или производительность:"
+  Write-Host "1. Откройте файл backend\print-llm\.env."
+  Write-Host "2. Измените OLLAMA_BASE_URL, OLLAMA_CHAT_URL, PRINT_LLM_MODEL, PRINT_LLM_BATCH_SIZE или PRINT_LLM_CONCURRENCY."
+  Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
+  Write-Host "4. Проверьте состояние: 03-status.cmd."
+
   Write-Host ""
   Write-Host "Что делать дальше:"
   if ($Mode -eq "Lan") {
@@ -123,4 +139,5 @@ if ($InteractiveHelp) {
     Write-Host "3. В Рапорте откройте Настройки и укажите адрес http://127.0.0.1:$Port."
   }
 }
+
 
