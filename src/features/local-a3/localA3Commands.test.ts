@@ -26,13 +26,13 @@ function complete(protocol = createLocalA3ProtocolDraft({}, { now, createId: ids
   return {
     ...protocol,
     form: {
-      problem: "Р”РѕР»СЏ РѕС‚РєР»РѕРЅРµРЅРёР№ РІС‹С€Рµ С†РµР»Рё",
-      cause: "РќРµС‚ РµРґРёРЅРѕРіРѕ РєРѕРЅС‚СЂРѕР»СЏ РїСЂРёС‡РёРЅС‹",
-      solution: "РќР°Р·РЅР°С‡РёС‚СЊ СЂР°Р·Р±РѕСЂ Рё РїСЂРѕРІРµСЂРёС‚СЊ РєРѕРЅС‚СЂРјРµСЂСѓ",
-      owner: "РРІР°РЅ РџРµС‚СЂРѕРІ",
+      problem: "Доля отклонений выше цели",
+      cause: "Нет единого контроля причины",
+      solution: "Назначить разбор и проверить контрмеру",
+      owner: "Иван Петров",
       dueDate: "2026-06-30",
-      expectedResult: "РћС‚РєР»РѕРЅРµРЅРёРµ СЃРЅРёР¶РµРЅРѕ",
-      checkCriteria: "РџРѕРєР°Р·Р°С‚РµР»СЊ РІРµСЂРЅСѓР»СЃСЏ РІ С†РµР»РµРІРѕР№ РґРёР°РїР°Р·РѕРЅ",
+      expectedResult: "Отклонение снижено",
+      checkCriteria: "Показатель вернулся в целевой диапазон",
     },
   };
 }
@@ -49,13 +49,13 @@ describe("localA3Commands", () => {
     const draft = createLocalA3ProtocolDraft(
       {
         dashboardType: "print",
-        dashboardTitle: "Р Р°РїРѕСЂС‚ РџРµС‡Р°С‚СЊ",
+        dashboardTitle: "Рапорт Печать",
         periodLabel: "01.06.2026 - 24.06.2026",
-        deviationTitle: "Р›РёС‡РЅР°СЏ РїРµС‡Р°С‚СЊ",
-        metricName: "РџРѕРґРѕР·СЂРёС‚РµР»СЊРЅС‹С… Р·Р°РґР°РЅРёР№",
+        deviationTitle: "Личная печать",
+        metricName: "Подозрительных заданий",
         actualValue: 42,
         targetValue: 0,
-        deviationScale: "42 Р·Р°РґР°РЅРёСЏ",
+        deviationScale: "42 задания",
         sourceFileName: "paper-cut.csv",
         sourceFileHash: "hash-1",
       },
@@ -65,12 +65,12 @@ describe("localA3Commands", () => {
     expect(draft).toMatchObject({
       id: "a3-1",
       dashboardType: "print",
-      dashboardTitle: "Р Р°РїРѕСЂС‚ РџРµС‡Р°С‚СЊ",
+      dashboardTitle: "Рапорт Печать",
       period: { label: "01.06.2026 - 24.06.2026" },
       source: { fileName: "paper-cut.csv", reportFingerprint: "hash-1" },
-      deviation: { title: "Р›РёС‡РЅР°СЏ РїРµС‡Р°С‚СЊ", metricLabel: "РџРѕРґРѕР·СЂРёС‚РµР»СЊРЅС‹С… Р·Р°РґР°РЅРёР№", fact: "42", target: "0", scale: "42 Р·Р°РґР°РЅРёСЏ" },
+      deviation: { title: "Личная печать", metricLabel: "Подозрительных заданий", fact: "42", target: "0", scale: "42 задания" },
       form: {
-        problem: "Р›РёС‡РЅР°СЏ РїРµС‡Р°С‚СЊ",
+        problem: "Личная печать",
         checkCriteria: "Повторно проверить показатель в следующем отчете.",
       },
     });
@@ -193,10 +193,10 @@ describe("localA3Commands", () => {
     const protocol = complete();
     await saveLocalA3Protocol(protocol, { repository: repo, now, createId: ids });
 
-    const result = await addLocalA3Comment(protocol.id, "РџСЂРѕРІРµСЂРёС‚СЊ РїРѕРІС‚РѕСЂРЅРѕ С‡РµСЂРµР· РЅРµРґРµР»СЋ", {
+    const result = await addLocalA3Comment(protocol.id, "Проверить повторно через неделю", {
       repository: repo,
       now: later,
-      actorName: "РђРЅР°Р»РёС‚РёРє",
+      actorName: "Аналитик",
       createId: (prefix) => `${prefix}-comment`,
     });
 
@@ -207,7 +207,7 @@ describe("localA3Commands", () => {
         expect.objectContaining({ type: "created" }),
         expect.objectContaining({
           type: "comment_added",
-          payload: { type: "comment_added", comment: { id: "a3-comment-comment", text: "РџСЂРѕРІРµСЂРёС‚СЊ РїРѕРІС‚РѕСЂРЅРѕ С‡РµСЂРµР· РЅРµРґРµР»СЋ", authorName: "РђРЅР°Р»РёС‚РёРє", createdAt: later() } },
+          payload: { type: "comment_added", comment: { id: "a3-comment-comment", text: "Проверить повторно через неделю", authorName: "Аналитик", createdAt: later() } },
         }),
       ]),
     );
@@ -219,16 +219,15 @@ describe("localA3Commands", () => {
     const protocol = complete();
     await saveLocalA3Protocol(protocol, { repository: repo, now, createId: ids });
 
-    await changeLocalA3Owner(protocol.id, "РњР°СЂРёСЏ РРІР°РЅРѕРІР°", { repository: repo, now: later, createId: (prefix) => `${prefix}-owner` });
+    await changeLocalA3Owner(protocol.id, "Мария Иванова", { repository: repo, now: later, createId: (prefix) => `${prefix}-owner` });
     await changeLocalA3DueDate(protocol.id, "2026-07-05", { repository: repo, now: later, createId: (prefix) => `${prefix}-date` });
 
-    await expect(repo.getProtocol(protocol.id)).resolves.toMatchObject({ form: { owner: "РњР°СЂРёСЏ РРІР°РЅРѕРІР°", dueDate: "2026-07-05" } });
+    await expect(repo.getProtocol(protocol.id)).resolves.toMatchObject({ form: { owner: "Мария Иванова", dueDate: "2026-07-05" } });
     await expect(repo.listEvents(protocol.id)).resolves.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "owner_changed", payload: { type: "owner_changed", from: "РРІР°РЅ РџРµС‚СЂРѕРІ", to: "РњР°СЂРёСЏ РРІР°РЅРѕРІР°" } }),
+        expect.objectContaining({ type: "owner_changed", payload: { type: "owner_changed", from: "Иван Петров", to: "Мария Иванова" } }),
         expect.objectContaining({ type: "due_date_changed", payload: { type: "due_date_changed", from: "2026-06-30", to: "2026-07-05" } }),
       ]),
     );
   });
 });
-

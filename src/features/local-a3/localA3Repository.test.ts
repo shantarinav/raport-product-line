@@ -198,4 +198,3 @@ describe("localA3Repository", () => {
     await repo.close();
   });
 });
-

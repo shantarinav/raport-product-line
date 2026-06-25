@@ -7,7 +7,14 @@ import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
-import { addLocalA3Comment, changeLocalA3DueDate, changeLocalA3Owner, changeLocalA3Status, createLocalA3ProtocolDraft } from "../localA3Commands";
+import {
+  addLocalA3Comment,
+  changeLocalA3DueDate,
+  changeLocalA3Owner,
+  changeLocalA3Status,
+  createLocalA3ProtocolDraft,
+  type LocalA3SaveResult,
+} from "../localA3Commands";
 import {
   exportLocalA3JournalArchiveJson,
   exportLocalA3ProtocolArchiveJson,
@@ -61,6 +68,16 @@ function parseDashboardFilter(value: string | null): LocalA3DashboardFilter {
   return "all";
 }
 
+function formatActionErrors(result: LocalA3SaveResult): string | null {
+  if (result.success) return null;
+  return result.errors.map((error) => error.message).join("; ");
+}
+
+function assertActionResult(result: LocalA3SaveResult): void {
+  const message = formatActionErrors(result);
+  if (message) throw new Error(message);
+}
+
 type ProtocolCardProps = {
   item: LocalA3JournalItem;
   repository: LocalA3Repository;
@@ -74,13 +91,20 @@ function ProtocolCard({ item, repository, onOpen, onChanged, onExport }: Protoco
   const [dueDate, setDueDate] = useState(item.protocol.form.dueDate ?? "");
   const [comment, setComment] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const overdue = isLocalA3Overdue(item.protocol);
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<string | null | void>) {
     setIsBusy(true);
+    setActionError(null);
+    setActionMessage(null);
     try {
-      await action();
+      const nextMessage = await action();
       await onChanged();
+      if (nextMessage) setActionMessage(nextMessage);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Не удалось выполнить действие.");
     } finally {
       setIsBusy(false);
     }
@@ -119,7 +143,8 @@ function ProtocolCard({ item, repository, onOpen, onChanged, onExport }: Protoco
           value={item.protocol.status}
           disabled={isBusy}
           onChange={(event) => run(async () => {
-            await changeLocalA3Status(item.protocol.id, event.target.value as LocalA3Status, { repository });
+            assertActionResult(await changeLocalA3Status(item.protocol.id, event.target.value as LocalA3Status, { repository }));
+            return "Статус обновлен.";
           })}
         >
           {STATUS_FILTERS.filter((status): status is LocalA3Status => status !== "all").map((status) => (
@@ -132,8 +157,11 @@ function ProtocolCard({ item, repository, onOpen, onChanged, onExport }: Protoco
           variant="outline"
           disabled={isBusy}
           onClick={() => run(async () => {
-            await changeLocalA3Owner(item.protocol.id, owner, { repository });
-            await changeLocalA3DueDate(item.protocol.id, dueDate || undefined, { repository });
+            if (!owner.trim()) throw new Error("Укажите исполнителя.");
+            if (!dueDate) throw new Error("Укажите срок.");
+            assertActionResult(await changeLocalA3Owner(item.protocol.id, owner.trim(), { repository }));
+            assertActionResult(await changeLocalA3DueDate(item.protocol.id, dueDate, { repository }));
+            return "Изменения сохранены.";
           })}
         >
           Применить
@@ -145,14 +173,17 @@ function ProtocolCard({ item, repository, onOpen, onChanged, onExport }: Protoco
           variant="outline"
           disabled={isBusy || !comment.trim()}
           onClick={() => run(async () => {
-            await addLocalA3Comment(item.protocol.id, comment, { repository });
+            assertActionResult(await addLocalA3Comment(item.protocol.id, comment.trim(), { repository }));
             setComment("");
+            return "Комментарий добавлен.";
           })}
         >
           <MessageSquare className="h-4 w-4" strokeWidth={2} />
           Добавить
         </Button>
       </div>
+      {actionError ? <p className="mt-2 text-sm font-semibold text-raport-danger">{actionError}</p> : null}
+      {actionMessage ? <p className="mt-2 text-sm font-semibold text-raport-success">{actionMessage}</p> : null}
     </article>
   );
 }

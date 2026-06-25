@@ -511,6 +511,10 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
     [a3Protocols, filters.selectedDateFrom, filters.selectedDateTo, report.period.end, report.period.start],
   );
   const activeRelatedA3Count = relatedA3Summary.open + relatedA3Summary.in_progress + relatedA3Summary.waiting_review;
+  const relatedA3BadgeLabel =
+    relatedA3Summary.total > 0
+      ? `${relatedA3Summary.total} разборов${activeRelatedA3Count > 0 ? ` · активных ${activeRelatedA3Count}` : ""}`
+      : "разборов нет";
 
   async function refreshA3Protocols() {
     try {
@@ -698,6 +702,15 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
                 Icon={ClipboardList}
                 actions={
                   <>
+                    <span
+                      className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold ${
+                        activeRelatedA3Count > 0
+                          ? "border-raport-action-border bg-raport-action-bg text-raport-primary"
+                          : "border-raport-border bg-raport-surface-soft text-raport-muted"
+                      }`}
+                    >
+                      {relatedA3BadgeLabel}
+                    </span>
                     <Button
                       className="h-9 w-9 shrink-0 px-0 py-0"
                       onClick={openTechnologyA3Draft}
@@ -717,22 +730,7 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
                   </>
                 }
               >
-                <div className="grid gap-3">
-                  {relatedA3Summary.total > 0 ? (
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-sm text-raport-muted">
-                      <span>
-                        Связанные разборы: <strong className="text-raport-text">{relatedA3Summary.total}</strong>
-                        {activeRelatedA3Count > 0 ? <span> · активных {activeRelatedA3Count}</span> : null}
-                      </span>
-                      <Link
-                        to="/a3?dashboard=ssz"
-                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-2 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-                      >
-                        <BookOpen className="h-4 w-4" strokeWidth={2} />
-                        Открыть журнал
-                      </Link>
-                    </div>
-                  ) : null}
+                <div>
                   <LocalA3ProtocolEditor
                     key={a3Draft.createdFromDashboardAt ?? "ssz-a3-draft"}
                     initialDraft={a3Draft}
