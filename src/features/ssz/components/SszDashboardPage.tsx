@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, ClipboardList, EyeOff, Factory, FileSpreadsheet, Gauge, RefreshCcw, UploadCloud, Users, Wrench } from "lucide-react";
+import { BookOpen, ClipboardList, EyeOff, Factory, FilePenLine, FileSpreadsheet, Gauge, RefreshCcw, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
@@ -396,20 +396,20 @@ function insightStatus(ratio: number | null, targetRatio: number) {
   const tone = targetTone(ratio, targetRatio);
   if (tone === "high") {
     return {
-      label: "Норма",
+      label: "Цель достигнута",
       className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     };
   }
 
   if (tone === "medium") {
     return {
-      label: "Контроль",
+      label: "Ниже цели",
       className: "border-amber-200 bg-amber-50 text-amber-900",
     };
   }
 
   return {
-    label: "Критично",
+    label: "Критично ниже цели",
     className: "border-red-200 bg-red-50 text-red-700",
   };
 }
@@ -491,10 +491,10 @@ function currentA3FilterSummary(filters: DashboardFilters): string {
 
 
 
-function SszDashboard({ report }: { report: ImportedReport }) {
+function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: ImportedReport; initialViewMode: SszViewMode; onViewModeChange: (mode: SszViewMode) => void }) {
   const defaultFilters = useMemo(() => initialFilters(report.period), [report.period]);
   const [filters, setFilters] = useState<DashboardFilters>(() => initialFilters(report.period));
-  const [viewMode, setViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
+  const [viewMode, setViewMode] = useState<SszViewMode>(initialViewMode);
   const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
   const [isA3Saved, setIsA3Saved] = useState(false);
   const [a3Protocols, setA3Protocols] = useState<LocalA3Protocol[]>([]);
@@ -559,7 +559,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
     }),
     [targetRatio, orderRows, departmentRows, operationRows],
   );
-  const canCreateA3 = kpis.workTechnologyRatio !== null && kpis.workTechnologyRatio < targetRatio;
+  const canCreateA3 = viewMode === "analyst" && kpis.workTechnologyRatio !== null && kpis.workTechnologyRatio < targetRatio;
 
   function openTechnologyA3Draft() {
     setA3Draft(
@@ -603,8 +603,10 @@ function SszDashboard({ report }: { report: ImportedReport }) {
 
   function changeViewMode(nextMode: SszViewMode) {
     setViewMode(nextMode);
+    onViewModeChange(nextMode);
     saveStoredSszViewMode(nextMode);
     if (nextMode === "manager") {
+      setA3Draft(null);
       setFilters((current) =>
         current.selectedOrder || current.selectedKit ? { ...current, selectedOrder: "", selectedKit: "" } : current,
       );
@@ -652,11 +654,11 @@ function SszDashboard({ report }: { report: ImportedReport }) {
                 <Button
                   className="min-h-9 border-raport-action-border bg-raport-action-bg text-raport-primary hover:bg-raport-action-bg-active"
                   onClick={openTechnologyA3Draft}
-                  title="Создать A3-разбор по этому отклонению"
-                  aria-label="Создать A3-разбор по этому отклонению"
+                  title="Создать разбор по отклонению от цели"
+                  aria-label="Создать разбор по отклонению от цели"
                 >
-                  <Wrench className="h-4 w-4" strokeWidth={2} />
-                  Разобрать
+                  <FilePenLine className="h-4 w-4" strokeWidth={2} />
+                  Создать разбор
                 </Button>
               ) : undefined
             }
@@ -682,7 +684,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         </motion.div>
 
         <AnimatePresence mode="popLayout" initial={false}>
-          {a3Draft ? (
+          {viewMode === "analyst" && a3Draft ? (
             <motion.div
               key="ssz-a3-editor"
               layout="position"
@@ -799,7 +801,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
                 onMasterClick={selectMaster}
               />
               <MasterLeaderboardCard
-                title="Зона внимания"
+                title="Ниже цели"
                 description="Мастера с наибольшим объемом работ без технологии."
                 rows={masterRows}
                 tone="growth"
@@ -893,6 +895,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
 export function SszDashboardPage() {
   const navigate = useNavigate();
   const [report] = useState<ImportedReport | null>(() => readPendingDashboardData<ImportedReport>("/ssz"));
+  const [headerViewMode, setHeaderViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
 
   useEffect(() => {
     if (!report) {
@@ -932,14 +935,16 @@ export function SszDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
-              <Link
-                to="/a3?dashboard=ssz"
-                title="Открыть журнал A3-разборов"
-                aria-label="Открыть журнал A3-разборов"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
-                <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
+              {headerViewMode === "analyst" ? (
+                <Link
+                  to="/a3?dashboard=ssz"
+                  title="Открыть журнал A3-разборов"
+                  aria-label="Открыть журнал A3-разборов"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </Link>
+              ) : null}
               {themeToggle}
             </div>
             {report ? (
@@ -961,7 +966,7 @@ export function SszDashboardPage() {
 
       {report ? (
         <div className="mt-4 grid gap-4">
-          <SszDashboard report={report} />
+          <SszDashboard report={report} initialViewMode={headerViewMode} onViewModeChange={setHeaderViewMode} />
         </div>
       ) : null}
     </PageShell>
