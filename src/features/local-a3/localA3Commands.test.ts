@@ -10,6 +10,7 @@ import {
   saveLocalA3Protocol,
 } from "./localA3Commands";
 import { createLocalA3Repository } from "./localA3Repository";
+import type { LocalA3Protocol } from "./localA3Types";
 
 let dbIndex = 0;
 const now = () => "2026-06-24T10:00:00.000Z";
@@ -21,7 +22,7 @@ function repository() {
   return createLocalA3Repository({ dbName: `raport_local_a3_commands_test_${dbIndex}` });
 }
 
-function complete(protocol = createLocalA3ProtocolDraft({}, { now, createId: ids })) {
+function complete(protocol = createLocalA3ProtocolDraft({}, { now, createId: ids })): LocalA3Protocol {
   return {
     ...protocol,
     form: {
@@ -122,6 +123,41 @@ describe("localA3Commands", () => {
 
     expect(result.success).toBe(false);
     await expect(repo.listProtocols()).resolves.toHaveLength(0);
+  });
+
+  it("does not persist a protocol without due date", async () => {
+    const repo = repository();
+    repos.push(repo);
+    const invalid = complete();
+    const { dueDate: _dueDate, ...formWithoutDueDate } = invalid.form;
+    invalid.form = formWithoutDueDate;
+
+    const result = await saveLocalA3Protocol(invalid, { repository: repo, now, createId: ids });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors).toEqual(expect.arrayContaining([expect.objectContaining({ path: "form.dueDate" })]));
+    }
+    await expect(repo.listProtocols()).resolves.toHaveLength(0);
+  });
+
+  it("returns owner and due date errors together", async () => {
+    const repo = repository();
+    repos.push(repo);
+    const invalid = complete();
+    invalid.form.owner = "";
+    const { dueDate: _dueDate, ...formWithoutDueDate } = invalid.form;
+    invalid.form = formWithoutDueDate;
+
+    const result = await saveLocalA3Protocol(invalid, { repository: repo, now, createId: ids });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: "form.owner" }),
+        expect.objectContaining({ path: "form.dueDate" }),
+      ]));
+    }
   });
 
   it("saves a valid protocol and writes a created event", async () => {

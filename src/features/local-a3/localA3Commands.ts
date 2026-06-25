@@ -124,10 +124,17 @@ function formatPath(path: PropertyKey[]): string {
 
 export function validateLocalA3Protocol(protocol: LocalA3Protocol): LocalA3SaveResult {
   const result = localA3ProtocolV1Schema.safeParse(protocol);
-  if (result.success) return { success: true, protocol: result.data, events: [] };
+  const dueDateError = protocol.form.dueDate ? [] : [{ path: "form.dueDate", message: "Укажите срок" }];
+  if (result.success) {
+    if (dueDateError.length > 0) {
+      return { success: false, errors: dueDateError };
+    }
+    return { success: true, protocol: result.data, events: [] };
+  }
+  const zodErrors = result.error.issues.map((issue) => ({ path: formatPath(issue.path), message: localizeValidationMessage(issue.message) }));
   return {
     success: false,
-    errors: result.error.issues.map((issue) => ({ path: formatPath(issue.path), message: localizeValidationMessage(issue.message) })),
+    errors: [...zodErrors, ...dueDateError.filter((manualError) => !zodErrors.some((error) => error.path === manualError.path))],
   };
 }
 

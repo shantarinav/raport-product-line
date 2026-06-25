@@ -188,7 +188,11 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
 
   const errors = useMemo(() => errorMap(validationErrors), [validationErrors]);
   const isCompact = variant === "compact";
-  const dueDateError = isCompact && errors["form.dueDate"] ? "Укажите дату в формате дд.мм.гггг" : errors["form.dueDate"];
+  const dueDateError =
+    isCompact && errors["form.dueDate"] && protocol.form.dueDate
+      ? "Укажите дату в формате дд.мм.гггг"
+      : errors["form.dueDate"];
+  const compactSaveStatus = saveError ?? saveMessage;
 
   useEffect(() => {
     if (!initialProtocol) return;
@@ -230,7 +234,7 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
       setCompactDueDateText(formatDueDateForInput(result.protocol.form.dueDate));
       await reloadEvents(result.protocol.id);
       onSaved?.();
-      setSaveMessage("A3-разбор сохранен локально.");
+      setSaveMessage("Сохранено.");
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Не удалось сохранить A3-разбор.");
     } finally {
@@ -275,7 +279,7 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
         </Alert>
       ) : null}
 
-      {saveError ? (
+      {saveError && !isCompact ? (
         <Alert className="border-raport-danger-border bg-raport-danger-muted">
           <AlertTitle className="text-raport-danger">Не удалось сохранить</AlertTitle>
           <AlertDescription>{saveError}</AlertDescription>
@@ -382,7 +386,11 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
               ) : null}
               <label className="space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-raport-muted">Исполнитель</span>
-                <Input value={protocol.form.owner} onChange={(event) => updateForm("owner", event.target.value)} />
+                <Input
+                  value={protocol.form.owner}
+                  className={errors["form.owner"] ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined}
+                  onChange={(event) => updateForm("owner", event.target.value)}
+                />
                 {!isCompact && errors["form.owner"] ? <span className="text-xs font-semibold text-raport-danger">{errors["form.owner"]}</span> : null}
               </label>
               <label className="space-y-1.5">
@@ -392,10 +400,16 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
                     value={compactDueDateText}
                     inputMode="numeric"
                     placeholder="дд.мм.гггг"
+                    className={dueDateError ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined}
                     onChange={(event) => updateCompactDueDate(event.target.value)}
                   />
                 ) : (
-                  <Input type="date" value={protocol.form.dueDate ?? ""} onChange={(event) => updateForm("dueDate", event.target.value)} />
+                  <Input
+                    type="date"
+                    value={protocol.form.dueDate ?? ""}
+                    className={dueDateError ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined}
+                    onChange={(event) => updateForm("dueDate", event.target.value)}
+                  />
                 )}
                 {!isCompact && dueDateError ? <span className="text-xs font-semibold text-raport-danger">{dueDateError}</span> : null}
               </label>
@@ -412,9 +426,16 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
                   <span className="min-h-4 text-xs font-semibold text-raport-danger">{errors["form.owner"] ?? ""}</span>
                   <span className="min-h-4 text-xs font-semibold text-raport-danger">{dueDateError ?? ""}</span>
                   <span aria-hidden="true" />
-                  {saveMessage ? (
-                    <span className="md:col-span-3 rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm font-semibold text-raport-success">
-                      {saveMessage}
+                  {compactSaveStatus ? (
+                    <span
+                      className={cn(
+                        "md:col-span-3 rounded-control border px-3 py-2 text-sm font-semibold",
+                        saveError
+                          ? "border-raport-danger-border bg-raport-danger-muted text-raport-danger"
+                          : "border-raport-success-border bg-raport-success-muted text-raport-success",
+                      )}
+                    >
+                      {compactSaveStatus}
                     </span>
                   ) : null}
                 </>
