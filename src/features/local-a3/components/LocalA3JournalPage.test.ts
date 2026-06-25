@@ -1,4 +1,4 @@
-﻿import { createElement } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -20,12 +20,14 @@ describe("LocalA3JournalPage", () => {
     const markup = renderJournal();
 
     expect(markup).toContain("Разборы отклонений");
-    expect(markup).toContain("A3-протоколы хранятся в этом браузере на этом компьютере");
-    expect(markup).toContain("Экспорт журнала");
-    expect(markup).toContain("Импорт JSON");
-    expect(markup).toContain("Поиск по разбору");
+    expect(markup).toContain("Разборы хранятся в этом браузере");
+    expect(markup).toContain("Резервная копия журнала");
+    expect(markup).toContain("Найти разбор, исполнителя или комментарий");
     expect(markup).toContain("Все дашборды");
-    expect(markup).toContain("Журнал A3");
+    expect(markup).toContain("Контроль разборов");
+    expect(markup).toContain("Главный вывод");
+    expect(markup).toContain("Без исполнителя");
+    expect(markup).toContain("Без срока");
   });
 
   it("accepts a dashboard filter from the URL", () => {
