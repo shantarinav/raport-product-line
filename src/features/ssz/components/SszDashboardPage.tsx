@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
+import { BookOpen, ClipboardList, EyeOff, Factory, FileSpreadsheet, Gauge, RefreshCcw, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
@@ -13,8 +13,13 @@ import {
 } from "../../../shared/ui";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
+import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { LocalA3ProtocolEditor } from "../../local-a3/components/LocalA3ProtocolEditor";
+import { localA3Repository } from "../../local-a3/localA3Repository";
+import type { LocalA3Protocol } from "../../local-a3/localA3Types";
 import { formatImportedAt, formatReportPeriod } from "../import/periodDisplay";
 import type { ImportedReport, OperationRecord } from "../import/types";
 import {
@@ -34,6 +39,8 @@ import {
   type DashboardFilters,
   uniqueSorted,
 } from "../logic/dashboard";
+import { buildSszTechnologyA3Draft } from "../logic/a3Draft";
+import { summarizeSszRelatedTechnologyA3 } from "../logic/a3Related";
 import { formatHours, formatPercent } from "../logic/format";
 import { useSSZHistory } from "../logic/useSSZHistory";
 import { SSZTrendChart } from "./SSZTrendChart";
@@ -461,17 +468,62 @@ function sszInsightPoints({
   return points.slice(0, 3);
 }
 
+function currentSelectionPeriodLabel(filters: DashboardFilters, report: ImportedReport): string {
+  if (filters.selectedDateFrom && filters.selectedDateTo) {
+    return `${formatDateChip(filters.selectedDateFrom)} - ${formatDateChip(filters.selectedDateTo)}`;
+  }
+  if (filters.selectedDateFrom) return `с ${formatDateChip(filters.selectedDateFrom)}`;
+  if (filters.selectedDateTo) return `по ${formatDateChip(filters.selectedDateTo)}`;
+  return formatReportPeriod(report.period);
+}
+
+function currentA3FilterSummary(filters: DashboardFilters): string {
+  const parts = [
+    filters.selectedOrder ? `заказ ${filters.selectedOrder}` : null,
+    filters.selectedKit ? `комплект ${filters.selectedKit}` : null,
+    filters.selectedDepartment ? `цех ${filters.selectedDepartment}` : null,
+    filters.selectedMaster ? `мастер ${filters.selectedMaster}` : null,
+    filters.selectedOperation ? `операция ${filters.selectedOperation}` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return parts.length > 0 ? parts.join(" · ") : "все данные отчета";
+}
+
 
 
 function SszDashboard({ report }: { report: ImportedReport }) {
   const defaultFilters = useMemo(() => initialFilters(report.period), [report.period]);
   const [filters, setFilters] = useState<DashboardFilters>(() => initialFilters(report.period));
   const [viewMode, setViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
+  const [isA3Saved, setIsA3Saved] = useState(false);
+  const [a3Protocols, setA3Protocols] = useState<LocalA3Protocol[]>([]);
   const historyComparisonStart = monthStartDateKey(filters.selectedDateFrom || report.period.start || "") || undefined;
   const { history, previousSnapshot } = useSSZHistory(historyComparisonStart);
   const kpiPreviousSnapshot = isMonthlyCoverageReady(filters.selectedDateFrom, filters.selectedDateTo) ? previousSnapshot : null;
   const targetRatio = filters.targetPercent / 100;
   const hasTrendData = history.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.workTechnologyPercent === "number" && Number.isFinite(snapshot.metrics.workTechnologyPercent)).length >= 2;
+  const relatedA3Summary = useMemo(
+    () => summarizeSszRelatedTechnologyA3(
+      a3Protocols,
+      filters.selectedDateFrom || report.period.start || undefined,
+      filters.selectedDateTo || report.period.end || undefined,
+    ),
+    [a3Protocols, filters.selectedDateFrom, filters.selectedDateTo, report.period.end, report.period.start],
+  );
+  const activeRelatedA3Count = relatedA3Summary.open + relatedA3Summary.in_progress + relatedA3Summary.waiting_review;
+
+  async function refreshA3Protocols() {
+    try {
+      setA3Protocols(await localA3Repository.listProtocols());
+    } catch {
+      setA3Protocols([]);
+    }
+  }
+
+  useEffect(() => {
+    void refreshA3Protocols();
+  }, []);
 
   const operations = useMemo(() => operationScope(report.sszRecords), [report.sszRecords]);
   const filteredRecords = useMemo(() => filterRecords(report.sszRecords, filters), [report.sszRecords, filters]);
@@ -499,6 +551,31 @@ function SszDashboard({ report }: { report: ImportedReport }) {
       }),
     [targetRatio, orderRows, departmentRows, operationRows],
   );
+  const mainInsightAttentionRows = useMemo(
+    () => ({
+      order: topAttentionRow(orderRows, targetRatio),
+      department: topAttentionRow(departmentRows, targetRatio),
+      operation: topAttentionRow(operationRows, targetRatio),
+    }),
+    [targetRatio, orderRows, departmentRows, operationRows],
+  );
+  const canCreateA3 = kpis.workTechnologyRatio !== null && kpis.workTechnologyRatio < targetRatio;
+
+  function openTechnologyA3Draft() {
+    setA3Draft(
+      buildSszTechnologyA3Draft({
+        periodLabel: currentSelectionPeriodLabel(filters, report),
+        periodStart: filters.selectedDateFrom || report.period.start,
+        periodEnd: filters.selectedDateTo || report.period.end,
+        workTechnologyRatio: kpis.workTechnologyRatio,
+        targetPercent: filters.targetPercent,
+        deviationScale: mainInsightGap,
+        filterSummary: currentA3FilterSummary(filters),
+        attentionRows: mainInsightAttentionRows,
+      }),
+    );
+    setIsA3Saved(false);
+  }
 
   function selectOrder(order: string) {
     setFilters((current) => applyOrderSelection(current, operations, order));
@@ -566,7 +643,24 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         </motion.div>
 
         <motion.div layout="position">
-          <SectionCard title="Главный вывод" description="Оценка выполнения заданий и ключевые отклонения." Icon={FileSpreadsheet}>
+          <SectionCard
+            title="Главный вывод"
+            description="Оценка выполнения заданий и ключевые отклонения."
+            Icon={FileSpreadsheet}
+            actions={
+              canCreateA3 ? (
+                <Button
+                  className="min-h-9 border-raport-action-border bg-raport-action-bg text-raport-primary hover:bg-raport-action-bg-active"
+                  onClick={openTechnologyA3Draft}
+                  title="Создать A3-разбор по этому отклонению"
+                  aria-label="Создать A3-разбор по этому отклонению"
+                >
+                  <Wrench className="h-4 w-4" strokeWidth={2} />
+                  Разобрать
+                </Button>
+              ) : undefined
+            }
+          >
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
               <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
@@ -586,6 +680,88 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           </div>
         </SectionCard>
         </motion.div>
+
+        <AnimatePresence mode="popLayout" initial={false}>
+          {a3Draft ? (
+            <motion.div
+              key="ssz-a3-editor"
+              layout="position"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.25 }}
+              className="w-full"
+            >
+              <SectionCard
+                title="A3-разбор отклонения"
+                description="Заполните причину, решение, исполнителя и срок."
+                Icon={ClipboardList}
+                actions={
+                  <>
+                    <Button
+                      className="h-9 w-9 shrink-0 px-0 py-0"
+                      onClick={openTechnologyA3Draft}
+                      title="Обновить A3-разбор по текущим фильтрам"
+                      aria-label="Обновить A3-разбор по текущим фильтрам"
+                    >
+                      <RefreshCcw className="h-4 w-4" strokeWidth={2} />
+                    </Button>
+                    <Button
+                      className="h-9 w-9 shrink-0 px-0 py-0"
+                      onClick={() => setA3Draft(null)}
+                      title="Скрыть A3-разбор"
+                      aria-label="Скрыть A3-разбор"
+                    >
+                      <EyeOff className="h-4 w-4" strokeWidth={2} />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="grid gap-3">
+                  <div className="rounded-control border border-raport-warning-border bg-raport-warning-muted px-3 py-2 text-sm font-semibold text-raport-warning">
+                    A3-протокол будет сохранён в этом браузере.
+                  </div>
+                  {relatedA3Summary.total > 0 ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-sm text-raport-muted">
+                      <span>
+                        Связанные разборы: <strong className="text-raport-text">{relatedA3Summary.total}</strong>
+                        {activeRelatedA3Count > 0 ? <span> · активных {activeRelatedA3Count}</span> : null}
+                      </span>
+                      <Link
+                        to="/a3?dashboard=ssz"
+                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-2 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                      >
+                        <BookOpen className="h-4 w-4" strokeWidth={2} />
+                        Открыть журнал
+                      </Link>
+                    </div>
+                  ) : null}
+                  {isA3Saved ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm text-raport-success">
+                      <span className="font-semibold">A3-разбор сохранён.</span>
+                      <Link
+                        to="/a3"
+                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-2 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                      >
+                        <BookOpen className="h-4 w-4" strokeWidth={2} />
+                        Открыть журнал A3
+                      </Link>
+                    </div>
+                  ) : null}
+                  <LocalA3ProtocolEditor
+                    key={a3Draft.createdFromDashboardAt ?? "ssz-a3-draft"}
+                    initialDraft={a3Draft}
+                    variant="compact"
+                    onSaved={() => {
+                      setIsA3Saved(true);
+                      void refreshA3Protocols();
+                    }}
+                  />
+                </div>
+              </SectionCard>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <AnimatePresence mode="popLayout" initial={false}>
           {viewMode === "analyst" && hasTrendData ? (
@@ -755,6 +931,14 @@ export function SszDashboardPage() {
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
+              </Link>
+              <Link
+                to="/a3?dashboard=ssz"
+                title="Открыть журнал A3-разборов"
+                aria-label="Открыть журнал A3-разборов"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+              >
+                <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
               {themeToggle}
             </div>
