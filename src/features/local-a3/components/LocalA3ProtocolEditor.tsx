@@ -55,6 +55,25 @@ function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+function formatDueDateForInput(value?: string): string {
+  if (!value) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+function parseDueDateInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(trimmed);
+  if (!match) return trimmed;
+  const [, day, month, year] = match;
+  const isoDate = `${year}-${month}-${day}`;
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== isoDate) return trimmed;
+  return isoDate;
+}
+
 function errorMap(errors: LocalA3ValidationIssue[]): Record<string, string> {
   return errors.reduce<Record<string, string>>((acc, error) => {
     acc[error.path] = error.message;
@@ -165,13 +184,16 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
   const [isSaving, setIsSaving] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentAuthor, setCommentAuthor] = useState("");
+  const [compactDueDateText, setCompactDueDateText] = useState(() => formatDueDateForInput(initialProtocol?.form.dueDate));
 
   const errors = useMemo(() => errorMap(validationErrors), [validationErrors]);
   const isCompact = variant === "compact";
+  const dueDateError = isCompact && errors["form.dueDate"] ? "Укажите дату в формате дд.мм.гггг" : errors["form.dueDate"];
 
   useEffect(() => {
     if (!initialProtocol) return;
     setProtocol(initialProtocol);
+    setCompactDueDateText(formatDueDateForInput(initialProtocol.form.dueDate));
     repository.listEvents(initialProtocol.id).then(setEvents).catch(() => setEvents([]));
   }, [initialProtocol, repository]);
 
@@ -181,6 +203,11 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
       if (field === "dueDate" && !value) delete nextForm.dueDate;
       return { ...current, form: nextForm };
     });
+  }
+
+  function updateCompactDueDate(value: string) {
+    setCompactDueDateText(value);
+    updateForm("dueDate", parseDueDateInput(value));
   }
 
   async function reloadEvents(protocolId: string) {
@@ -200,6 +227,7 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
         return;
       }
       setProtocol(result.protocol);
+      setCompactDueDateText(formatDueDateForInput(result.protocol.form.dueDate));
       await reloadEvents(result.protocol.id);
       onSaved?.();
       setSaveMessage("A3-разбор сохранен локально.");
@@ -335,7 +363,7 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
 
         <aside className="space-y-4">
           <SectionCard title="Исполнение" description="Кто отвечает, к какому сроку и в каком статусе находится разбор.">
-            <div className={isCompact ? "grid gap-3 md:grid-cols-[minmax(260px,1fr)_150px_auto] md:items-end" : "space-y-3"}>
+            <div className={isCompact ? "grid gap-x-3 gap-y-1 md:grid-cols-[minmax(260px,1fr)_150px_auto] md:items-end" : "space-y-3"}>
               {!isCompact ? (
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-raport-muted">Текущий статус</span>
@@ -355,12 +383,21 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
               <label className="space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-raport-muted">Исполнитель</span>
                 <Input value={protocol.form.owner} onChange={(event) => updateForm("owner", event.target.value)} />
-                {errors["form.owner"] ? <span className="text-xs font-semibold text-raport-danger">{errors["form.owner"]}</span> : null}
+                {!isCompact && errors["form.owner"] ? <span className="text-xs font-semibold text-raport-danger">{errors["form.owner"]}</span> : null}
               </label>
               <label className="space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-raport-muted">Срок</span>
-                <Input type="date" value={protocol.form.dueDate ?? ""} onChange={(event) => updateForm("dueDate", event.target.value)} />
-                {errors["form.dueDate"] ? <span className="text-xs font-semibold text-raport-danger">{errors["form.dueDate"]}</span> : null}
+                {isCompact ? (
+                  <Input
+                    value={compactDueDateText}
+                    inputMode="numeric"
+                    placeholder="дд.мм.гггг"
+                    onChange={(event) => updateCompactDueDate(event.target.value)}
+                  />
+                ) : (
+                  <Input type="date" value={protocol.form.dueDate ?? ""} onChange={(event) => updateForm("dueDate", event.target.value)} />
+                )}
+                {!isCompact && dueDateError ? <span className="text-xs font-semibold text-raport-danger">{dueDateError}</span> : null}
               </label>
               <Button
                 className={isCompact ? "h-9 shrink-0 px-3 py-2 whitespace-nowrap" : "w-full"}
@@ -370,6 +407,18 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
                 <Save className="h-4 w-4" strokeWidth={2} />
                 {isSaving ? "Сохраняем..." : "Сохранить A3"}
               </Button>
+              {isCompact ? (
+                <>
+                  <span className="min-h-4 text-xs font-semibold text-raport-danger">{errors["form.owner"] ?? ""}</span>
+                  <span className="min-h-4 text-xs font-semibold text-raport-danger">{dueDateError ?? ""}</span>
+                  <span aria-hidden="true" />
+                  {saveMessage ? (
+                    <span className="md:col-span-3 rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm font-semibold text-raport-success">
+                      {saveMessage}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           </SectionCard>
 

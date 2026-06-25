@@ -496,7 +496,6 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
   const [filters, setFilters] = useState<DashboardFilters>(() => initialFilters(report.period));
   const [viewMode, setViewMode] = useState<SszViewMode>(initialViewMode);
   const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
-  const [isA3Saved, setIsA3Saved] = useState(false);
   const [a3Protocols, setA3Protocols] = useState<LocalA3Protocol[]>([]);
   const historyComparisonStart = monthStartDateKey(filters.selectedDateFrom || report.period.start || "") || undefined;
   const { history, previousSnapshot } = useSSZHistory(historyComparisonStart);
@@ -574,7 +573,6 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
         attentionRows: mainInsightAttentionRows,
       }),
     );
-    setIsA3Saved(false);
   }
 
   function selectOrder(order: string) {
@@ -720,9 +718,6 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
                 }
               >
                 <div className="grid gap-3">
-                  <div className="rounded-control border border-raport-warning-border bg-raport-warning-muted px-3 py-2 text-sm font-semibold text-raport-warning">
-                    A3-протокол будет сохранён в этом браузере.
-                  </div>
                   {relatedA3Summary.total > 0 ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-sm text-raport-muted">
                       <span>
@@ -738,24 +733,11 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
                       </Link>
                     </div>
                   ) : null}
-                  {isA3Saved ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm text-raport-success">
-                      <span className="font-semibold">A3-разбор сохранён.</span>
-                      <Link
-                        to="/a3"
-                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-2 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-                      >
-                        <BookOpen className="h-4 w-4" strokeWidth={2} />
-                        Открыть журнал A3
-                      </Link>
-                    </div>
-                  ) : null}
                   <LocalA3ProtocolEditor
                     key={a3Draft.createdFromDashboardAt ?? "ssz-a3-draft"}
                     initialDraft={a3Draft}
                     variant="compact"
                     onSaved={() => {
-                      setIsA3Saved(true);
                       void refreshA3Protocols();
                     }}
                   />

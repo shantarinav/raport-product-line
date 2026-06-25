@@ -14,12 +14,20 @@ import {
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+function requiredMessage(maxLength: number): string {
+  return `\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u0435 \u043f\u043e\u043b\u0435, \u043d\u0435 \u0431\u043e\u043b\u044c\u0448\u0435 ${maxLength.toLocaleString("ru-RU")} \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432`;
+}
+
+function maxLengthMessage(maxLength: number): string {
+  return `\u041d\u0435 \u0431\u043e\u043b\u044c\u0448\u0435 ${maxLength.toLocaleString("ru-RU")} \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432`;
+}
+
 function trimString(maxLength: number) {
-  return z.string().trim().min(1).max(maxLength);
+  return z.string().trim().min(1, { message: requiredMessage(maxLength) }).max(maxLength, { message: maxLengthMessage(maxLength) });
 }
 
 function optionalTrimString(maxLength: number) {
-  return z.string().trim().max(maxLength).optional();
+  return z.string().trim().max(maxLength, { message: maxLengthMessage(maxLength) }).optional();
 }
 
 function isValidDateOnly(value: string): boolean {
@@ -36,8 +44,8 @@ function isValidIsoDateTime(value: string): boolean {
 export const localA3DashboardTypeSchema = z.enum(LOCAL_A3_DASHBOARD_TYPES);
 export const localA3StatusSchema = z.enum(LOCAL_A3_STATUSES);
 export const localA3EventTypeSchema = z.enum(LOCAL_A3_EVENT_TYPES);
-export const localA3IsoDateSchema = z.string().refine(isValidDateOnly, "Expected YYYY-MM-DD date");
-export const localA3IsoDateTimeSchema = z.string().refine(isValidIsoDateTime, "Expected canonical ISO datetime");
+export const localA3IsoDateSchema = z.string().refine(isValidDateOnly, "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u0434\u0430\u0442\u0443 \u0432 \u0444\u043e\u0440\u043c\u0430\u0442\u0435 \u0413\u0413\u0413\u0413-\u041c\u041c-\u0414\u0414");
+export const localA3IsoDateTimeSchema = z.string().refine(isValidIsoDateTime, "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u0434\u0430\u0442\u0443 \u0438 \u0432\u0440\u0435\u043c\u044f \u0432 \u0444\u043e\u0440\u043c\u0430\u0442\u0435 ISO");
 
 export const localA3PeriodSchema = z
   .object({
@@ -48,7 +56,7 @@ export const localA3PeriodSchema = z
   .strict()
   .superRefine((period, context) => {
     if (period.from && period.to && period.from > period.to) {
-      context.addIssue({ code: "custom", message: "period.from must be before or equal period.to", path: ["from"] });
+      context.addIssue({ code: "custom", message: "Дата начала должна быть не позже даты окончания", path: ["from"] });
     }
   });
 
@@ -101,13 +109,13 @@ export const localA3ProtocolV1Schema = z
   .strict()
   .superRefine((protocol, context) => {
     if (protocol.updatedAt < protocol.createdAt) {
-      context.addIssue({ code: "custom", message: "updatedAt must be after createdAt", path: ["updatedAt"] });
+      context.addIssue({ code: "custom", message: "Дата обновления должна быть не раньше даты создания", path: ["updatedAt"] });
     }
     if (protocol.status === "closed" && !protocol.closedAt) {
-      context.addIssue({ code: "custom", message: "closedAt is required when status is closed", path: ["closedAt"] });
+      context.addIssue({ code: "custom", message: "\u0414\u043b\u044f \u0437\u0430\u043a\u0440\u044b\u0442\u043e\u0433\u043e \u0440\u0430\u0437\u0431\u043e\u0440\u0430 \u043d\u0443\u0436\u043d\u0430 \u0434\u0430\u0442\u0430 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u044f", path: ["closedAt"] });
     }
     if (protocol.status !== "closed" && protocol.closedAt) {
-      context.addIssue({ code: "custom", message: "closedAt is allowed only when status is closed", path: ["closedAt"] });
+      context.addIssue({ code: "custom", message: "Дата закрытия допускается только для закрытого разбора", path: ["closedAt"] });
     }
   });
 
@@ -128,7 +136,7 @@ const localA3EventPayloadSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("form_updated"),
-      fields: z.array(z.enum(["problem", "cause", "solution", "owner", "dueDate", "expectedResult", "checkCriteria"])).min(1),
+      fields: z.array(z.enum(["problem", "cause", "solution", "owner", "dueDate", "expectedResult", "checkCriteria"])).min(1, { message: "Укажите хотя бы одно измененное поле" }),
     })
     .strict(),
   z.object({ type: z.literal("comment_added"), comment: localA3CommentSchema }).strict(),
@@ -150,10 +158,10 @@ export const localA3EventV1Schema = z
   .strict()
   .superRefine((event, context) => {
     if (event.payload.type !== event.type) {
-      context.addIssue({ code: "custom", message: "event payload type must match event type", path: ["payload", "type"] });
+      context.addIssue({ code: "custom", message: "Тип события не совпадает с данными события", path: ["payload", "type"] });
     }
     if (event.type === "status_changed" && event.payload.type === "status_changed" && event.payload.from === event.payload.to) {
-      context.addIssue({ code: "custom", message: "status_changed requires different statuses", path: ["payload", "to"] });
+      context.addIssue({ code: "custom", message: "Новый статус должен отличаться от прежнего", path: ["payload", "to"] });
     }
   });
 
@@ -170,8 +178,8 @@ export const localA3ProtocolSnapshotV1Schema = z
     periodLabel: trimString(120),
     deviationTitle: trimString(240),
     metricLabel: optionalTrimString(160),
-    commentCount: z.number().int().min(0),
-    eventCount: z.number().int().min(0),
+    commentCount: z.number().int().min(0, { message: "Количество комментариев не может быть отрицательным" }),
+    eventCount: z.number().int().min(0, { message: "Количество событий не может быть отрицательным" }),
     createdAt: localA3IsoDateTimeSchema,
     updatedAt: localA3IsoDateTimeSchema,
     closedAt: localA3IsoDateTimeSchema.optional(),
@@ -179,13 +187,13 @@ export const localA3ProtocolSnapshotV1Schema = z
   .strict()
   .superRefine((snapshot, context) => {
     if (snapshot.updatedAt < snapshot.createdAt) {
-      context.addIssue({ code: "custom", message: "updatedAt must be after createdAt", path: ["updatedAt"] });
+      context.addIssue({ code: "custom", message: "Дата обновления должна быть не раньше даты создания", path: ["updatedAt"] });
     }
     if (snapshot.status === "closed" && !snapshot.closedAt) {
-      context.addIssue({ code: "custom", message: "closedAt is required when status is closed", path: ["closedAt"] });
+      context.addIssue({ code: "custom", message: "\u0414\u043b\u044f \u0437\u0430\u043a\u0440\u044b\u0442\u043e\u0433\u043e \u0440\u0430\u0437\u0431\u043e\u0440\u0430 \u043d\u0443\u0436\u043d\u0430 \u0434\u0430\u0442\u0430 \u0437\u0430\u043a\u0440\u044b\u0442\u0438\u044f", path: ["closedAt"] });
     }
     if (snapshot.status !== "closed" && snapshot.closedAt) {
-      context.addIssue({ code: "custom", message: "closedAt is allowed only when status is closed", path: ["closedAt"] });
+      context.addIssue({ code: "custom", message: "Дата закрытия допускается только для закрытого разбора", path: ["closedAt"] });
     }
   });
 
@@ -201,16 +209,25 @@ export const localA3ArchiveEnvelopeSchema = z
   })
   .strict();
 
+function localizeZodIssue(issue: z.ZodIssue): string {
+  if (issue.message && /[\u0400-\u04FF]/.test(issue.message)) return issue.message;
+  if (issue.code === "too_small") return "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u0435 \u043f\u043e\u043b\u0435";
+  if (issue.code === "too_big") return "\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043b\u0438\u043d\u043d\u043e\u0435";
+  if (issue.code === "invalid_type") return "\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0442\u0438\u043f \u0434\u0430\u043d\u043d\u044b\u0445";
+  if (issue.code === "invalid_value") return "\u041d\u0435\u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435";
+  return "\u041e\u0448\u0438\u0431\u043a\u0430 \u0432\u0430\u043b\u0438\u0434\u0430\u0446\u0438\u0438";
+}
+
 function formatZodIssues(error: z.ZodError): LocalA3ImportError[] {
   return error.issues.map((issue) => ({
     path: issue.path.length > 0 ? issue.path.join(".") : "$",
-    message: issue.message,
+    message: localizeZodIssue(issue),
   }));
 }
 
 function errorMessage(error: unknown): string {
   if (error instanceof z.ZodError) return formatZodIssues(error).map((issue) => `${issue.path}: ${issue.message}`).join("; ");
-  return error instanceof Error ? error.message : "Unknown validation error";
+  return error instanceof Error ? error.message : "\u041e\u0448\u0438\u0431\u043a\u0430 \u0432\u0430\u043b\u0438\u0434\u0430\u0446\u0438\u0438";
 }
 
 export function migrateLocalA3Protocol(input: unknown): LocalA3Protocol {
@@ -247,12 +264,12 @@ export function parseLocalA3ArchiveEnvelope(input: unknown): LocalA3ParseResult 
   const errors: LocalA3ImportError[] = [];
   result.data.events.forEach((event, index) => {
     if (!protocolIds.has(event.protocolId)) {
-      errors.push({ path: `events.${index}.protocolId`, message: `Event references missing protocol: ${event.protocolId}` });
+      errors.push({ path: `events.${index}.protocolId`, message: `Событие ссылается на отсутствующий A3-протокол: ${event.protocolId}` });
     }
   });
   result.data.snapshots.forEach((snapshot, index) => {
     if (!protocolIds.has(snapshot.protocolId)) {
-      errors.push({ path: `snapshots.${index}.protocolId`, message: `Snapshot references missing protocol: ${snapshot.protocolId}` });
+      errors.push({ path: `snapshots.${index}.protocolId`, message: `Снимок ссылается на отсутствующий A3-протокол: ${snapshot.protocolId}` });
     }
   });
 

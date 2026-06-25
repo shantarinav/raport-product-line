@@ -112,6 +112,18 @@ describe("localA3Commands", () => {
     await expect(repo.listProtocols()).resolves.toHaveLength(0);
   });
 
+  it("does not persist due date in mm.dd.yyyy format", async () => {
+    const repo = repository();
+    repos.push(repo);
+    const invalid = complete();
+    invalid.form.dueDate = "06.30.2026";
+
+    const result = await saveLocalA3Protocol(invalid, { repository: repo, now, createId: ids });
+
+    expect(result.success).toBe(false);
+    await expect(repo.listProtocols()).resolves.toHaveLength(0);
+  });
+
   it("saves a valid protocol and writes a created event", async () => {
     const repo = repository();
     repos.push(repo);

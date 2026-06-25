@@ -43,7 +43,7 @@ export function importLocalA3JournalFromJson(json: string): LocalA3ParseResult {
   } catch (error) {
     return {
       success: false,
-      errors: [{ path: "$", message: error instanceof Error ? `Invalid JSON: ${error.message}` : "Invalid JSON" }],
+      errors: [{ path: "$", message: error instanceof Error ? `Некорректный JSON: ${error.message}` : "Некорректный JSON" }],
     };
   }
 

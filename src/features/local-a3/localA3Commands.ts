@@ -114,6 +114,10 @@ function buildDeviationContext(input: LocalA3DraftInput): string | undefined {
   return trimToLength(contextParts.join("\n"), 1000);
 }
 
+function localizeValidationMessage(message: string): string {
+  return /[\u0400-\u04FF]/.test(message) ? message : "\u041e\u0448\u0438\u0431\u043a\u0430 \u0432\u0430\u043b\u0438\u0434\u0430\u0446\u0438\u0438";
+}
+
 function formatPath(path: PropertyKey[]): string {
   return path.length > 0 ? path.map(String).join(".") : "$";
 }
@@ -123,7 +127,7 @@ export function validateLocalA3Protocol(protocol: LocalA3Protocol): LocalA3SaveR
   if (result.success) return { success: true, protocol: result.data, events: [] };
   return {
     success: false,
-    errors: result.error.issues.map((issue) => ({ path: formatPath(issue.path), message: issue.message })),
+    errors: result.error.issues.map((issue) => ({ path: formatPath(issue.path), message: localizeValidationMessage(issue.message) })),
   };
 }
 

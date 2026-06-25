@@ -1,4 +1,4 @@
-import { createElement } from "react";
+﻿import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { LocalA3ProtocolEditor } from "./LocalA3ProtocolEditor";
@@ -77,5 +77,12 @@ describe("LocalA3ProtocolEditor", () => {
     expect(markup).not.toContain("Комментарии и история");
     expect(markup).not.toContain('aria-label="Статус"');
     expect(markup).not.toContain("A3-протокол хранится в этом браузере");
+  });
+
+  it("uses an explicit Russian date format in the compact editor", () => {
+    const markup = compactHtml();
+
+    expect(markup).not.toContain('type="date"');
+    expect(markup).toContain('placeholder="дд.мм.гггг"');
   });
 });

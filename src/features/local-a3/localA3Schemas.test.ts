@@ -59,8 +59,12 @@ describe("localA3Schemas", () => {
     expect(() => migrateLocalA3Protocol({ ...validProtocol, schemaVersion: 2 })).toThrow(/schemaVersion/i);
   });
 
+  it("returns Russian validation messages for empty required fields", () => {
+    expect(() => migrateLocalA3Protocol({ ...validProtocol, form: { ...validProtocol.form, problem: "" } })).toThrow(/\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u0435 \u043f\u043e\u043b\u0435/);
+  });
+
   it("rejects non-canonical datetime strings", () => {
-    expect(() => migrateLocalA3Protocol({ ...validProtocol, createdAt: "2026-06-24T15:00:00+05:00" })).toThrow(/canonical/i);
+    expect(() => migrateLocalA3Protocol({ ...validProtocol, createdAt: "2026-06-24T15:00:00+05:00" })).toThrow(/ISO|\u0444\u043e\u0440\u043c\u0430\u0442\u0435/i);
   });
 
   it("rejects archive events that reference missing protocols", () => {
@@ -87,7 +91,7 @@ describe("localA3Schemas", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.errors[0]?.message).toMatch(/missing protocol/i);
+    expect(result.errors[0]?.message).toMatch(/\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0439 A3-\u043f\u0440\u043e\u0442\u043e\u043a\u043e\u043b/i);
   });
 
   it("keeps archive envelope strict", () => {
