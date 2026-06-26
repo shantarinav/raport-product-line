@@ -85,10 +85,10 @@ describe("LocalA3ProtocolEditor", () => {
     expect(markup).not.toContain("A3-протокол хранится в этом браузере");
   });
 
-  it("uses an explicit Russian date format in the compact editor", () => {
+  it("uses a native date picker in the compact editor", () => {
     const markup = compactHtml();
 
-    expect(markup).not.toContain('type="date"');
-    expect(markup).toContain('placeholder="дд.мм.гггг"');
+    expect(markup).toContain('type="date"');
+    expect(markup).not.toContain('placeholder="дд.мм.гггг"');
   });
 });

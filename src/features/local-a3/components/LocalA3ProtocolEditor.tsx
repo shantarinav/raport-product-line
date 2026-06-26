@@ -54,25 +54,6 @@ function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
-function formatDueDateForInput(value?: string): string {
-  if (!value) return "";
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return value;
-  return `${match[3]}.${match[2]}.${match[1]}`;
-}
-
-function parseDueDateInput(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(trimmed);
-  if (!match) return trimmed;
-  const [, day, month, year] = match;
-  const isoDate = `${year}-${month}-${day}`;
-  const date = new Date(`${isoDate}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== isoDate) return trimmed;
-  return isoDate;
-}
-
 function errorMap(errors: LocalA3ValidationIssue[]): Record<string, string> {
   return errors.reduce<Record<string, string>>((acc, error) => {
     acc[error.path] = error.message;
@@ -182,22 +163,17 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [compactDueDateText, setCompactDueDateText] = useState(() => formatDueDateForInput(initialProtocol?.form.dueDate));
 
   const errors = useMemo(() => errorMap(validationErrors), [validationErrors]);
   const historyEvents = useMemo(() => events.filter((event) => event.type !== "comment_added"), [events]);
   const isCompact = variant === "compact";
   const showEditableContext = !isCompact && !initialDraft && !initialProtocol;
-  const dueDateError =
-    isCompact && errors["form.dueDate"] && protocol.form.dueDate
-      ? "Укажите дату в формате дд.мм.гггг"
-      : errors["form.dueDate"];
+  const dueDateError = errors["form.dueDate"];
   const compactSaveStatus = saveError ?? saveMessage;
 
   useEffect(() => {
     if (!initialProtocol) return;
     setProtocol(initialProtocol);
-    setCompactDueDateText(formatDueDateForInput(initialProtocol.form.dueDate));
     repository.listEvents(initialProtocol.id).then(setEvents).catch(() => setEvents([]));
   }, [initialProtocol, repository]);
 
@@ -207,11 +183,6 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
       if (field === "dueDate" && !value) delete nextForm.dueDate;
       return { ...current, form: nextForm };
     });
-  }
-
-  function updateCompactDueDate(value: string) {
-    setCompactDueDateText(value);
-    updateForm("dueDate", parseDueDateInput(value));
   }
 
   async function reloadEvents(protocolId: string) {
@@ -231,7 +202,6 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
         return;
       }
       setProtocol(result.protocol);
-      setCompactDueDateText(formatDueDateForInput(result.protocol.form.dueDate));
       await reloadEvents(result.protocol.id);
       onSaved?.();
       setSaveMessage("Сохранено.");
@@ -326,15 +296,13 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-raport-muted">Срок</span>
                 {isCompact ? (
                   <Input
-                    value={compactDueDateText}
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="дд.мм.гггг"
+                    type="date"
+                    value={protocol.form.dueDate ?? ""}
                     className={cn(
-                      "text-center font-medium tabular-nums",
+                      "font-medium tabular-nums",
                       dueDateError ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined,
                     )}
-                    onChange={(event) => updateCompactDueDate(event.target.value)}
+                    onChange={(event) => updateForm("dueDate", event.target.value)}
                   />
                 ) : (
                   <Input
