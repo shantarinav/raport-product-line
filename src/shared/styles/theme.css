@@ -258,27 +258,39 @@ progress[class]::-webkit-progress-bar {
 @keyframes raport-dropzone-pulse {
   0%, 100% {
     border-color: var(--raport-border);
-    box-shadow: var(--raport-shadow-card), 0 0 0 0 var(--raport-dropzone-pulse-soft);
+    background-color: var(--raport-surface);
+    box-shadow: var(--raport-shadow-card), inset 0 0 0 0 var(--raport-dropzone-pulse-soft);
   }
-  30% {
+  45% {
     border-color: var(--raport-primary);
-    box-shadow: var(--raport-shadow-card), 0 0 0 8px var(--raport-dropzone-pulse-strong);
-  }
-  60% {
-    border-color: var(--raport-primary);
-    box-shadow: var(--raport-shadow-card), 0 0 0 4px var(--raport-dropzone-pulse-mid);
+    background-color: color-mix(in srgb, var(--raport-primary) 5%, var(--raport-surface));
+    box-shadow: var(--raport-shadow-card), inset 0 0 0 4px var(--raport-dropzone-pulse-mid);
   }
 }
 
 .raport-dropzone-pulse {
-  animation: raport-dropzone-pulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  position: relative;
+  overflow: visible;
+  animation: raport-dropzone-pulse 2.4s ease-in-out infinite;
+}
+
+.raport-dropzone-pulse::before {
+  content: none;
+}
+
+.raport-dropzone-pulse > * {
+  position: relative;
+  z-index: 1;
 }
 
 .raport-dropzone-pulse:hover,
-.raport-dropzone-pulse:focus-within {
+.raport-dropzone-pulse:focus-within,
+.raport-dropzone-pulse.raport-dropzone-active {
   animation: none;
+  border-color: var(--raport-primary);
+  background-color: color-mix(in srgb, var(--raport-primary) 6%, var(--raport-surface));
+  box-shadow: var(--raport-shadow-card), inset 0 0 0 4px var(--raport-dropzone-pulse-mid);
 }
-
 
 @media (prefers-reduced-motion: reduce) {
   .raport-dropzone-pulse {

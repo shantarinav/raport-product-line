@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, BarChart3, CheckCircle2, Clock, FileSpreadsheet, LifeBuoy, UploadCloud } from "lucide-react";
+import { AlertTriangle, BarChart3, BookOpen, CheckCircle2, Clock, FileSpreadsheet, LifeBuoy, UploadCloud } from "lucide-react";
 import {
   DashboardHeader,
   ErrorState,
@@ -11,6 +11,10 @@ import {
   DashboardSwitch,
 } from "../../../shared/ui";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
 import type { SupportFilters, SupportImportResult } from "../supportTypes";
 import {
   applySupportFilters,
@@ -34,6 +38,7 @@ import { SupportOverdueTailTable } from "./SupportOverdueTailTable";
 import { SupportDataQualityPanel } from "./SupportDataQualityPanel";
 import { SupportFiltersPanel } from "./SupportFiltersPanel";
 import { SUPPORT_THRESHOLDS } from "../supportConfig";
+import { mapSupportMainInsightToA3Deviation } from "../logic/a3Mapper";
 
 import { motion, AnimatePresence } from "motion/react";
 
@@ -116,6 +121,7 @@ export function SupportDashboardPage() {
   const [filters, setFilters] = useState<SupportFilters>(() => initialSupportFilters(report?.tickets ?? []));
   const [overdueTailLimit, setOverdueTailLimit] = useState(10);
   const [viewMode, setViewMode] = useState<SupportViewMode>(() => readStoredSupportViewMode());
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
 
   useEffect(() => {
     if (report) return;
@@ -143,6 +149,7 @@ export function SupportDashboardPage() {
   );
 
   if (!report) return null;
+  const activeReport = report;
 
   function patchFilters(patch: Partial<SupportFilters>) {
     setFilters((current) => ({
@@ -159,6 +166,9 @@ export function SupportDashboardPage() {
   function changeViewMode(mode: SupportViewMode) {
     setViewMode(mode);
     saveStoredSupportViewMode(mode);
+    if (mode === "manager") {
+      setA3Draft(null);
+    }
   }
 
   const activePeriodLabel =
@@ -196,6 +206,30 @@ export function SupportDashboardPage() {
         ? `выше контроля на ${formatPercentageGap(kpis.slaRate - filters.controlPercent / 100)}`
         : `отставание: ${formatPercentageGap(filters.controlPercent / 100 - kpis.slaRate)}`;
   const mainInsightPoints = insightPoints(mainInsight);
+  const canCreateA3 = viewMode === "analyst" && kpis.applicableTickets > 0 && kpis.slaRate < filters.controlPercent / 100;
+
+  function currentSupportPeriodLabel(): string {
+    if (filters.dateFrom && filters.dateTo) return `${formatFilterDate(filters.dateFrom)} - ${formatFilterDate(filters.dateTo)}`;
+    if (filters.dateFrom) return `с ${formatFilterDate(filters.dateFrom)}`;
+    if (filters.dateTo) return `по ${formatFilterDate(filters.dateTo)}`;
+    return periodLabel(activeReport.tickets);
+  }
+
+  function createSupportA3Deviation() {
+    return mapSupportMainInsightToA3Deviation({
+      periodLabel: currentSupportPeriodLabel(),
+      periodStart: filters.dateFrom || undefined,
+      periodEnd: filters.dateTo || undefined,
+      sourceFileName: activeReport.file.fileName,
+      controlPercent: filters.controlPercent,
+      kpis,
+      ...(attentionTopic ? { attentionTopic } : {}),
+    });
+  }
+
+  function refreshSupportA3Draft() {
+    setA3Draft(createA3DraftFromDeviation(createSupportA3Deviation()));
+  }
 
   return (
     <PageShell>
@@ -224,6 +258,16 @@ export function SupportDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              {viewMode === "analyst" ? (
+                <Link
+                  to="/a3?dashboard=support"
+                  title="Открыть журнал A3-разборов"
+                  aria-label="Открыть журнал A3-разборов"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </Link>
+              ) : null}
               {themeToggle}
             </div>
             <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
@@ -312,7 +356,12 @@ export function SupportDashboardPage() {
           </AnimatePresence>
 
           <motion.div layout="position" className="grid gap-4">
-            <SectionCard title="Главный вывод" description="Статус SLA и основные причины задержек." Icon={FileSpreadsheet}>
+            <SectionCard
+              title="Главный вывод"
+              description="Статус SLA и основные причины задержек."
+              Icon={FileSpreadsheet}
+              actions={canCreateA3 ? <A3ReviewButton deviation={createSupportA3Deviation} onCreateDraft={setA3Draft} /> : undefined}
+            >
               <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
                 <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
                   <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
@@ -340,6 +389,22 @@ export function SupportDashboardPage() {
                 </div>
               </div>
             </SectionCard>
+
+            <AnimatePresence mode="popLayout" initial={false}>
+              {viewMode === "analyst" && a3Draft ? (
+                <motion.div
+                  key="support-a3-editor"
+                  layout="position"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full"
+                >
+                  <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshSupportA3Draft} onClose={() => setA3Draft(null)} />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <SupportDailySlaChart points={daily} controlPercent={filters.controlPercent} />
 

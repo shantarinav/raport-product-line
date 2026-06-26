@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
+import { BookOpen, Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
@@ -15,6 +15,12 @@ import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
+import { localA3Repository } from "../../local-a3/localA3Repository";
+import type { LocalA3Protocol } from "../../local-a3/localA3Types";
 import { formatImportedAt, formatReportPeriod } from "../import/periodDisplay";
 import type { ImportedReport, OperationRecord } from "../import/types";
 import {
@@ -34,6 +40,8 @@ import {
   type DashboardFilters,
   uniqueSorted,
 } from "../logic/dashboard";
+import { mapSszTechnologyDeviationToA3Deviation } from "../logic/a3Draft";
+import { summarizeSszRelatedTechnologyA3 } from "../logic/a3Related";
 import { formatHours, formatPercent } from "../logic/format";
 import { useSSZHistory } from "../logic/useSSZHistory";
 import { SSZTrendChart } from "./SSZTrendChart";
@@ -389,20 +397,20 @@ function insightStatus(ratio: number | null, targetRatio: number) {
   const tone = targetTone(ratio, targetRatio);
   if (tone === "high") {
     return {
-      label: "Норма",
+      label: "Цель достигнута",
       className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     };
   }
 
   if (tone === "medium") {
     return {
-      label: "Контроль",
+      label: "Ниже цели",
       className: "border-amber-200 bg-amber-50 text-amber-900",
     };
   }
 
   return {
-    label: "Критично",
+    label: "Критично ниже цели",
     className: "border-red-200 bg-red-50 text-red-700",
   };
 }
@@ -461,17 +469,65 @@ function sszInsightPoints({
   return points.slice(0, 3);
 }
 
+function currentSelectionPeriodLabel(filters: DashboardFilters, report: ImportedReport): string {
+  if (filters.selectedDateFrom && filters.selectedDateTo) {
+    return `${formatDateChip(filters.selectedDateFrom)} - ${formatDateChip(filters.selectedDateTo)}`;
+  }
+  if (filters.selectedDateFrom) return `с ${formatDateChip(filters.selectedDateFrom)}`;
+  if (filters.selectedDateTo) return `по ${formatDateChip(filters.selectedDateTo)}`;
+  return formatReportPeriod(report.period);
+}
+
+function currentA3FilterSummary(filters: DashboardFilters): string {
+  const parts = [
+    filters.selectedOrder ? `заказ ${filters.selectedOrder}` : null,
+    filters.selectedKit ? `комплект ${filters.selectedKit}` : null,
+    filters.selectedDepartment ? `цех ${filters.selectedDepartment}` : null,
+    filters.selectedMaster ? `мастер ${filters.selectedMaster}` : null,
+    filters.selectedOperation ? `операция ${filters.selectedOperation}` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return parts.length > 0 ? parts.join(" · ") : "все данные отчета";
+}
 
 
-function SszDashboard({ report }: { report: ImportedReport }) {
+
+function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: ImportedReport; initialViewMode: SszViewMode; onViewModeChange: (mode: SszViewMode) => void }) {
   const defaultFilters = useMemo(() => initialFilters(report.period), [report.period]);
   const [filters, setFilters] = useState<DashboardFilters>(() => initialFilters(report.period));
-  const [viewMode, setViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
+  const [viewMode, setViewMode] = useState<SszViewMode>(initialViewMode);
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
+  const [a3Protocols, setA3Protocols] = useState<LocalA3Protocol[]>([]);
   const historyComparisonStart = monthStartDateKey(filters.selectedDateFrom || report.period.start || "") || undefined;
   const { history, previousSnapshot } = useSSZHistory(historyComparisonStart);
   const kpiPreviousSnapshot = isMonthlyCoverageReady(filters.selectedDateFrom, filters.selectedDateTo) ? previousSnapshot : null;
   const targetRatio = filters.targetPercent / 100;
   const hasTrendData = history.filter((snapshot) => snapshot.grain === "month" && snapshot.coverage?.isTrendReady === true && typeof snapshot.metrics.workTechnologyPercent === "number" && Number.isFinite(snapshot.metrics.workTechnologyPercent)).length >= 2;
+  const relatedA3Summary = useMemo(
+    () => summarizeSszRelatedTechnologyA3(
+      a3Protocols,
+      filters.selectedDateFrom || report.period.start || undefined,
+      filters.selectedDateTo || report.period.end || undefined,
+    ),
+    [a3Protocols, filters.selectedDateFrom, filters.selectedDateTo, report.period.end, report.period.start],
+  );
+  const activeRelatedA3Count = relatedA3Summary.open + relatedA3Summary.in_progress + relatedA3Summary.waiting_review;
+  const relatedA3BadgeLabel =
+    relatedA3Summary.total > 0
+      ? `${relatedA3Summary.total} разборов${activeRelatedA3Count > 0 ? ` · активных ${activeRelatedA3Count}` : ""}`
+      : "разборов нет";
+
+  async function refreshA3Protocols() {
+    try {
+      setA3Protocols(await localA3Repository.listProtocols());
+    } catch {
+      setA3Protocols([]);
+    }
+  }
+
+  useEffect(() => {
+    void refreshA3Protocols();
+  }, []);
 
   const operations = useMemo(() => operationScope(report.sszRecords), [report.sszRecords]);
   const filteredRecords = useMemo(() => filterRecords(report.sszRecords, filters), [report.sszRecords, filters]);
@@ -499,6 +555,32 @@ function SszDashboard({ report }: { report: ImportedReport }) {
       }),
     [targetRatio, orderRows, departmentRows, operationRows],
   );
+  const mainInsightAttentionRows = useMemo(
+    () => ({
+      order: topAttentionRow(orderRows, targetRatio),
+      department: topAttentionRow(departmentRows, targetRatio),
+      operation: topAttentionRow(operationRows, targetRatio),
+    }),
+    [targetRatio, orderRows, departmentRows, operationRows],
+  );
+  const canCreateA3 = viewMode === "analyst" && kpis.workTechnologyRatio !== null && kpis.workTechnologyRatio < targetRatio;
+
+  function createTechnologyA3Deviation() {
+    return mapSszTechnologyDeviationToA3Deviation({
+      periodLabel: currentSelectionPeriodLabel(filters, report),
+      periodStart: filters.selectedDateFrom || report.period.start,
+      periodEnd: filters.selectedDateTo || report.period.end,
+      workTechnologyRatio: kpis.workTechnologyRatio,
+      targetPercent: filters.targetPercent,
+      deviationScale: mainInsightGap,
+      filterSummary: currentA3FilterSummary(filters),
+      attentionRows: mainInsightAttentionRows,
+    });
+  }
+
+  function openTechnologyA3Draft() {
+    setA3Draft(createA3DraftFromDeviation(createTechnologyA3Deviation()));
+  }
 
   function selectOrder(order: string) {
     setFilters((current) => applyOrderSelection(current, operations, order));
@@ -526,8 +608,10 @@ function SszDashboard({ report }: { report: ImportedReport }) {
 
   function changeViewMode(nextMode: SszViewMode) {
     setViewMode(nextMode);
+    onViewModeChange(nextMode);
     saveStoredSszViewMode(nextMode);
     if (nextMode === "manager") {
+      setA3Draft(null);
       setFilters((current) =>
         current.selectedOrder || current.selectedKit ? { ...current, selectedOrder: "", selectedKit: "" } : current,
       );
@@ -566,7 +650,16 @@ function SszDashboard({ report }: { report: ImportedReport }) {
         </motion.div>
 
         <motion.div layout="position">
-          <SectionCard title="Главный вывод" description="Оценка выполнения заданий и ключевые отклонения." Icon={FileSpreadsheet}>
+          <SectionCard
+            title="Главный вывод"
+            description="Оценка выполнения заданий и ключевые отклонения."
+            Icon={FileSpreadsheet}
+            actions={
+              canCreateA3 ? (
+                <A3ReviewButton deviation={createTechnologyA3Deviation} onCreateDraft={setA3Draft} />
+              ) : undefined
+            }
+          >
           <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
               <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{mainInsightStatus.label}</span>
@@ -586,6 +679,40 @@ function SszDashboard({ report }: { report: ImportedReport }) {
           </div>
         </SectionCard>
         </motion.div>
+
+        <AnimatePresence mode="popLayout" initial={false}>
+          {viewMode === "analyst" && a3Draft ? (
+            <motion.div
+              key="ssz-a3-editor"
+              layout="position"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.25 }}
+              className="w-full"
+            >
+              <A3DashboardDraftPanel
+                draft={a3Draft}
+                onRefreshDraft={openTechnologyA3Draft}
+                onClose={() => setA3Draft(null)}
+                onSaved={() => {
+                  void refreshA3Protocols();
+                }}
+                extraActions={
+                  <span
+                    className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold ${
+                      activeRelatedA3Count > 0
+                        ? "border-raport-action-border bg-raport-action-bg text-raport-primary"
+                        : "border-raport-border bg-raport-surface-soft text-raport-muted"
+                    }`}
+                  >
+                    {relatedA3BadgeLabel}
+                  </span>
+                }
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <AnimatePresence mode="popLayout" initial={false}>
           {viewMode === "analyst" && hasTrendData ? (
@@ -623,7 +750,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
                 onMasterClick={selectMaster}
               />
               <MasterLeaderboardCard
-                title="Зона внимания"
+                title="Ниже цели"
                 description="Мастера с наибольшим объемом работ без технологии."
                 rows={masterRows}
                 tone="growth"
@@ -717,6 +844,7 @@ function SszDashboard({ report }: { report: ImportedReport }) {
 export function SszDashboardPage() {
   const navigate = useNavigate();
   const [report] = useState<ImportedReport | null>(() => readPendingDashboardData<ImportedReport>("/ssz"));
+  const [headerViewMode, setHeaderViewMode] = useState<SszViewMode>(() => readStoredSszViewMode());
 
   useEffect(() => {
     if (!report) {
@@ -756,6 +884,16 @@ export function SszDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              {headerViewMode === "analyst" ? (
+                <Link
+                  to="/a3?dashboard=ssz"
+                  title="Открыть журнал A3-разборов"
+                  aria-label="Открыть журнал A3-разборов"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </Link>
+              ) : null}
               {themeToggle}
             </div>
             {report ? (
@@ -777,7 +915,7 @@ export function SszDashboardPage() {
 
       {report ? (
         <div className="mt-4 grid gap-4">
-          <SszDashboard report={report} />
+          <SszDashboard report={report} initialViewMode={headerViewMode} onViewModeChange={setHeaderViewMode} />
         </div>
       ) : null}
     </PageShell>

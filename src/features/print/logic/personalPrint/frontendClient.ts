@@ -49,7 +49,7 @@ export function readPrintLlmFrontendConfig(env: Record<string, unknown> = import
     lookupUrl: typeof env.VITE_PRINT_LLM_LOOKUP_URL === "string" ? env.VITE_PRINT_LLM_LOOKUP_URL : derivePrintLlmEndpoint(url, "lookup"),
     classifyMissingUrl: typeof env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL === "string" ? env.VITE_PRINT_LLM_CLASSIFY_MISSING_URL : derivePrintLlmEndpoint(url, "classify-missing"),
     batchSize: Number(env.VITE_PRINT_LLM_BATCH_SIZE || 3),
-    maxCandidates: Number(env.VITE_PRINT_LLM_MAX_CANDIDATES || 50),
+    maxCandidates: Number(env.VITE_PRINT_LLM_MAX_CANDIDATES || 100),
     apiKey: typeof env.VITE_PRINT_LLM_API_KEY === "string" ? env.VITE_PRINT_LLM_API_KEY : "",
   };
 }
@@ -135,7 +135,7 @@ export async function classifyPrintJobsWithProxy(
   onProgress?: (progress: PrintLlmProgress) => void,
 ): Promise<PrintPersonalClassifierResponse> {
   if (!config.enabled) return { items: [] };
-  const candidateGroups = buildUniqueCandidateGroups(jobs).slice(0, Math.max(1, Number(config.maxCandidates || 50)));
+  const candidateGroups = buildUniqueCandidateGroups(jobs).slice(0, Math.max(1, Number(config.maxCandidates || 100)));
   if (candidateGroups.length === 0) return { items: [] };
 
   const batchSize = Math.max(1, Number(config.batchSize || 3));
@@ -174,8 +174,8 @@ export async function classifyPrintJobsWithProxy(
   }
 
   const missingGroups = candidateGroups.filter((group) => missingIds.has(group.requestItem.id));
-  for (let index = 0; index < missingGroups.length; index += batchSize) {
-    const batchGroups = missingGroups.slice(index, index + batchSize);
+  for (let index = 0; index < missingGroups.length; index += 1) {
+    const batchGroups = missingGroups.slice(index, index + 1);
     const response = await fetchImpl(classifyMissingUrl, {
       method: "POST",
       headers: buildPrintLlmRequestHeaders(config),

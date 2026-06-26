@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
+  BookOpen,
   ChevronDown,
   ClipboardCheck,
   Download,
@@ -20,6 +21,10 @@ import {
 } from "../../../shared/ui";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
 import {
   buildAgreementFacts,
   calculateTessaDashboardAnalytics,
@@ -36,6 +41,7 @@ import {
   registryTitle,
   toExportCsv,
 } from "../logic/dashboard";
+import { mapTessaMainInsightToA3Deviation } from "../logic/a3Mapper";
 import type { AgreementFilters, LoadedFile, NormalizedRecord, QualitySummary, TessaImportResult } from "../types";
 import { TessaFilterSidebar, quickFocusChipLabel } from "./TessaControls";
 
@@ -149,6 +155,7 @@ export function TessaDashboardPage() {
   const [peopleMode, setPeopleMode] = useState<"top" | "all">("top");
   const [visibleProblemsCount, setVisibleProblemsCount] = useState(25);
   const [expandedProblemKeys, setExpandedProblemKeys] = useState<Set<string>>(() => new Set());
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
   const analysisDate = useMemo(() => new Date(), []);
 
   const hasData = records.length > 0;
@@ -162,6 +169,25 @@ export function TessaDashboardPage() {
   const visiblePeople = peopleMode === "top" ? attentionPeople.slice(0, 5) : attentionPeople;
   const visibleProblems = documentProblems.slice(0, visibleProblemsCount);
   const hasMoreProblems = visibleProblemsCount < documentProblems.length;
+  const canCreateA3 = kpis.stuck > 0;
+
+  function currentTessaPeriodLabel(): string {
+    return period ? `${formatDate(period.from)} - ${formatDate(period.to)}` : "Период не определен";
+  }
+
+  function createTessaA3Deviation() {
+    return mapTessaMainInsightToA3Deviation({
+      periodLabel: currentTessaPeriodLabel(),
+      periodStart: period?.from?.toISOString().slice(0, 10),
+      periodEnd: period?.to?.toISOString().slice(0, 10),
+      sourceFileName: loadedFile?.fileName,
+      kpis,
+    });
+  }
+
+  function refreshTessaA3Draft() {
+    setA3Draft(createA3DraftFromDeviation(createTessaA3Deviation()));
+  }
 
   useEffect(() => {
     if (pendingData) {
@@ -263,6 +289,14 @@ export function TessaDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              <Link
+                to="/a3?dashboard=tessa"
+                title="Открыть журнал A3-разборов"
+                aria-label="Открыть журнал A3-разборов"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+              >
+                <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+              </Link>
               {themeToggle}
             </div>
             {loadedFile ? (
@@ -312,15 +346,20 @@ export function TessaDashboardPage() {
               description="Выберите ФИО для просмотра застрявших договоров."
               Icon={Users}
               actions={
-                attentionPeople.length > 5 ? (
-                  <DashboardSwitch
-                    value={peopleMode}
-                    onChange={(value) => setPeopleMode(value as "top" | "all")}
-                    options={[
-                      { value: "top", label: "ТОП" },
-                      { value: "all", label: "Все" },
-                    ]}
-                  />
+                canCreateA3 || attentionPeople.length > 5 ? (
+                  <>
+                    {canCreateA3 ? <A3ReviewButton deviation={createTessaA3Deviation} onCreateDraft={setA3Draft} /> : null}
+                    {attentionPeople.length > 5 ? (
+                      <DashboardSwitch
+                        value={peopleMode}
+                        onChange={(value) => setPeopleMode(value as "top" | "all")}
+                        options={[
+                          { value: "top", label: "ТОП" },
+                          { value: "all", label: "Все" },
+                        ]}
+                      />
+                    ) : null}
+                  </>
                 ) : undefined
               }
             >
@@ -355,6 +394,10 @@ export function TessaDashboardPage() {
                 </div>
               )}
             </SectionCard>
+
+            {a3Draft ? (
+              <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshTessaA3Draft} onClose={() => setA3Draft(null)} />
+            ) : null}
 
             {quality && quality.invalidDeadlines + quality.invalidDocumentDates > 0 ? (
               <SectionCard title="Качество данных" description="Часть строк содержит некорректные даты.">

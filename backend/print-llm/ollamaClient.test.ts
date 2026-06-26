@@ -36,4 +36,24 @@ describe("callOllamaChat", () => {
     expect(body.messages[0].content).toContain("Reasoning mode is disabled");
     expect(body.messages[1].content).toContain("/no_think");
   });
+
+  it("rejects when Ollama does not answer before timeout", async () => {
+    const fetchImpl = vi.fn(
+      () =>
+        new Promise(() => {
+          // Simulate a stalled local model call.
+        }),
+    );
+
+    await expect(
+      callOllamaChat({
+        chatUrl: "http://localhost:11434/api/chat",
+        model: "qwen3:4b",
+        prompt: "/no_think\nReturn JSON",
+        schema: { type: "object" },
+        timeoutMs: 10,
+        fetchImpl,
+      }),
+    ).rejects.toThrow("Ollama request timed out");
+  });
 });

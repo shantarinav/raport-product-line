@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
+import { AlertTriangle, BookOpen, Download, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -16,10 +16,13 @@ import {
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
 import { Button } from "../../../shared/ui/shadcn/button";
-import { Badge } from "../../../shared/ui/shadcn/badge";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import { usePrintAiEnabled } from "../../../shared/lib/printAiSettings";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
 import {
   applyPrintFilters,
   buildPrintFilterOptions,
@@ -43,6 +46,7 @@ import {
 } from "../logic/dashboard";
 import type { PaperBucket, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
 import { usePrintHistory } from "../logic/usePrintHistory";
+import { mapPrintMainInsightToA3Deviation } from "../logic/a3Mapper";
 import {
   AutocompleteField,
   SortToolbar,
@@ -248,26 +252,6 @@ function printAiStatusText(status: PrintLlmStatus): string {
   return "ИИ выключен: показаны только словарные подозрения по личным тематикам.";
 }
 
-function printAiStatusChip(status: PrintLlmStatus, progress: PrintLlmProgress | null) {
-  if (status === "loading") {
-    const cacheLabel = progress && progress.cacheHits > 0 ? ` · из кэша ${progress.cacheHits}` : "";
-    const modelLabel = progress && progress.modelRequests > 0 ? ` · модель ${progress.modelRequests}` : "";
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.processed}/${progress.total}${cacheLabel}${modelLabel}` : "";
-    return { label: `ИИ: классификация выполняется${progressLabel}`, tone: "warning" as const, isLoading: true };
-  }
-  if (status === "ready") {
-    if (progress && progress.total > 0 && progress.modelRequests === 0 && progress.cacheHits === progress.total) {
-      return { label: `ИИ: из кэша · ${progress.cacheHits}/${progress.total}`, tone: "secondary" as const };
-    }
-    const progressLabel = progress && progress.total > 0 ? ` · ${progress.total}/${progress.total} · из кэша ${progress.cacheHits} · модель ${progress.modelRequests}` : "";
-    return { label: `ИИ: готово${progressLabel}`, tone: "secondary" as const };
-  }
-  if (status === "fallback") {
-    return { label: "ИИ: недоступен", tone: "danger" as const };
-  }
-  return { label: "ИИ: словарный режим", tone: "secondary" as const };
-}
-
 function PrintAiReviewSummary({
   status,
   progress,
@@ -279,48 +263,56 @@ function PrintAiReviewSummary({
   stats: PersonalPrintReviewStats;
   onExport: () => void;
 }) {
-  const progressLabel =
-    status === "loading" && progress && progress.total > 0
-      ? `Проверено ${formatInteger(progress.processed)} из ${formatInteger(progress.total)} документов-кандидатов: из кэша ${formatInteger(progress.cacheHits)}, через модель ${formatInteger(progress.modelRequests)}.`
+  const progressText = progress && progress.total > 0 ? `${formatInteger(progress.processed)}/${formatInteger(progress.total)}` : "";
+  const statusLabel =
+    status === "loading" && progressText
+      ? `выполняется ${progressText}`
+      : status === "ready" && progressText
+        ? `готово ${progressText}`
+        : "";
+  const summaryLine =
+    progress && progress.total > 0
+      ? `Словарь: ${formatInteger(stats.dictionaryCandidates)} подозрительных заданий · ИИ проверяет TOP-${formatInteger(progress.total)} документов · ${statusLabel}`
       : printAiStatusText(status);
-  const statusBadge = printAiStatusChip(status, progress);
-  const checkedCandidateCount = progress?.items.length
-    ? new Set(progress.items.filter((item) => item.source === "llm").map((item) => item.normalized_title || item.id)).size
-    : stats.checked;
+  const sourceLine =
+    progress && progress.total > 0
+      ? status === "loading" && progress.modelRequests === 0 && progress.cacheHits < progress.total
+        ? `Из кэша ${formatInteger(progress.cacheHits)} · модель обрабатывает новые документы`
+        : `Из кэша ${formatInteger(progress.cacheHits)} · через модель ${formatInteger(progress.modelRequests)}`
+      : null;
 
   return (
-    <div className="mb-3 grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-3">
-      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+    <div className="mb-3 grid gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2.5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div className="grid gap-1">
           <p className="text-sm font-extrabold text-raport-text">ИИ-проверка личной печати</p>
           <p className="max-w-3xl text-xs font-semibold leading-relaxed text-raport-muted">
-            {progressLabel}
+            {summaryLine}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">
-          <Badge variant={statusBadge.tone === "danger" ? "danger" : statusBadge.tone === "warning" ? "warning" : "secondary"}>
-            {statusBadge.label}
-          </Badge>
           <Button
-            variant="outline"
-            className="min-h-8 px-2 py-1 text-xs"
-            title="CSV с результатами словарной и ИИ-классификации по заданиям"
+            className="h-9 w-9 shrink-0 px-0 py-0"
+            aria-label="Скачать CSV с результатами проверки"
+            title="Скачать CSV с результатами словарной и ИИ-проверки"
             onClick={onExport}
           >
-            CSV проверки
+            <Download className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary">Словарь: {formatInteger(stats.dictionaryCandidates)} заданий</Badge>
-        <Badge variant="secondary">Проверено ИИ: {formatInteger(checkedCandidateCount)} документов</Badge>
-        <Badge variant="warning">Подтверждено: {formatInteger(stats.confirmed)} заданий</Badge>
-        <Badge variant="secondary">Отклонено: {formatInteger(stats.rejected)} заданий</Badge>
-        <Badge variant="secondary">Не проверено: {formatInteger(stats.unchecked)} заданий</Badge>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
+        <span>
+          Подтверждено <span className="tabular-nums text-amber-900">{formatInteger(stats.confirmed)}</span>
+        </span>
+        <span>
+          Отклонено <span className="tabular-nums text-raport-text">{formatInteger(stats.rejected)}</span>
+        </span>
+        <span>
+          Не проверено <span className="tabular-nums text-raport-text">{formatInteger(stats.unchecked)}</span>
+        </span>
+        {sourceLine ? <span className="text-raport-muted">{sourceLine}</span> : null}
       </div>
-      <p className="text-xs font-semibold leading-relaxed text-raport-muted">
-        Фильтр «Личные тематики» после появления ИИ-результатов показывает только кандидатов, которые ИИ подтвердил как личную печать. Если ИИ недоступен, используется словарный режим.
-      </p>
     </div>
   );
 }
@@ -334,6 +326,7 @@ export function PrintDashboardPage() {
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
   const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
   const [aiStatus, setAiStatus] = useState<PrintLlmStatus>("disabled");
   const [aiProgress, setAiProgress] = useState<PrintLlmProgress | null>(null);
   const [printAiEnabled] = usePrintAiEnabled();
@@ -457,10 +450,13 @@ export function PrintDashboardPage() {
   }
 
   const reportJobs = report.jobs;
+  const activeReport = report;
+  const activeFilters = filters;
   const printDateBounds = initialPrintFilters(reportJobs);
   const resetFilters = () => setFilters(printDateBounds);
   const patchFilters = (next: Partial<PrintFilters>) => setFilters((current) => (current ? { ...current, ...next } : current));
   const isManagerView = viewMode === "manager";
+  const canCreateA3 = !isManagerView && printDeviationRatio(kpis) > 0;
   const reportDates = reportJobs.map((row) => row.date).filter(isDate);
   const period = reportDates.length
     ? {
@@ -469,10 +465,35 @@ export function PrintDashboardPage() {
       }
     : null;
 
+  function currentPrintPeriodLabel(): string {
+    if (activeFilters.dateFrom && activeFilters.dateTo) return `${formatFilterDate(activeFilters.dateFrom)} - ${formatFilterDate(activeFilters.dateTo)}`;
+    if (activeFilters.dateFrom) return `с ${formatFilterDate(activeFilters.dateFrom)}`;
+    if (activeFilters.dateTo) return `по ${formatFilterDate(activeFilters.dateTo)}`;
+    return period?.from && period?.to ? `${formatDate(period.from)} - ${formatDate(period.to)}` : "Период не определен";
+  }
+
+  function createPrintA3Deviation() {
+    return mapPrintMainInsightToA3Deviation({
+      periodLabel: currentPrintPeriodLabel(),
+      periodStart: activeFilters.dateFrom || undefined,
+      periodEnd: activeFilters.dateTo || undefined,
+      sourceFileName: activeReport.file.fileName,
+      kpis,
+      deviationRatio: printDeviationRatio(kpis),
+      deviationCost: mainInsightDeviationCost,
+      excessSummary,
+    });
+  }
+
+  function refreshPrintA3Draft() {
+    setA3Draft(createA3DraftFromDeviation(createPrintA3Deviation()));
+  }
+
   function changeViewMode(nextMode: PrintViewMode) {
     setViewMode(nextMode);
     saveStoredPrintViewMode(nextMode);
     if (nextMode === "manager") {
+      setA3Draft(null);
       const defaultPrintFilters = initialPrintFilters(reportJobs);
       setFilters((current) =>
         current
@@ -527,6 +548,16 @@ export function PrintDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              {!isManagerView ? (
+                <Link
+                  to="/a3?dashboard=print"
+                  title="Открыть журнал A3-разборов"
+                  aria-label="Открыть журнал A3-разборов"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </Link>
+              ) : null}
               {themeToggle}
             </div>
             <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
@@ -800,7 +831,12 @@ export function PrintDashboardPage() {
           </motion.div>
 
           <motion.div layout="position">
-            <SectionCard title="Главный вывод" description="Обзор объемов и структуры печати." Icon={Printer}>
+            <SectionCard
+              title="Главный вывод"
+              description="Обзор объемов и структуры печати."
+              Icon={Printer}
+              actions={canCreateA3 ? <A3ReviewButton deviation={createPrintA3Deviation} onCreateDraft={setA3Draft} /> : undefined}
+            >
 
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
@@ -821,6 +857,22 @@ export function PrintDashboardPage() {
             </div>
           </SectionCard>
           </motion.div>
+
+          <AnimatePresence mode="popLayout" initial={false}>
+            {!isManagerView && a3Draft ? (
+              <motion.div
+                key="print-a3-editor"
+                layout="position"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.25 }}
+                className="w-full"
+              >
+                <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshPrintA3Draft} onClose={() => setA3Draft(null)} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <AnimatePresence mode="popLayout" initial={false}>
             {viewMode === "analyst" && hasHistoryChartData ? (
@@ -928,7 +980,7 @@ export function PrintDashboardPage() {
               <SortToolbar
                 sortValue={riskSort}
                 sortOptions={[
-                  { value: "riskScore", label: "Балл" },
+                  { value: "riskScore", label: "Риск" },
                   { value: "totalPages", label: "Страницы" },
                 ]}
                 onSortChange={(value) => setRiskSort(value as "riskScore" | "totalPages")}

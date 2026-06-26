@@ -51,8 +51,18 @@ export function targetTone(value: number | null, targetRatio: number): "low" | "
   return "low";
 }
 
-function statusLabel(row: ContributionRow, targetRatio: number): "Цель достигнута" | "Ниже цели" {
-  return (row.ownTechnologyRatio ?? 0) >= targetRatio ? "Цель достигнута" : "Ниже цели";
+function statusLabel(row: ContributionRow, targetRatio: number): "Цель достигнута" | "Ниже цели" | "Критично" {
+  const tone = targetTone(row.ownTechnologyRatio, targetRatio);
+  if (tone === "high") return "Цель достигнута";
+  if (tone === "medium") return "Ниже цели";
+  return "Критично";
+}
+
+function statusBadgeVariant(row: ContributionRow, targetRatio: number): "success" | "warning" | "danger" {
+  const tone = targetTone(row.ownTechnologyRatio, targetRatio);
+  if (tone === "high") return "success";
+  if (tone === "medium") return "warning";
+  return "danger";
 }
 
 function filterByTechnologyStatus(rows: ContributionRow[], filter: TechnologyStatusFilter, targetRatio: number): ContributionRow[] {
@@ -252,6 +262,9 @@ export function MasterLeaderboardCard({
 
   const ordered = useMemo(() => leaderboardRows(scopedRows, tone === "support" ? "leaders" : "attention"), [scopedRows, tone]);
   const visibleRows = showAll ? ordered : ordered.slice(0, 5);
+  const ratioHeader = tone === "support" ? "Доля по тех." : "Доля без тех.";
+  const hoursHeader = tone === "support" ? "Н-ч по тех." : "Н-ч без тех.";
+  const operationsHeader = tone === "support" ? "Опер. по тех." : "Опер. без тех.";
 
   return (
     <SectionCard
@@ -276,6 +289,12 @@ export function MasterLeaderboardCard({
         <p className="text-sm text-raport-muted">Нет данных для текущей выборки.</p>
       ) : (
         <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white px-3">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px_86px_74px] items-center gap-2 py-1.5 text-[10px] font-semibold leading-3 text-raport-muted">
+            <span className="pl-10">ФИО</span>
+            <span className="text-right">{ratioHeader}</span>
+            <span className="text-right">{hoursHeader}</span>
+            <span className="text-right">{operationsHeader}</span>
+          </div>
           {visibleRows.map((row, index) => (
             <div key={row.key} className="py-1.5">
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px_86px_74px] items-center gap-2">
@@ -300,11 +319,7 @@ export function MasterLeaderboardCard({
                 spacingClassName="mt-1"
               />
               <div className="mt-0.5 flex min-h-4 items-center text-[11px] leading-4 tabular-nums text-raport-muted">
-                <span>
-                  н-ч всего: {formatHours(row.totalTime)} · н-ч {tone === "support" ? "по тех." : "без тех."}:{" "}
-                  {formatHours(tone === "support" ? row.technologyTime : row.noTechnologyTime)} · опер. {tone === "support" ? "по тех." : "без тех."}:{" "}
-                  {(tone === "support" ? row.technologyOperationCount : row.noTechnologyOperationCount).toLocaleString("ru-RU")}
-                </span>
+                <span>Н-ч всего: {formatHours(row.totalTime)}</span>
               </div>
             </div>
           ))}
@@ -390,7 +405,7 @@ export function TechnologyBoardCard({
                     </span>
                     <Badge
                       className="min-h-5 w-[88px] justify-center overflow-hidden text-ellipsis whitespace-nowrap px-1 py-0 text-[9px] leading-4"
-                      variant={statusLabel(row, targetRatio) === "Цель достигнута" ? "secondary" : "warning"}
+                      variant={statusBadgeVariant(row, targetRatio)}
                     >
                       {statusLabel(row, targetRatio)}
                     </Badge>
@@ -428,15 +443,15 @@ export function TechnologyBoardCard({
                   </div>
                 ),
             },
-            { key: "ratio", header: "% по тех.", className: "text-right", cell: (row) => formatPercent(row.ownTechnologyRatio) },
-            { key: "time", header: "Всего н-ч", className: "text-right", cell: (row) => formatHours(row.totalTime) },
-            { key: "tech-time", header: "н-ч по тех.", className: "text-right", cell: (row) => formatHours(row.technologyTime) },
+            { key: "ratio", header: "Доля по тех.", className: "text-right", cell: (row) => formatPercent(row.ownTechnologyRatio) },
+            { key: "time", header: "Н-ч всего", className: "text-right", cell: (row) => formatHours(row.totalTime) },
+            { key: "tech-time", header: "Н-ч по тех.", className: "text-right", cell: (row) => formatHours(row.technologyTime) },
             { key: "operations", header: "Операций", className: "text-right", cell: (row) => row.operationCount.toLocaleString("ru-RU") },
             {
               key: "status",
               header: "Статус",
               cell: (row) => (
-                <Badge variant={statusLabel(row, targetRatio) === "Цель достигнута" ? "success" : "warning"}>
+                <Badge variant={statusBadgeVariant(row, targetRatio)}>
                   {statusLabel(row, targetRatio)}
                 </Badge>
               ),

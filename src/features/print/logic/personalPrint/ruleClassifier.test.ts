@@ -30,7 +30,16 @@ describe("classifyExcessPrintByRules", () => {
     expect(personalLabels(documentName)).toContain(label);
   });
 
-  it.each(["журнал регистрации инструктажа.xlsx", "том 2 проектной документации.pdf", "служебный доклад.xlsx", "НИР по договору.docx", "корпоративная памятка.docx", "собрание комиссии.pdf"])(
+  it.each([
+    "журнал регистрации инструктажа.xlsx",
+    "том 2 проектной документации.pdf",
+    "служебный доклад.xlsx",
+    "НИР по договору.docx",
+    "корпоративная памятка.docx",
+    "собрание комиссии.pdf",
+    "Сдача ОТК 1123,1124,1125.xls",
+    "Соглашение о передаче прав и обязанностеи? АЛРОСА-РГИ-УХМ.pdf",
+  ])(
     "does not add personal topic for excluded keyword %s",
     (documentName) => {
       expect(personalLabels(documentName)).toEqual([]);
