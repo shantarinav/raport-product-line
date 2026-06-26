@@ -43,15 +43,21 @@ function compactHtml() {
 }
 
 describe("LocalA3ProtocolEditor", () => {
-  it("renders business sections and local storage warning", () => {
+  it("renders business sections without a duplicated local storage warning", () => {
     const markup = html();
 
-    expect(markup).toContain("A3-протокол хранится в этом браузере на этом компьютере");
-    expect(markup).toContain("Отклонение");
+    expect(markup).toContain("Паспорт отклонения");
     expect(markup).toContain("Причина");
     expect(markup).toContain("Решение");
     expect(markup).toContain("Исполнение");
-    expect(markup).toContain("Комментарии и история");
+    expect(markup).toContain("История изменений");
+    expect(markup).toContain("История изменений ·");
+    expect(markup).not.toContain("Служебная фиксация создания");
+    expect(markup).not.toContain("Обсуждение");
+    expect(markup).not.toContain("Комментарий");
+    expect(markup).not.toContain("Добавить");
+    expect(markup).not.toContain("Комментарии и история");
+    expect(markup).not.toContain("A3-протокол хранится в этом браузере на этом компьютере");
   });
 
   it("renders draft context without dashboard integration", () => {
@@ -66,7 +72,7 @@ describe("LocalA3ProtocolEditor", () => {
   it("renders a compact dashboard editor without editable technical fields", () => {
     const markup = compactHtml();
 
-    expect(markup).toContain("Контекст разбора");
+    expect(markup).toContain("Паспорт отклонения");
     expect(markup).toContain("Фильтры: цех 400");
     expect(markup).toContain("Доля работ по технологии");
     expect(markup).toContain("15,6%");

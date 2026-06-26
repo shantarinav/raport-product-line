@@ -20,19 +20,24 @@ describe("LocalA3JournalPage", () => {
     const markup = renderJournal();
 
     expect(markup).toContain("Разборы отклонений");
-    expect(markup).toContain("Разборы хранятся в этом браузере");
+    expect(markup).toContain("Excel докладывает главное");
+    expect(markup).toContain("хранится в этом браузере");
+    expect(markup).toContain("Загрузить отчет");
     expect(markup).toContain("Резервная копия журнала");
-    expect(markup).toContain("Найти разбор, исполнителя или комментарий");
-    expect(markup).toContain("Все дашборды");
-    expect(markup).toContain("Контроль разборов");
-    expect(markup).toContain("Главный вывод");
-    expect(markup).toContain("Без исполнителя");
-    expect(markup).toContain("Без срока");
+    expect(markup).toContain("Найти разбор или исполнителя");
+    expect(markup).toContain("Дашборд: Все");
+    expect(markup).toContain("Требуют внимания");
+    expect(markup).toContain("Сортировка: По приоритету");
+    expect(markup).toContain("Журнал разборов");
+    expect(markup).toContain("Журнал разборов · 0");
+    expect(markup).toContain("Сначала показываются разборы, где нужен контроль");
+    expect(markup).toContain("Загрузите отчет, откройте дашборд");
+    expect(markup).not.toContain("Новый разбор");
   });
 
   it("accepts a dashboard filter from the URL", () => {
     const markup = renderJournal("/a3?dashboard=ssz");
 
-    expect(markup).toContain('<option value="ssz" selected="">ССЗ</option>');
+    expect(markup).toContain('<option value="ssz" selected="">Дашборд: ССЗ</option>');
   });
 });
