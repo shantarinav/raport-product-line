@@ -42,7 +42,7 @@ export function FileDropZone({
     <section
       className={cn(
         "cursor-pointer rounded-card border-2 border-dashed border-raport-border bg-raport-surface p-6 text-center shadow-card transition-colors hover:border-raport-primary/50",
-        dragActive && "border-raport-primary bg-raport-action-bg",
+        dragActive && "raport-dropzone-active border-raport-primary bg-raport-action-bg",
         className,
       )}
       onDragEnter={(event) => {

@@ -1,4 +1,5 @@
 import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { createA3DraftFromDeviation, type DashboardDeviation } from "../../local-a3/dashboardDeviation";
 import type { ContributionRow } from "./dashboard";
 import { formatHours, formatPercent } from "./format";
 
@@ -42,7 +43,7 @@ function boundedText(value: string, maxLength: number): string {
   return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength - 1)}…` : trimmed;
 }
 
-export function buildSszTechnologyA3Draft(input: SszTechnologyA3DraftInput): LocalA3DraftInput {
+export function mapSszTechnologyDeviationToA3Deviation(input: SszTechnologyA3DraftInput): DashboardDeviation {
   const evidenceSummary = [
     input.filterSummary ? `Фильтры: ${input.filterSummary}` : null,
     rowEvidence("Цех", input.attentionRows.department),
@@ -55,6 +56,7 @@ export function buildSszTechnologyA3Draft(input: SszTechnologyA3DraftInput): Loc
   const boundedEvidenceSummary = boundedText(evidenceSummary, MAX_EVIDENCE_LENGTH);
 
   return {
+    id: "ssz-technology-ratio-gap",
     dashboardType: "ssz",
     dashboardTitle: "ССЗ: качество оформления",
     periodLabel: input.periodLabel,
@@ -70,6 +72,10 @@ export function buildSszTechnologyA3Draft(input: SszTechnologyA3DraftInput): Loc
     deviationScale: input.deviationScale,
     ...primaryAffectedObject(input.attentionRows),
     ...(boundedEvidenceSummary ? { evidenceSummary: boundedEvidenceSummary } : {}),
-    createdFromDashboardAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
   };
+}
+
+export function buildSszTechnologyA3Draft(input: SszTechnologyA3DraftInput): LocalA3DraftInput {
+  return createA3DraftFromDeviation(mapSszTechnologyDeviationToA3Deviation(input));
 }

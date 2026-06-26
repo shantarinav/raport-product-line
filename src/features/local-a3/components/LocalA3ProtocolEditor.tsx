@@ -313,7 +313,7 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
           </SectionCard>
 
           <SectionCard title="Исполнение" description="Кто отвечает, к какому сроку и в каком статусе находится разбор.">
-            <div className={isCompact ? "grid gap-x-3 gap-y-1 md:grid-cols-[minmax(260px,1fr)_150px_auto] md:items-end" : "grid gap-x-3 gap-y-1 md:grid-cols-[minmax(260px,1fr)_150px_190px_auto] md:items-end"}>
+            <div className={isCompact ? "grid gap-x-3 gap-y-1 md:grid-cols-[minmax(320px,1fr)_132px_auto] md:items-end" : "grid gap-x-3 gap-y-1 md:grid-cols-[minmax(260px,1fr)_150px_190px_auto] md:items-end"}>
               <label className="space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-[0.08em] text-raport-muted">Исполнитель</span>
                 <Input
@@ -328,8 +328,12 @@ export function LocalA3ProtocolEditor({ initialDraft, initialProtocol, repositor
                   <Input
                     value={compactDueDateText}
                     inputMode="numeric"
+                    maxLength={10}
                     placeholder="дд.мм.гггг"
-                    className={dueDateError ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined}
+                    className={cn(
+                      "text-center font-medium tabular-nums",
+                      dueDateError ? "border-raport-danger-border focus:border-raport-danger-border focus:ring-raport-danger-muted" : undefined,
+                    )}
                     onChange={(event) => updateCompactDueDate(event.target.value)}
                   />
                 ) : (

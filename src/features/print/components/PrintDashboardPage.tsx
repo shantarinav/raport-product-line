@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, Download, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
+import { AlertTriangle, BookOpen, Download, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
@@ -19,6 +19,10 @@ import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import { usePrintAiEnabled } from "../../../shared/lib/printAiSettings";
+import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
 import {
   applyPrintFilters,
   buildPrintFilterOptions,
@@ -42,6 +46,7 @@ import {
 } from "../logic/dashboard";
 import type { PaperBucket, PrintExcessSummary, PrintFilters, PrintImportResult, PrintJob, PrintKpis, PrintTariffs, PrintUserAggregate } from "../types";
 import { usePrintHistory } from "../logic/usePrintHistory";
+import { mapPrintMainInsightToA3Deviation } from "../logic/a3Mapper";
 import {
   AutocompleteField,
   SortToolbar,
@@ -321,6 +326,7 @@ export function PrintDashboardPage() {
   const [userSort, setUserSort] = useState<UserSort>("pages");
   const [riskSort, setRiskSort] = useState<"riskScore" | "totalPages">("riskScore");
   const [viewMode, setViewMode] = useState<PrintViewMode>(() => readStoredPrintViewMode());
+  const [a3Draft, setA3Draft] = useState<LocalA3DraftInput | null>(null);
   const [aiStatus, setAiStatus] = useState<PrintLlmStatus>("disabled");
   const [aiProgress, setAiProgress] = useState<PrintLlmProgress | null>(null);
   const [printAiEnabled] = usePrintAiEnabled();
@@ -444,10 +450,13 @@ export function PrintDashboardPage() {
   }
 
   const reportJobs = report.jobs;
+  const activeReport = report;
+  const activeFilters = filters;
   const printDateBounds = initialPrintFilters(reportJobs);
   const resetFilters = () => setFilters(printDateBounds);
   const patchFilters = (next: Partial<PrintFilters>) => setFilters((current) => (current ? { ...current, ...next } : current));
   const isManagerView = viewMode === "manager";
+  const canCreateA3 = !isManagerView && printDeviationRatio(kpis) > 0;
   const reportDates = reportJobs.map((row) => row.date).filter(isDate);
   const period = reportDates.length
     ? {
@@ -456,10 +465,35 @@ export function PrintDashboardPage() {
       }
     : null;
 
+  function currentPrintPeriodLabel(): string {
+    if (activeFilters.dateFrom && activeFilters.dateTo) return `${formatFilterDate(activeFilters.dateFrom)} - ${formatFilterDate(activeFilters.dateTo)}`;
+    if (activeFilters.dateFrom) return `с ${formatFilterDate(activeFilters.dateFrom)}`;
+    if (activeFilters.dateTo) return `по ${formatFilterDate(activeFilters.dateTo)}`;
+    return period?.from && period?.to ? `${formatDate(period.from)} - ${formatDate(period.to)}` : "Период не определен";
+  }
+
+  function createPrintA3Deviation() {
+    return mapPrintMainInsightToA3Deviation({
+      periodLabel: currentPrintPeriodLabel(),
+      periodStart: activeFilters.dateFrom || undefined,
+      periodEnd: activeFilters.dateTo || undefined,
+      sourceFileName: activeReport.file.fileName,
+      kpis,
+      deviationRatio: printDeviationRatio(kpis),
+      deviationCost: mainInsightDeviationCost,
+      excessSummary,
+    });
+  }
+
+  function refreshPrintA3Draft() {
+    setA3Draft(createA3DraftFromDeviation(createPrintA3Deviation()));
+  }
+
   function changeViewMode(nextMode: PrintViewMode) {
     setViewMode(nextMode);
     saveStoredPrintViewMode(nextMode);
     if (nextMode === "manager") {
+      setA3Draft(null);
       const defaultPrintFilters = initialPrintFilters(reportJobs);
       setFilters((current) =>
         current
@@ -514,6 +548,16 @@ export function PrintDashboardPage() {
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              {!isManagerView ? (
+                <Link
+                  to="/a3?dashboard=print"
+                  title="Открыть журнал A3-разборов"
+                  aria-label="Открыть журнал A3-разборов"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+                </Link>
+              ) : null}
               {themeToggle}
             </div>
             <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">
@@ -787,7 +831,12 @@ export function PrintDashboardPage() {
           </motion.div>
 
           <motion.div layout="position">
-            <SectionCard title="Главный вывод" description="Обзор объемов и структуры печати." Icon={Printer}>
+            <SectionCard
+              title="Главный вывод"
+              description="Обзор объемов и структуры печати."
+              Icon={Printer}
+              actions={canCreateA3 ? <A3ReviewButton deviation={createPrintA3Deviation} onCreateDraft={setA3Draft} /> : undefined}
+            >
 
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <div className={`rounded-control border px-4 py-3 ${mainInsightStatus.className}`}>
@@ -808,6 +857,22 @@ export function PrintDashboardPage() {
             </div>
           </SectionCard>
           </motion.div>
+
+          <AnimatePresence mode="popLayout" initial={false}>
+            {!isManagerView && a3Draft ? (
+              <motion.div
+                key="print-a3-editor"
+                layout="position"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.25 }}
+                className="w-full"
+              >
+                <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshPrintA3Draft} onClose={() => setA3Draft(null)} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           <AnimatePresence mode="popLayout" initial={false}>
             {viewMode === "analyst" && hasHistoryChartData ? (

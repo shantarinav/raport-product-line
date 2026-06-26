@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { FileSpreadsheet } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { BookOpen, FileSpreadsheet } from "lucide-react";
 import { DashboardHeader, ErrorState, FileDropZone, PageShell } from "../../shared/ui";
 import { readWorkbookFile } from "../../features/ssz/import/readWorkbook";
 import type { ImportedReport } from "../../features/ssz/import/types";
@@ -226,6 +226,19 @@ export function LandingPage() {
           </div>
         }
         description="Загрузите Excel или CSV-отчет — Рапорт определит тип, откроет нужный дашборд и покажет ключевые показатели, отклонения и зоны внимания."
+        actions={(themeToggle) => (
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              to="/a3"
+              title="Открыть журнал A3-разборов"
+              aria-label="Открыть журнал A3-разборов"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+            >
+              <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
+            </Link>
+            {themeToggle}
+          </div>
+        )}
       />
 
       <div className="grid gap-4">

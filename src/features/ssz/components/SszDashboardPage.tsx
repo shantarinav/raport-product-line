@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, ClipboardList, EyeOff, Factory, FilePenLine, FileSpreadsheet, Gauge, RefreshCcw, UploadCloud, Users, Wrench } from "lucide-react";
+import { BookOpen, Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
@@ -13,11 +13,12 @@ import {
 } from "../../../shared/ui";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { Select } from "../../../shared/ui/shadcn/select";
-import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import { isMonthlyCoverageReady, monthStartDateKey } from "../../../shared/lib/periodCoverage";
 import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
-import { LocalA3ProtocolEditor } from "../../local-a3/components/LocalA3ProtocolEditor";
+import { A3DashboardDraftPanel } from "../../local-a3/components/A3DashboardDraftPanel";
+import { A3ReviewButton } from "../../local-a3/components/A3ReviewButton";
+import { createA3DraftFromDeviation } from "../../local-a3/dashboardDeviation";
 import { localA3Repository } from "../../local-a3/localA3Repository";
 import type { LocalA3Protocol } from "../../local-a3/localA3Types";
 import { formatImportedAt, formatReportPeriod } from "../import/periodDisplay";
@@ -39,7 +40,7 @@ import {
   type DashboardFilters,
   uniqueSorted,
 } from "../logic/dashboard";
-import { buildSszTechnologyA3Draft } from "../logic/a3Draft";
+import { mapSszTechnologyDeviationToA3Deviation } from "../logic/a3Draft";
 import { summarizeSszRelatedTechnologyA3 } from "../logic/a3Related";
 import { formatHours, formatPercent } from "../logic/format";
 import { useSSZHistory } from "../logic/useSSZHistory";
@@ -564,19 +565,21 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
   );
   const canCreateA3 = viewMode === "analyst" && kpis.workTechnologyRatio !== null && kpis.workTechnologyRatio < targetRatio;
 
+  function createTechnologyA3Deviation() {
+    return mapSszTechnologyDeviationToA3Deviation({
+      periodLabel: currentSelectionPeriodLabel(filters, report),
+      periodStart: filters.selectedDateFrom || report.period.start,
+      periodEnd: filters.selectedDateTo || report.period.end,
+      workTechnologyRatio: kpis.workTechnologyRatio,
+      targetPercent: filters.targetPercent,
+      deviationScale: mainInsightGap,
+      filterSummary: currentA3FilterSummary(filters),
+      attentionRows: mainInsightAttentionRows,
+    });
+  }
+
   function openTechnologyA3Draft() {
-    setA3Draft(
-      buildSszTechnologyA3Draft({
-        periodLabel: currentSelectionPeriodLabel(filters, report),
-        periodStart: filters.selectedDateFrom || report.period.start,
-        periodEnd: filters.selectedDateTo || report.period.end,
-        workTechnologyRatio: kpis.workTechnologyRatio,
-        targetPercent: filters.targetPercent,
-        deviationScale: mainInsightGap,
-        filterSummary: currentA3FilterSummary(filters),
-        attentionRows: mainInsightAttentionRows,
-      }),
-    );
+    setA3Draft(createA3DraftFromDeviation(createTechnologyA3Deviation()));
   }
 
   function selectOrder(order: string) {
@@ -653,15 +656,7 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
             Icon={FileSpreadsheet}
             actions={
               canCreateA3 ? (
-                <Button
-                  className="min-h-9 border-raport-action-border bg-raport-action-bg text-raport-primary hover:bg-raport-action-bg-active"
-                  onClick={openTechnologyA3Draft}
-                  title="Создать разбор по отклонению от цели"
-                  aria-label="Создать разбор по отклонению от цели"
-                >
-                  <FilePenLine className="h-4 w-4" strokeWidth={2} />
-                  Создать разбор
-                </Button>
+                <A3ReviewButton deviation={createTechnologyA3Deviation} onCreateDraft={setA3Draft} />
               ) : undefined
             }
           >
@@ -696,51 +691,25 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
               transition={{ duration: 0.25 }}
               className="w-full"
             >
-              <SectionCard
-                title="A3-разбор отклонения"
-                description="Заполните причину, решение, исполнителя и срок."
-                Icon={ClipboardList}
-                actions={
-                  <>
-                    <span
-                      className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold ${
-                        activeRelatedA3Count > 0
-                          ? "border-raport-action-border bg-raport-action-bg text-raport-primary"
-                          : "border-raport-border bg-raport-surface-soft text-raport-muted"
-                      }`}
-                    >
-                      {relatedA3BadgeLabel}
-                    </span>
-                    <Button
-                      className="h-9 w-9 shrink-0 px-0 py-0"
-                      onClick={openTechnologyA3Draft}
-                      title="Обновить A3-разбор по текущим фильтрам"
-                      aria-label="Обновить A3-разбор по текущим фильтрам"
-                    >
-                      <RefreshCcw className="h-4 w-4" strokeWidth={2} />
-                    </Button>
-                    <Button
-                      className="h-9 w-9 shrink-0 px-0 py-0"
-                      onClick={() => setA3Draft(null)}
-                      title="Скрыть A3-разбор"
-                      aria-label="Скрыть A3-разбор"
-                    >
-                      <EyeOff className="h-4 w-4" strokeWidth={2} />
-                    </Button>
-                  </>
+              <A3DashboardDraftPanel
+                draft={a3Draft}
+                onRefreshDraft={openTechnologyA3Draft}
+                onClose={() => setA3Draft(null)}
+                onSaved={() => {
+                  void refreshA3Protocols();
+                }}
+                extraActions={
+                  <span
+                    className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold ${
+                      activeRelatedA3Count > 0
+                        ? "border-raport-action-border bg-raport-action-bg text-raport-primary"
+                        : "border-raport-border bg-raport-surface-soft text-raport-muted"
+                    }`}
+                  >
+                    {relatedA3BadgeLabel}
+                  </span>
                 }
-              >
-                <div>
-                  <LocalA3ProtocolEditor
-                    key={a3Draft.createdFromDashboardAt ?? "ssz-a3-draft"}
-                    initialDraft={a3Draft}
-                    variant="compact"
-                    onSaved={() => {
-                      void refreshA3Protocols();
-                    }}
-                  />
-                </div>
-              </SectionCard>
+              />
             </motion.div>
           ) : null}
         </AnimatePresence>
