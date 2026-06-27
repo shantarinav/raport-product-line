@@ -50,6 +50,11 @@ function snapshotByUpdatedAtDesc(left: LocalA3ProtocolSnapshot, right: LocalA3Pr
   return right.updatedAt.localeCompare(left.updatedAt);
 }
 
+function eventByCreatedAtAsc(left: LocalA3Event, right: LocalA3Event): number {
+  const dateCompare = left.createdAt.localeCompare(right.createdAt);
+  return dateCompare !== 0 ? dateCompare : left.id.localeCompare(right.id);
+}
+
 function latestTimestamp(protocol: LocalA3Protocol, events: LocalA3Event[]): string {
   return events.reduce((latest, event) => (event.createdAt > latest ? event.createdAt : latest), protocol.updatedAt);
 }
@@ -137,10 +142,12 @@ export function createLocalA3Repository(options: LocalA3RepositoryOptions = {}) 
 
     async listEvents(protocolId: string): Promise<LocalA3Event[]> {
       const events = await db.events.where("protocolId").equals(protocolId).toArray();
-      return events.map(migrateLocalA3Event).sort((left, right) => {
-        const dateCompare = left.createdAt.localeCompare(right.createdAt);
-        return dateCompare !== 0 ? dateCompare : left.id.localeCompare(right.id);
-      });
+      return events.map(migrateLocalA3Event).sort(eventByCreatedAtAsc);
+    },
+
+    async listAllEvents(): Promise<LocalA3Event[]> {
+      const events = await db.events.toArray();
+      return events.map(migrateLocalA3Event).sort(eventByCreatedAtAsc);
     },
 
     async putSnapshot(snapshot: LocalA3ProtocolSnapshot): Promise<void> {

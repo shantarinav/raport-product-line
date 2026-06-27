@@ -63,13 +63,13 @@ describe("buildSszTechnologyA3Draft", () => {
       deviationScale: "отклонение: 54,4 п.п.",
       affectedObjectType: "department",
       affectedObjectName: "400 Цех аппаратов высокого давления № 40",
+      sourceFileName: "ssz-demo-with-sensitive-name.xlsx",
     });
     expect(draft.evidenceSummary).toContain("Цех: 400 Цех аппаратов высокого давления № 40");
     expect(draft.evidenceSummary).toContain("Операция: Сварка");
     expect(draft.evidenceSummary).toContain("Заказ: 206713102");
     expect(draft.evidenceSummary).not.toContain("sszRecords");
     expect(draft.evidenceSummary).not.toContain("operations");
-    expect(draft.sourceFileName).toBeUndefined();
   });
 
   it("limits long object labels in the A3 snapshot", () => {

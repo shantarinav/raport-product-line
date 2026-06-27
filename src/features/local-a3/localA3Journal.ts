@@ -67,16 +67,21 @@ function searchableText(item: LocalA3JournalItem): string {
 
 export async function loadLocalA3JournalItems(repository: LocalA3Repository = localA3Repository): Promise<LocalA3JournalItem[]> {
   const protocols = await repository.listProtocols();
-  return Promise.all(
-    protocols.map(async (protocol) => {
-      const events = await repository.listEvents(protocol.id);
-      const commentText = events
-        .filter((event) => event.type === "comment_added" && event.payload.type === "comment_added")
-        .map((event) => (event.payload.type === "comment_added" ? event.payload.comment.text : ""))
-        .join(" ");
-      return { protocol, events, commentText };
-    }),
-  );
+  const eventsByProtocol = (await repository.listAllEvents()).reduce<Map<string, LocalA3Event[]>>((acc, event) => {
+    const list = acc.get(event.protocolId) ?? [];
+    list.push(event);
+    acc.set(event.protocolId, list);
+    return acc;
+  }, new Map());
+
+  return protocols.map((protocol) => {
+    const events = eventsByProtocol.get(protocol.id) ?? [];
+    const commentText = events
+      .filter((event) => event.type === "comment_added" && event.payload.type === "comment_added")
+      .map((event) => (event.payload.type === "comment_added" ? event.payload.comment.text : ""))
+      .join(" ");
+    return { protocol, events, commentText };
+  });
 }
 
 export function isLocalA3Overdue(protocol: LocalA3Protocol, todayIso = new Date().toISOString().slice(0, 10)): boolean {

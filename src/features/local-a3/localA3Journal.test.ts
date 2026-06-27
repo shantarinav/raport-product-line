@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { addLocalA3Comment, saveLocalA3Protocol, createLocalA3ProtocolDraft } from "./localA3Commands";
 import { exportLocalA3JournalToJson } from "./localA3Export";
 import {
@@ -81,6 +81,25 @@ describe("localA3Journal", () => {
 
     const items = await loadLocalA3JournalItems(repo);
     expect(filterAndSortLocalA3JournalItems(items, { status: "all", query: "начальником", sortKey: "updatedAt", sortDirection: "desc" })).toHaveLength(1);
+  });
+
+  it("loads journal events with one repository read", async () => {
+    const repo = repository();
+    repos.push(repo);
+    const first = protocol("p-first");
+    const second = protocol("p-second");
+    await saveLocalA3Protocol(first, { repository: repo, now: () => baseNow, createId: (prefix) => `${prefix}-first` });
+    await saveLocalA3Protocol(second, { repository: repo, now: () => baseNow, createId: (prefix) => `${prefix}-second` });
+    await addLocalA3Comment(first.id, "Проверить причину", { repository: repo, now: () => "2026-06-24T11:00:00.000Z", createId: (prefix) => `${prefix}-comment` });
+
+    const listEventsSpy = vi.spyOn(repo, "listEvents");
+    const listAllEventsSpy = vi.spyOn(repo as unknown as { listAllEvents: () => Promise<unknown[]> }, "listAllEvents");
+
+    const items = await loadLocalA3JournalItems(repo);
+
+    expect(items).toHaveLength(2);
+    expect(listAllEventsSpy).toHaveBeenCalledTimes(1);
+    expect(listEventsSpy).not.toHaveBeenCalled();
   });
 
   it("exports one protocol and full journal as archives", async () => {

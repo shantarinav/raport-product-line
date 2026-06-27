@@ -70,6 +70,7 @@ export function mapSszTechnologyDeviationToA3Deviation(input: SszTechnologyA3Dra
     actualValue: formatPercent(input.workTechnologyRatio),
     targetValue: `${input.targetPercent}%`,
     deviationScale: input.deviationScale,
+    ...(input.sourceFileName ? { sourceFileName: input.sourceFileName } : {}),
     ...primaryAffectedObject(input.attentionRows),
     ...(boundedEvidenceSummary ? { evidenceSummary: boundedEvidenceSummary } : {}),
     createdAt: new Date().toISOString(),
