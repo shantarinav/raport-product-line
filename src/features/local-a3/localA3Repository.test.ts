@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
 import { createLocalA3Repository } from "./localA3Repository";
+import { seedLocalA3LegacyV1Database } from "./storage/localA3LegacyTestDatabase";
 import type { LocalA3Protocol } from "./localA3Types";
 
 function protocol(id: string, status: LocalA3Protocol["status"], updatedAt: string): LocalA3Protocol {
@@ -164,14 +165,7 @@ describe("localA3Repository", () => {
   it("migrates a version 1 Local A3 database to snapshots store", async () => {
     const dbName = `raport-local-a3-test-migration-${crypto.randomUUID()}`;
     dbNames.push(dbName);
-    const legacy = await import("dexie");
-    const legacyDb = new legacy.default(dbName);
-    legacyDb.version(1).stores({
-      protocols: "id,status,dashboardType,updatedAt,createdAt,form.dueDate",
-      events: "id,protocolId,createdAt,type",
-    });
-    await legacyDb.table("protocols").put(protocol("legacy", "open", "2026-06-10T00:00:00.000Z"));
-    legacyDb.close();
+    await seedLocalA3LegacyV1Database(dbName, [protocol("legacy", "open", "2026-06-10T00:00:00.000Z")]);
 
     const repo = createLocalA3Repository({ dbName });
     await expect(repo.getProtocol("legacy")).resolves.toMatchObject({ id: "legacy" });
