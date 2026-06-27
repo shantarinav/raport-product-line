@@ -18,22 +18,26 @@ if ($InteractiveHelp) {
   if ($Mode -eq "Lan") {
     Write-Host "Рапорт: настройка общего ИИ-сервиса Print в сети" -ForegroundColor Cyan
     Write-Host "Этот режим нужен, если одним ИИ-сервисом будут пользоваться несколько человек."
-    Write-Host "Пример адреса сайта Рапорта: https://bi.ekb.ru"
-    Write-Host "Вводите только origin: схема + домен + порт, без /#/print и без путей."
+    Write-Host "Пример адреса сайта Рапорта: https://bi.ekb.ru/llmtest/"
+    Write-Host "Можно вставить полный адрес страницы. Скрипт сам сохранит только сайт: https://bi.ekb.ru."
     Write-Host ""
   } else {
     Write-Host "Рапорт: настройка ИИ-сервиса Print на этом компьютере" -ForegroundColor Cyan
     Write-Host "Этот режим подходит, если Рапорт и ИИ-сервис запускаются на одном ПК."
     Write-Host "Будет создан файл backend\print-llm\.env для http://127.0.0.1:8787."
+    Write-Host "Если Рапорт открыт с корпоративного сайта, укажите его адрес, например https://bi.ekb.ru/llmtest/."
     Write-Host ""
   }
 }
 
-if ($Mode -eq "Lan" -and -not $FrontendOrigin) {
+if ($InteractiveHelp -and -not $FrontendOrigin) {
   $FrontendOrigin = Read-Host "Введите адрес сайта Рапорта"
   if (-not $FrontendOrigin) {
-    Write-Host "Адрес сайта Рапорта обязателен." -ForegroundColor Red
-    exit 1
+    if ($Mode -eq "Lan") {
+      Write-Host "Адрес сайта Рапорта обязателен для сетевого режима." -ForegroundColor Red
+      exit 1
+    }
+    $FrontendOrigin = "http://127.0.0.1:5173"
   }
 }
 
@@ -41,10 +45,18 @@ if (-not $FrontendOrigin) {
   $FrontendOrigin = "http://127.0.0.1:5173"
 }
 
+try {
+  $FrontendOrigin = ConvertTo-RaportFrontendOrigin $FrontendOrigin
+} catch {
+  Write-Host $_.Exception.Message -ForegroundColor Red
+  exit 1
+}
+
 $envPath = Get-PrintLlmEnvPath
 if ((Test-Path -LiteralPath $envPath) -and -not $Force) {
   Write-Host "Файл настроек уже существует: $envPath" -ForegroundColor Yellow
   Write-Host "Чтобы пересоздать настройки, запустите этот скрипт с параметром -Force."
+  Write-Host "Чтобы только добавить новый сайт Рапорта, запустите 05-change-frontend-site.cmd."
   if ($InteractiveHelp) {
     Write-Host ""
     Write-Host "Что делать дальше:"
@@ -61,6 +73,7 @@ if ((Test-Path -LiteralPath $envPath) -and -not $Force) {
     Write-Host "Если хотите запускать двойным кликом:"
     Write-Host "1. Используйте 01-init-local.cmd для локального режима."
     Write-Host "2. Используйте 01-init-lan.cmd для сетевого режима."
+    Write-Host "3. Используйте 05-change-frontend-site.cmd, если поменялся сайт Рапорта."
   }
   exit 0
 }
@@ -73,7 +86,11 @@ if ($Mode -eq "Lan" -and -not $ApiKey) {
   $ApiKey = ([guid]::NewGuid().ToString("N"))
 }
 
-$allowedOrigins = if ($Mode -eq "Lan") { $FrontendOrigin } else { "http://localhost:5173,http://127.0.0.1:5173,$FrontendOrigin" }
+$allowedOrigins = if ($Mode -eq "Lan") {
+  Join-PrintLlmAllowedOrigins @($FrontendOrigin)
+} else {
+  Join-PrintLlmAllowedOrigins @("http://localhost:5173", "http://127.0.0.1:5173", $FrontendOrigin)
+}
 $ollamaChatUrl = "$($OllamaBaseUrl.TrimEnd('/'))/api/chat"
 
 $content = @"
@@ -114,6 +131,7 @@ if ($InteractiveHelp) {
   Write-Host "Текущие параметры:" -ForegroundColor Cyan
   Write-Host "- файл настроек: $envPath"
   Write-Host "- адрес ИИ-сервиса для Рапорта: $backendUrl"
+  Write-Host "- разрешенный сайт Рапорта: $FrontendOrigin"
   Write-Host "- адрес Ollama: $OllamaBaseUrl"
   Write-Host "- модель: $Model"
   Write-Host "- размер порции: 20 документов"
@@ -124,6 +142,11 @@ if ($InteractiveHelp) {
   Write-Host "2. Измените OLLAMA_BASE_URL, OLLAMA_CHAT_URL, PRINT_LLM_MODEL, PRINT_LLM_BATCH_SIZE или PRINT_LLM_CONCURRENCY."
   Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
   Write-Host "4. Проверьте состояние: 03-status.cmd."
+  Write-Host ""
+  Write-Host "Как изменить сайт Рапорта, которому разрешен доступ к ИИ-сервису:"
+  Write-Host "1. Запустите 05-change-frontend-site.cmd."
+  Write-Host "2. Вставьте адрес сайта, например https://bi.ekb.ru/llmtest/."
+  Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
 
   Write-Host ""
   Write-Host "Что делать дальше:"

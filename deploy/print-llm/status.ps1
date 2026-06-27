@@ -37,6 +37,12 @@ if (-not $health) {
 Write-Host "ИИ-сервис готов к работе." -ForegroundColor Green
 Write-Host "Адрес для Рапорта: $($config.BaseUrl)"
 Write-Host "Адрес проверки: $($config.HealthUrl)"
+if ($config.AllowedOrigins.Count -gt 0) {
+  Write-Host "Разрешенные сайты Рапорта:"
+  foreach ($origin in $config.AllowedOrigins) {
+    Write-Host "- $origin"
+  }
+}
 Write-Host "Модель: $($health.model)"
 Write-Host "Классификация: $(if ($health.enabled) { 'включена' } else { 'выключена' })"
 if ($health.queue) {
@@ -55,12 +61,19 @@ if ($InteractiveHelp) {
   Write-Host "- Модель и очередь показывают состояние backend, а не frontend-дашборда."
   Write-Host "- В настройках Рапорта указывайте адрес без /health: $($config.BaseUrl)."
   Write-Host "- Адрес с /health нужен только для технической проверки."
+  Write-Host "- Если Рапорт открыт с другого сайта, добавьте этот сайт через 05-change-frontend-site.cmd."
   Write-Host ""
   Write-Host "Как изменить модель, адрес Ollama или производительность:" -ForegroundColor Cyan
   Write-Host "1. Откройте файл backend\print-llm\.env."
   Write-Host "2. Измените OLLAMA_BASE_URL, OLLAMA_CHAT_URL, PRINT_LLM_MODEL, PRINT_LLM_BATCH_SIZE или PRINT_LLM_CONCURRENCY."
   Write-Host "3. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
   Write-Host "4. Проверьте состояние: 03-status.cmd."
+  Write-Host ""
+  Write-Host "Как изменить сайт Рапорта:" -ForegroundColor Cyan
+  Write-Host "1. Запустите 05-change-frontend-site.cmd."
+  Write-Host "2. Вставьте адрес страницы Рапорта, например https://bi.ekb.ru/llmtest/."
+  Write-Host "3. Скрипт сохранит только origin, например https://bi.ekb.ru."
+  Write-Host "4. Перезапустите сервис: 04-stop.cmd, затем 02-start.cmd."
 }
 
 
