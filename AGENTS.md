@@ -86,6 +86,8 @@ backend/
 
 `src/` остается основным и самодостаточным фронтенд-приложением. `backend/` используется только для необязательных локальных усилителей анализа.
 
+Team mode is paused. Do not implement backend, SQLite, users, auth, roles, API or Team UI.
+
 Правила:
 
 - frontend-сборка должна проходить и работать без запущенного backend;
