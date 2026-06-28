@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import {
   BookOpen,
   CircleHelp,
-  ClipboardList,
+  Compass,
   Filter,
   Gauge,
-  PlayCircle,
+  ListChecks,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -16,55 +16,51 @@ import { DashboardHeader, PageShell, SectionCard } from "../../shared/ui";
 const HEADER_ACTION_CLASS =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active";
 
-const WORKFLOW_STEPS = [
-  {
-    step: "01",
-    title: "Загрузите отчет",
-    description: "Перетащите Excel или CSV на главную. Рапорт сам определит тип отчета и откроет нужный дашборд.",
-    Icon: UploadCloud,
-  },
-  {
-    step: "02",
-    title: "Найдите отклонение",
-    description: "Начните с главного вывода, KPI и зоны внимания. Если нужно, уточните картину фильтрами.",
-    Icon: Gauge,
-  },
-  {
-    step: "03",
-    title: "Поставьте на разбор",
-    description: "Если проблема требует действий, нажмите «Разобрать», назначьте исполнителя и срок.",
-    Icon: ClipboardList,
-  },
-];
-
 const ROLE_CARDS = [
   {
     title: "Руководителю",
-    description: "Смотрите главный вывод, KPI, зоны внимания и статус разборов. Цель — быстро понять, где требуется решение.",
-    items: ["Главный вывод", "KPI и динамика", "Зоны внимания", "Открытые разборы"],
+    items: ["Что пошло не так", "Где зона внимания", "Кто отвечает", "К какому сроку"],
   },
   {
     title: "Аналитику",
-    description: "Используйте фильтры, детализацию и A3-разборы, чтобы найти причину отклонения и подготовить действие.",
-    items: ["Фильтры", "Детальные срезы", "Причины отклонений", "A3-разборы"],
+    items: ["Какие фильтры применить", "Где причина", "Как оформить разбор", "Что передать руководителю"],
   },
 ];
 
 const EXTRA_FEATURES = [
   {
-    title: "Разборы отклонений",
-    description: "Локальный журнал проблем, ответственных, сроков и статусов.",
-    Icon: BookOpen,
+    title: "ИИ-анализ печати",
+    description: "Включает дополнительную проверку личной печати в дашборде «Печать». Если ИИ недоступен, дашборд работает по словарю.",
+    Icon: Sparkles,
   },
   {
-    title: "Резервная копия",
-    description: "Сохранение и восстановление журнала разборов для переноса или страховки.",
+    title: "Сбор трендов",
+    description: "Сохраняет месячные KPI для динамики показателей. Исходные строки отчета при этом не сохраняются.",
+    Icon: Gauge,
+  },
+  {
+    title: "История и резервная копия",
+    description: "Показывает сохраненные снимки KPI и позволяет сохранить или восстановить журнал разборов.",
     Icon: ShieldCheck,
   },
+];
+
+const SITUATION_ACTIONS = [
   {
-    title: "ИИ для анализа печати",
-    description: "Опция дашборда «Печать»: дополнительная проверка личной печати. Включается отдельно и не обязательна для работы.",
-    Icon: Sparkles,
+    situation: "Вижу плохой показатель",
+    action: "Посмотрите зону внимания, уточните фильтрами и назначьте действие.",
+  },
+  {
+    situation: "Не понимаю причину",
+    action: "Перейдите в режим аналитика и проверьте срезы, топы и детали.",
+  },
+  {
+    situation: "Нужно разобрать проблему",
+    action: "Создайте разбор, зафиксируйте причину, действие и ожидаемый результат.",
+  },
+  {
+    situation: "Нужно проконтролировать поручение",
+    action: "Откройте разборы, проверьте исполнителя, срок и статус.",
   },
 ];
 
@@ -84,7 +80,7 @@ export function HelpPage() {
             </div>
           </div>
         }
-        description="От загрузки отчета до управленческого разбора отклонения: что смотреть, где уточнять и когда создавать A3-разбор."
+        description="От загрузки отчета до управленческого разбора отклонения: что смотреть, где уточнять и когда назначать действие."
         actions={(themeToggle) => (
           <div className="flex items-center justify-end gap-2">
             <Link to="/" title="На главную" aria-label="На главную" className={HEADER_ACTION_CLASS}>
@@ -99,16 +95,35 @@ export function HelpPage() {
       />
 
       <div className="grid gap-4">
-        <SectionCard title="Рабочий сценарий" description="Три шага, которые закрывают большинство ежедневных задач." Icon={ShieldCheck}>
-          <div className="grid gap-3 lg:grid-cols-3">
-            {WORKFLOW_STEPS.map(({ step, title, description, Icon }) => (
-              <div key={title} className="relative overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft p-5">
-                <span className="absolute right-4 top-3 text-3xl font-extrabold text-raport-muted/20">{step}</span>
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary">
-                  <Icon className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <h3 className="text-base font-bold text-raport-text">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-raport-muted">{description}</p>
+        <SectionCard title="Если вы впервые здесь" description="Начните с загрузки отчета. Остальное Рапорт подскажет по ходу работы." Icon={Compass}>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+            <div className="rounded-control border border-raport-action-border bg-raport-action-bg p-5">
+              <p className="text-base font-bold text-raport-text">Просто загрузите отчет.</p>
+              <p className="mt-2 text-sm leading-relaxed text-raport-muted">
+                Рапорт сам откроет нужный дашборд. Остальные разделы пригодятся, когда появится вопрос.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Link
+                to="/"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-4 py-3 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+              >
+                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
+                Загрузить отчет
+              </Link>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Что делать, если…" description="Быстрые подсказки для типовых ситуаций." Icon={ListChecks}>
+          <div className="overflow-hidden rounded-control border border-raport-border divide-y divide-raport-border">
+            {SITUATION_ACTIONS.map((item) => (
+              <div
+                key={item.situation}
+                className="grid gap-2 border-raport-border bg-raport-surface px-4 py-3 text-sm md:grid-cols-[260px_minmax(0,1fr)] md:items-center"
+              >
+                <div className="font-bold text-raport-text">{item.situation}</div>
+                <div className="leading-relaxed text-raport-muted">{item.action}</div>
               </div>
             ))}
           </div>
@@ -119,7 +134,6 @@ export function HelpPage() {
             {ROLE_CARDS.map((role) => (
               <div key={role.title} className="rounded-control border border-raport-border bg-raport-surface-soft p-5">
                 <h3 className="text-base font-bold text-raport-text">{role.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-raport-muted">{role.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {role.items.map((item) => (
                     <span
@@ -135,43 +149,24 @@ export function HelpPage() {
           </div>
         </SectionCard>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <SectionCard title="Дополнительные возможности" description="Используйте, когда нужно перейти от просмотра к контролю действий." Icon={Filter}>
-            <div className="grid gap-3 md:grid-cols-3">
-              {EXTRA_FEATURES.map(({ title, description, Icon }) => (
-                <div key={title} className="rounded-control border border-raport-border bg-raport-surface p-4">
-                  <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary">
-                    <Icon className="h-4 w-4" strokeWidth={2} />
-                  </div>
-                  <h3 className="text-sm font-bold text-raport-text">{title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-raport-muted">{description}</p>
+        <SectionCard
+          title="Что можно включить дополнительно"
+          description="Включается на главной: Дополнительные возможности → Настройки Рапорта."
+          Icon={Filter}
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            {EXTRA_FEATURES.map(({ title, description, Icon }) => (
+              <div key={title} className="rounded-control border border-raport-border bg-raport-surface p-4">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary">
+                  <Icon className="h-4 w-4" strokeWidth={2} />
                 </div>
-              ))}
-            </div>
-          </SectionCard>
+                <h3 className="text-sm font-bold text-raport-text">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-raport-muted">{description}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
 
-          <SectionCard title="Начать работу" description="Две основные точки входа." Icon={PlayCircle}>
-            <div className="grid gap-2">
-              <Link
-                to="/"
-                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-3 py-2 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
-                <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-                Загрузить отчет
-              </Link>
-              <Link
-                to="/a3"
-                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-control border border-raport-border bg-raport-surface px-3 py-2 text-sm font-semibold text-raport-text transition-colors hover:bg-raport-surface-soft"
-              >
-                <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-                Открыть разборы
-              </Link>
-            </div>
-            <p className="mt-4 text-xs leading-relaxed text-raport-muted">
-              Файлы отчетов не сохраняются. Журнал разборов хранится в этом браузере, для переноса используйте резервную копию.
-            </p>
-          </SectionCard>
-        </div>
       </div>
     </PageShell>
   );
