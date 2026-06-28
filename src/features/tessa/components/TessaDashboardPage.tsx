@@ -15,6 +15,7 @@ import {
   DashboardHeader,
   DashboardSwitch,
   FilterStatusBar,
+  HelpLink,
   MetricCard,
   PageShell,
   SectionCard,
@@ -297,6 +298,7 @@ export function TessaDashboardPage() {
               >
                 <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
               </Link>
+              <HelpLink />
               {themeToggle}
             </div>
             {loadedFile ? (

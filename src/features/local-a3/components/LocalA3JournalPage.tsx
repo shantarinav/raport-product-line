@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Archive, Download, Eye, EyeOff, FileSpreadsheet, RefreshCcw, Upload, UploadCloud } from "lucide-react";
-import { DashboardHeader, ErrorState, PageShell, SectionCard } from "../../../shared/ui";
+import { DashboardHeader, ErrorState, HelpLink, PageShell, SectionCard } from "../../../shared/ui";
 import { Alert, AlertDescription, AlertTitle } from "../../../shared/ui/shadcn/alert";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
@@ -371,17 +371,18 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
                 <Archive className="h-4 w-4" strokeWidth={2} />
               </Button>
               {showBackupActions ? (
-                <div className="absolute right-10 top-11 z-20 w-72 rounded-card border border-raport-border bg-raport-surface p-2 shadow-lg">
-                  <Button className="w-full justify-start" variant="ghost" onClick={exportAll}>
-                    <Download className="h-4 w-4" strokeWidth={2} />
-                    Сохранить резервную копию
+                <div className="absolute right-10 top-11 z-20 w-80 rounded-card border border-raport-border bg-raport-surface p-2 shadow-lg">
+                  <Button className="grid w-full grid-cols-[1.25rem_1fr] justify-start gap-3 px-3 text-left" variant="ghost" onClick={exportAll}>
+                    <Download className="h-4 w-4 justify-self-center" strokeWidth={2} />
+                    <span className="whitespace-nowrap">Сохранить резервную копию</span>
                   </Button>
-                  <Button className="mt-1 w-full justify-start" variant="ghost" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="h-4 w-4" strokeWidth={2} />
-                    Восстановить из резервной копии
+                  <Button className="mt-1 grid w-full grid-cols-[1.25rem_1fr] justify-start gap-3 px-3 text-left" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4 justify-self-center" strokeWidth={2} />
+                    <span className="whitespace-nowrap">Восстановить из резервной копии</span>
                   </Button>
                 </div>
               ) : null}
+              <HelpLink />
               {themeToggle}
             </div>
             <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">

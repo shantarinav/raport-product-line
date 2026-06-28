@@ -5,6 +5,7 @@ import {
   DashboardHeader,
   ErrorState,
   FilterStatusBar,
+  HelpLink,
   MetricCard,
   PageShell,
   SectionCard,
@@ -268,6 +269,7 @@ export function SupportDashboardPage() {
                   <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
                 </Link>
               ) : null}
+              <HelpLink />
               {themeToggle}
             </div>
             <div className="w-full min-w-0 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs text-raport-muted">

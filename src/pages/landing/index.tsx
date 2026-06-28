@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, FileSpreadsheet } from "lucide-react";
-import { DashboardHeader, ErrorState, FileDropZone, PageShell } from "../../shared/ui";
+import { DashboardHeader, ErrorState, FileDropZone, HelpLink, PageShell } from "../../shared/ui";
 import { readWorkbookFile } from "../../features/ssz/import/readWorkbook";
 import type { ImportedReport } from "../../features/ssz/import/types";
 import { readTessaReportFile } from "../../features/tessa/import/readReportFile";
@@ -236,6 +236,7 @@ export function LandingPage() {
             >
               <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
             </Link>
+            <HelpLink />
             {themeToggle}
           </div>
         )}
@@ -267,6 +268,9 @@ export function LandingPage() {
               <div className="grid justify-items-center gap-1 text-sm font-semibold text-raport-muted">
                 <p>Подходит для Excel и CSV-файлов до 20 Мб, обработка идет в браузере</p>
                 <p>Рапорт сам определит отчет: ССЗ, Tessa, Печать или Техподдержка</p>
+                <Link to="/help" className="mt-2 text-sm font-bold text-raport-primary hover:underline">
+                  Как пользоваться Рапортом
+                </Link>
               </div>
             </div>
           }

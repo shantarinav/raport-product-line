@@ -7,6 +7,7 @@ const TessaPage = lazy(() => import("./pages/tessa").then((module) => ({ default
 const PrintPage = lazy(() => import("./pages/print").then((module) => ({ default: module.PrintPage })));
 const SupportPage = lazy(() => import("./pages/support").then((module) => ({ default: module.SupportPage })));
 const LocalA3Page = lazy(() => import("./pages/local-a3").then((module) => ({ default: module.LocalA3Page })));
+const HelpPage = lazy(() => import("./pages/help").then((module) => ({ default: module.HelpPage })));
 
 function PageFallback() {
   return (
@@ -28,6 +29,7 @@ export function App() {
         <Route path="/print" element={<PrintPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/a3" element={<LocalA3Page />} />
+        <Route path="/help" element={<HelpPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

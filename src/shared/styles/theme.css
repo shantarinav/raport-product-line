@@ -259,19 +259,19 @@ progress[class]::-webkit-progress-bar {
   0%, 100% {
     border-color: var(--raport-border);
     background-color: var(--raport-surface);
-    box-shadow: var(--raport-shadow-card), inset 0 0 0 0 var(--raport-dropzone-pulse-soft);
+    box-shadow: var(--raport-shadow-card);
   }
-  45% {
+  50% {
     border-color: var(--raport-primary);
-    background-color: color-mix(in srgb, var(--raport-primary) 5%, var(--raport-surface));
-    box-shadow: var(--raport-shadow-card), inset 0 0 0 4px var(--raport-dropzone-pulse-mid);
+    background-color: color-mix(in srgb, var(--raport-primary) 6%, var(--raport-surface));
+    box-shadow: var(--raport-shadow-card), inset 0 0 0 6px var(--raport-dropzone-pulse-soft);
   }
 }
 
 .raport-dropzone-pulse {
   position: relative;
   overflow: visible;
-  animation: raport-dropzone-pulse 2.4s ease-in-out infinite;
+  animation: raport-dropzone-pulse 1.9s ease-in-out infinite;
 }
 
 .raport-dropzone-pulse::before {
@@ -292,9 +292,15 @@ progress[class]::-webkit-progress-bar {
   box-shadow: var(--raport-shadow-card), inset 0 0 0 4px var(--raport-dropzone-pulse-mid);
 }
 
+.raport-dropzone-pulse:hover::before,
+.raport-dropzone-pulse:focus-within::before,
+.raport-dropzone-pulse.raport-dropzone-active::before {
+  content: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .raport-dropzone-pulse {
-    animation: none;
+    animation-duration: 2.8s;
   }
 }
 
