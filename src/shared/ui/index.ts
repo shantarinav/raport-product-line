@@ -10,3 +10,4 @@ export { DataTable } from "./DataTable";
 export { ChartCard } from "./ChartCard";
 export { ErrorState } from "./ErrorState";
 export { IconLabel } from "./IconLabel";
+export { HelpLink } from "./HelpLink";

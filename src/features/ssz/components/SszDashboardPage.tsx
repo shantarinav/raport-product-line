@@ -8,6 +8,7 @@ import {
   DashboardSwitch,
   FilterPanel,
   FilterStatusBar,
+  HelpLink,
   PageShell,
   SectionCard,
 } from "../../../shared/ui";
@@ -894,6 +895,7 @@ export function SszDashboardPage() {
                   <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
                 </Link>
               ) : null}
+              <HelpLink />
               {themeToggle}
             </div>
             {report ? (
