@@ -5,7 +5,7 @@ import { Card, CardContent } from "../shadcn/card";
 
 type FilterChip = {
   label: string;
-  tone?: "default" | "secondary" | "warning" | "danger";
+  tone?: "default" | "accent" | "secondary" | "warning" | "danger";
   isLoading?: boolean;
   onRemove?: () => void;
 };
@@ -24,7 +24,7 @@ export function FilterStatusBar({ title = "Активные фильтры", chi
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <strong className="mr-1 text-xs font-semibold text-raport-text">{title}</strong>
           {chips.map((chip) => (
-            <Badge key={chip.label} variant={chip.tone ?? "default"} className={chip.isLoading ? "pl-2" : ""}>
+            <Badge key={chip.label} variant={chip.tone ?? "accent"} className={chip.isLoading ? "pl-2" : ""}>
               {chip.isLoading ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
               {chip.label}
               {chip.onRemove ? (

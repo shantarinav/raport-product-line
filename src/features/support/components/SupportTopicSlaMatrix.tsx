@@ -72,7 +72,7 @@ export function SupportTopicSlaMatrix({
               >
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                   <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2">
-                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-extrabold tabular-nums text-raport-primary">
+                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-raport-border bg-raport-surface-soft px-2 text-xs font-extrabold tabular-nums text-raport-muted">
                       #{index + 1}
                     </span>
                     <div className="min-w-0">

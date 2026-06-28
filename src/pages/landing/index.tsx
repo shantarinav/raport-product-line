@@ -259,7 +259,7 @@ export function LandingPage() {
                 {statusChips.map((chip) => (
                   <span
                     key={chip.label}
-                    className="inline-flex min-h-7 items-center rounded-full border border-raport-action-border bg-raport-action-bg px-3 py-1 text-xs font-bold text-raport-primary"
+                    className="inline-flex min-h-7 items-center rounded-full border border-raport-border bg-raport-surface-soft px-3 py-1 text-xs font-semibold text-raport-muted"
                   >
                     {chip.label}
                   </span>

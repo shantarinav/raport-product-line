@@ -73,7 +73,7 @@ export function FileDropZone({
       <h2 className="text-xl font-bold text-raport-text">{title}</h2>
       <p className="mt-2 text-sm text-raport-muted">{hint}</p>
       {selectedFileName ? (
-        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-raport-action-border bg-raport-action-bg px-3 py-1 text-xs font-semibold text-raport-primary">
+        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-raport-border bg-raport-surface-soft px-3 py-1 text-xs font-semibold text-raport-muted">
           <FileSpreadsheet className="h-4 w-4" strokeWidth={2} />
           {selectedFileName}
         </p>

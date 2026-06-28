@@ -136,7 +136,7 @@ export function QuickFocusPanel({ value, onChange }: { value: PrintQuickFocus; o
     <div className="rounded-control border border-raport-border bg-raport-surface-soft p-2">
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-semibold text-raport-muted">Быстрый фокус</span>
-        <span className="rounded-full border border-raport-action-border bg-raport-action-bg px-2 py-0.5 text-[10px] font-bold text-raport-primary">
+        <span className="rounded-full border border-raport-border bg-raport-surface px-2 py-0.5 text-[10px] font-bold text-raport-muted">
           {quickFocusLabel(value)}
         </span>
       </div>

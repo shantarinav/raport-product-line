@@ -914,7 +914,7 @@ export function PrintDashboardPage() {
                   key: "rank",
                   header: "#",
                   cell: (row) => (
-                    <span className="inline-flex min-h-6 min-w-8 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-extrabold tabular-nums text-raport-primary">
+                    <span className="inline-flex min-h-6 min-w-8 items-center justify-center rounded-full border border-raport-border bg-raport-surface-soft px-2 text-xs font-extrabold tabular-nums text-raport-muted">
                       #{row.rank}
                     </span>
                   ),

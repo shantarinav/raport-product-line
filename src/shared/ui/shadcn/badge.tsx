@@ -1,10 +1,11 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "../cn";
 
-type BadgeVariant = "default" | "secondary" | "success" | "warning" | "danger";
+type BadgeVariant = "default" | "accent" | "secondary" | "success" | "warning" | "danger";
 
 const variantClass: Record<BadgeVariant, string> = {
-  default: "border border-raport-action-border bg-raport-action-bg text-raport-primary",
+  default: "border border-raport-border bg-raport-surface-soft text-raport-muted",
+  accent: "border border-raport-action-border bg-raport-action-bg text-raport-primary",
   secondary: "border border-raport-border bg-raport-surface-soft text-raport-muted",
   success: "border border-raport-success-border bg-raport-success-muted text-raport-success",
   warning: "border border-raport-warning-border bg-raport-warning-muted text-amber-900",

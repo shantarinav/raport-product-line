@@ -9,23 +9,11 @@ import {
   ShieldCheck,
   Sparkles,
   UploadCloud,
-  Users,
 } from "lucide-react";
 import { DashboardHeader, PageShell, SectionCard } from "../../shared/ui";
 
 const HEADER_ACTION_CLASS =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active";
-
-const ROLE_CARDS = [
-  {
-    title: "Руководителю",
-    items: ["Что пошло не так", "Где зона внимания", "Кто отвечает", "К какому сроку"],
-  },
-  {
-    title: "Аналитику",
-    items: ["Какие фильтры применить", "Где причина", "Как оформить разбор", "Что передать руководителю"],
-  },
-];
 
 const EXTRA_FEATURES = [
   {
@@ -120,26 +108,6 @@ export function HelpPage() {
               >
                 <div className="font-bold text-raport-text">{item.situation}</div>
                 <div className="leading-relaxed text-raport-muted">{item.action}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Что смотреть в первую очередь" description="Один и тот же отчет можно читать по-разному: для решения или для анализа." Icon={Users}>
-          <div className="grid gap-3 md:grid-cols-2">
-            {ROLE_CARDS.map((role) => (
-              <div key={role.title} className="rounded-control border border-raport-border bg-raport-surface-soft p-5">
-                <h3 className="text-base font-bold text-raport-text">{role.title}</h3>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {role.items.map((item) => (
-                    <span
-                      key={item}
-                      className="inline-flex min-h-7 items-center rounded-full border border-raport-action-border bg-raport-action-bg px-3 py-1 text-xs font-bold text-raport-primary"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
               </div>
             ))}
           </div>

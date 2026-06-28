@@ -95,7 +95,7 @@ export function RiskJobList({ rows, onUserSelect, showAiClassification = false }
             className="grid gap-2 rounded-control border border-raport-border bg-raport-surface px-3 py-2.5"
           >
             <div className="grid min-w-0 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-start">
-              <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-raport-action-border bg-raport-action-bg px-2 text-xs font-bold tabular-nums text-raport-primary">
+              <span className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full border border-raport-border bg-raport-surface-soft px-2 text-xs font-bold tabular-nums text-raport-muted">
                 #{index + 1}
               </span>
               <div className="min-w-0">

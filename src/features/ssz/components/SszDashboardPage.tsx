@@ -703,7 +703,7 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
                   <span
                     className={`inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold ${
                       activeRelatedA3Count > 0
-                        ? "border-raport-action-border bg-raport-action-bg text-raport-primary"
+                        ? "border-raport-border bg-raport-surface text-raport-text"
                         : "border-raport-border bg-raport-surface-soft text-raport-muted"
                     }`}
                   >
