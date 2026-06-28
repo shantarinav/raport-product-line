@@ -268,9 +268,6 @@ export function LandingPage() {
               <div className="grid justify-items-center gap-1 text-sm font-semibold text-raport-muted">
                 <p>Подходит для Excel и CSV-файлов до 20 Мб, обработка идет в браузере</p>
                 <p>Рапорт сам определит отчет: ССЗ, Tessa, Печать или Техподдержка</p>
-                <Link to="/help" className="mt-2 text-sm font-bold text-raport-primary hover:underline">
-                  Как пользоваться Рапортом
-                </Link>
               </div>
             </div>
           }

@@ -121,11 +121,9 @@ function SettingCard({
     <div className="grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface text-raport-primary">
-            {icon}
-          </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
+              <span className="text-raport-muted">{icon}</span>
               <p className="text-sm font-black text-raport-text">{title}</p>
               <span
                 className={cn(
@@ -450,12 +448,12 @@ export function HistoryManager() {
                 {activeSettingsTab === "user" ? (
                   <section className="rounded-control border border-raport-border bg-raport-surface p-4 shadow-sm">
                     <div className="mb-4 flex min-w-0 items-start gap-3 border-b border-raport-border pb-4">
-                      <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary">
-                        <ShieldCheck className="h-5 w-5" strokeWidth={2} />
-                      </div>
                       <div className="min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-raport-muted">Для пользователя</p>
-                        <h3 className="mt-1 text-base font-black text-raport-text">Что включить в работе</h3>
+                        <h3 className="mt-1 flex items-center gap-2 text-base font-black text-raport-text">
+                          <ShieldCheck className="h-4 w-4 shrink-0 text-raport-muted" strokeWidth={2} />
+                          Что включить в работе
+                        </h3>
                         <p className="mt-1 max-w-2xl text-xs font-semibold leading-relaxed text-raport-muted">
                           Здесь только прикладные возможности. Если ничего не включать, Рапорт продолжит открывать отчеты как обычный фронтенд-дашборд.
                         </p>
@@ -466,11 +464,9 @@ export function HistoryManager() {
                       <div className="grid gap-3 rounded-control border border-raport-border bg-raport-surface-soft p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                         <div className="min-w-0">
                           <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface text-raport-primary">
-                              <Bot className="h-4 w-4" strokeWidth={2} />
-                            </div>
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
+                                <Bot className="h-4 w-4 shrink-0 text-raport-muted" strokeWidth={2} />
                                 <p className="text-sm font-black text-raport-text">ИИ-проверка личной печати</p>
                                 <span
                                   className={cn(
@@ -547,12 +543,12 @@ export function HistoryManager() {
                 {activeSettingsTab === "admin" ? (
                   <section className="rounded-control border border-raport-border bg-raport-surface p-4 shadow-sm">
                     <div className="mb-4 flex min-w-0 items-start gap-3 border-b border-raport-border pb-4">
-                      <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-raport-border bg-raport-surface-soft text-raport-primary">
-                        <Server className="h-5 w-5" strokeWidth={2} />
-                      </div>
                       <div className="min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-raport-muted">Для администратора</p>
-                        <h3 className="mt-1 text-base font-black text-raport-text">Сервис ИИ и диагностика</h3>
+                        <h3 className="mt-1 flex items-center gap-2 text-base font-black text-raport-text">
+                          <Server className="h-4 w-4 shrink-0 text-raport-muted" strokeWidth={2} />
+                          Сервис ИИ и диагностика
+                        </h3>
                         <p className="mt-1 max-w-3xl text-xs font-semibold leading-relaxed text-raport-muted">
                           Техническая зона для подключения ИИ-сервиса: адрес, ключ доступа, проверка связи, кэш и очередь обработки.
                         </p>

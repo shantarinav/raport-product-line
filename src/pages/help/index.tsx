@@ -121,10 +121,10 @@ export function HelpPage() {
           <div className="grid gap-3 md:grid-cols-3">
             {EXTRA_FEATURES.map(({ title, description, Icon }) => (
               <div key={title} className="rounded-control border border-raport-border bg-raport-surface p-4">
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary">
-                  <Icon className="h-4 w-4" strokeWidth={2} />
-                </div>
-                <h3 className="text-sm font-bold text-raport-text">{title}</h3>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-raport-text">
+                  <Icon className="h-4 w-4 shrink-0 text-raport-muted" strokeWidth={2} />
+                  {title}
+                </h3>
                 <p className="mt-2 text-sm leading-relaxed text-raport-muted">{description}</p>
               </div>
             ))}
