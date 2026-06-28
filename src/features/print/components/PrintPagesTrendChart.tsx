@@ -123,7 +123,7 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
             y1={CHART_HEIGHT - PADDING_BOTTOM}
             x2={CHART_WIDTH - PADDING_X}
             y2={CHART_HEIGHT - PADDING_BOTTOM}
-            className="stroke-slate-200"
+            className="stroke-raport-border"
             strokeWidth={1}
           />
           <polyline
@@ -140,7 +140,7 @@ export function PrintPagesTrendChart({ data }: { data: DashboardSnapshot[] }) {
                 cx={point.x}
                 cy={point.y}
                 r={points.length > 12 ? 4 : 5}
-                className="fill-raport-primary stroke-white transition-opacity hover:opacity-80"
+                className="fill-raport-primary stroke-raport-surface transition-opacity hover:opacity-80"
                 strokeWidth={1.8}
               >
                 <title>{point.tooltipLabel}</title>

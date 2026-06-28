@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import {
   BookOpen,
   CircleHelp,
@@ -10,10 +9,7 @@ import {
   Sparkles,
   UploadCloud,
 } from "lucide-react";
-import { DashboardHeader, PageShell, SectionCard } from "../../shared/ui";
-
-const HEADER_ACTION_CLASS =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active";
+import { ButtonLink, DashboardHeader, DashboardHeaderMark, HeaderIconButton, PageShell, SectionCard } from "../../shared/ui";
 
 const EXTRA_FEATURES = [
   {
@@ -55,11 +51,9 @@ export function HelpPage() {
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <CircleHelp className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={CircleHelp} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Как пользоваться Рапортом</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Как пользоваться Рапортом</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Как Excel докладывает главное</span>
             </div>
           </div>
@@ -67,12 +61,12 @@ export function HelpPage() {
         description="От загрузки отчета до управленческого разбора отклонения: что смотреть, где уточнять и когда назначать действие."
         actions={(themeToggle) => (
           <div className="flex items-center justify-end gap-2">
-            <Link to="/" title="На главную" aria-label="На главную" className={HEADER_ACTION_CLASS}>
+            <HeaderIconButton to="/" title="На главную">
               <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </Link>
-            <Link to="/a3" title="Открыть журнал A3-разборов" aria-label="Открыть журнал A3-разборов" className={HEADER_ACTION_CLASS}>
+            </HeaderIconButton>
+            <HeaderIconButton to="/a3" title="Открыть журнал A3-разборов">
               <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </Link>
+            </HeaderIconButton>
             {themeToggle}
           </div>
         )}
@@ -88,13 +82,13 @@ export function HelpPage() {
               </p>
             </div>
             <div className="grid gap-2">
-              <Link
+              <ButtonLink
                 to="/"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-raport-action-border bg-raport-action-bg px-4 py-3 text-sm font-semibold text-raport-primary transition-colors hover:bg-raport-action-bg-active"
+                className="min-h-11 px-4 py-3"
               >
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
                 Загрузить отчет
-              </Link>
+              </ButtonLink>
             </div>
           </div>
         </SectionCard>

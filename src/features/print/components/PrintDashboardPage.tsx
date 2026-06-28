@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, BookOpen, Download, FileSpreadsheet, FileText, Gauge, Printer, UploadCloud, Users } from "lucide-react";
 import {
   ChartCard,
   DashboardHeader,
+  DashboardHeaderMark,
   DashboardSwitch,
   DataTable,
   FilterPanel,
   FilterStatusBar,
+  HeaderIconButton,
   HelpLink,
   MetricCard,
   PageShell,
@@ -191,24 +193,24 @@ function printInsightStatus(kpis: PrintKpis) {
   if (kpis.totalPages === 0) {
     return {
       label: "Нет данных",
-      className: "border-slate-300 bg-slate-50 text-slate-700",
+      className: "border-raport-border bg-raport-surface-soft text-raport-muted",
     };
   }
   if (ratio >= 35 || kpis.bigJobs >= 10) {
     return {
       label: "Критично",
-      className: "border-red-200 bg-red-50 text-red-700",
+      className: "border-raport-danger-border bg-raport-danger-muted text-raport-danger",
     };
   }
   if (ratio >= 10 || kpis.simplexPages > 0 || kpis.colorPages > 0 || kpis.bigJobs > 0) {
     return {
       label: "Контроль",
-      className: "border-amber-200 bg-amber-50 text-amber-900",
+      className: "border-raport-warning-border bg-raport-warning-muted text-raport-warning",
     };
   }
   return {
     label: "Норма",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-raport-success-border bg-raport-success-muted text-raport-success",
   };
 }
 
@@ -304,7 +306,7 @@ function PrintAiReviewSummary({
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
         <span>
-          Подтверждено <span className="tabular-nums text-amber-900">{formatInteger(stats.confirmed)}</span>
+          Подтверждено <span className="tabular-nums text-raport-warning">{formatInteger(stats.confirmed)}</span>
         </span>
         <span>
           Отклонено <span className="tabular-nums text-raport-text">{formatInteger(stats.rejected)}</span>
@@ -433,14 +435,9 @@ export function PrintDashboardPage() {
           title="Рапорт"
           description="Загрузка отчета Print."
           actions={
-            <Link
-              to="/"
-              title="Заменить отчет"
-              aria-label="Заменить отчет"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-            >
+            <HeaderIconButton to="/" title="Заменить отчет">
               <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </Link>
+            </HeaderIconButton>
           }
         />
         <SectionCard title="Обработка отчета" description="Подготовка данных Print к отображению...">
@@ -528,11 +525,9 @@ export function PrintDashboardPage() {
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <FileSpreadsheet className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={FileSpreadsheet} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Рапорт</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
@@ -541,23 +536,13 @@ export function PrintDashboardPage() {
         actions={(themeToggle) => (
           <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
-              <Link
-                to="/"
-                title="Заменить отчет"
-                aria-label="Заменить отчет"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
+              <HeaderIconButton to="/" title="Заменить отчет">
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
+              </HeaderIconButton>
               {!isManagerView ? (
-                <Link
-                  to="/a3?dashboard=print"
-                  title="Открыть журнал A3-разборов"
-                  aria-label="Открыть журнал A3-разборов"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-                >
+                <HeaderIconButton to="/a3?dashboard=print" title="Открыть журнал A3-разборов">
                   <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-                </Link>
+                </HeaderIconButton>
               ) : null}
               <HelpLink />
               {themeToggle}
@@ -681,7 +666,7 @@ export function PrintDashboardPage() {
                 <span className="text-xs text-raport-muted">Формат бумаги</span>
                 <div className="grid gap-1">
                   {PAPER_BUCKETS.map((bucket) => (
-                    <label key={bucket} className="flex items-center gap-2 rounded-control border border-raport-border bg-white px-2 py-1 text-xs font-semibold text-raport-text">
+                    <label key={bucket} className="flex items-center gap-2 rounded-control border border-raport-border bg-raport-surface px-2 py-1 text-xs font-semibold text-raport-text">
                       <input
                         type="checkbox"
                         checked={filters.paperBuckets.includes(bucket)}
@@ -697,7 +682,7 @@ export function PrintDashboardPage() {
               </div>
 
 
-              <label className="flex items-start gap-2 rounded-control border border-raport-border bg-white px-2 py-2 text-xs text-raport-muted">
+              <label className="flex items-start gap-2 rounded-control border border-raport-border bg-raport-surface px-2 py-2 text-xs text-raport-muted">
                 <input type="checkbox" checked={filters.excludePdfPrinter} onChange={(event) => patchFilters({ excludePdfPrinter: event.target.checked })} />
                 <span>
                   <strong className="block text-raport-text">Исключить печать в PDF</strong>
@@ -847,7 +832,7 @@ export function PrintDashboardPage() {
                 <span className="text-xs font-semibold">страниц с отклонениями</span>
                 <span className="mt-1 block text-xs font-semibold">оценка отклонений: {formatInteger(mainInsightDeviationCost)} руб.</span>
               </div>
-              <div className="grid gap-2 rounded-control border border-raport-border bg-white px-4 py-3">
+              <div className="grid gap-2 rounded-control border border-raport-border bg-raport-surface px-4 py-3">
                 <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Что проверить в первую очередь</p>
                 {mainInsightPoints.map((point) => (
                   <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
@@ -945,15 +930,15 @@ export function PrintDashboardPage() {
 
               <SectionCard title="Потенциально избыточная печать" description="Документы, печать которых можно сократить (личные, нормативные, служебные)." Icon={AlertTriangle}>
                 <div className="mb-3 grid gap-2 md:grid-cols-3">
-                  <div className="rounded-control border border-raport-border bg-white px-3 py-2">
+                  <div className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
                     <strong className="block text-xl font-extrabold text-raport-text">{formatInteger(excessSummary.jobs)}</strong>
                     <span className="text-xs font-semibold text-raport-muted">заданий</span>
                   </div>
-                  <div className="rounded-control border border-raport-border bg-white px-3 py-2">
+                  <div className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
                     <strong className="block text-xl font-extrabold text-raport-text">{formatInteger(excessSummary.pages)}</strong>
                     <span className="text-xs font-semibold text-raport-muted">страниц</span>
                   </div>
-                  <div className="rounded-control border border-raport-border bg-white px-3 py-2">
+                  <div className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
                     <strong className="block text-xl font-extrabold text-raport-text">{formatInteger(excessSummary.users)}</strong>
                     <span className="text-xs font-semibold text-raport-muted">пользователей</span>
                   </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, FileSpreadsheet } from "lucide-react";
-import { DashboardHeader, ErrorState, FileDropZone, HelpLink, PageShell } from "../../shared/ui";
+import { DashboardHeader, DashboardHeaderMark, ErrorState, FileDropZone, HeaderIconButton, HelpLink, PageShell } from "../../shared/ui";
 import { readWorkbookFile } from "../../features/ssz/import/readWorkbook";
 import type { ImportedReport } from "../../features/ssz/import/types";
 import { readTessaReportFile } from "../../features/tessa/import/readReportFile";
@@ -216,11 +216,9 @@ export function LandingPage() {
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <FileSpreadsheet className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={FileSpreadsheet} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Рапорт</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
@@ -228,14 +226,9 @@ export function LandingPage() {
         description="Загрузите Excel или CSV-отчет — Рапорт определит тип, откроет нужный дашборд и покажет ключевые показатели, отклонения и зоны внимания."
         actions={(themeToggle) => (
           <div className="flex items-center justify-end gap-2">
-            <Link
-              to="/a3"
-              title="Открыть журнал A3-разборов"
-              aria-label="Открыть журнал A3-разборов"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-            >
+            <HeaderIconButton to="/a3" title="Открыть журнал A3-разборов">
               <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-            </Link>
+            </HeaderIconButton>
             <HelpLink />
             {themeToggle}
           </div>

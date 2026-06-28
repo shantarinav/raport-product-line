@@ -30,9 +30,9 @@ const PADDING_BOTTOM = 58;
 const WARNING_GAP_PERCENT = 10;
 
 const pointToneClass: Record<TrendPointTone, string> = {
-  success: "fill-emerald-500 stroke-white",
-  warning: "fill-amber-400 stroke-white",
-  danger: "fill-rose-500 stroke-white",
+  success: "fill-raport-success stroke-raport-surface",
+  warning: "fill-raport-warning stroke-raport-surface",
+  danger: "fill-raport-danger stroke-raport-surface",
 };
 
 function isFiniteMetric(value: unknown): value is number {
@@ -158,7 +158,7 @@ export function SSZTrendChart({ data, targetPercent }: { data: DashboardSnapshot
             y1={targetY}
             x2={CHART_WIDTH - PADDING_X}
             y2={targetY}
-            className="stroke-slate-400"
+            className="stroke-raport-muted"
             strokeWidth={1.2}
             strokeDasharray="5 5"
           />
@@ -175,7 +175,7 @@ export function SSZTrendChart({ data, targetPercent }: { data: DashboardSnapshot
             y1={CHART_HEIGHT - PADDING_BOTTOM}
             x2={CHART_WIDTH - PADDING_X}
             y2={CHART_HEIGHT - PADDING_BOTTOM}
-            className="stroke-slate-200"
+            className="stroke-raport-border"
             strokeWidth={1}
           />
           <polyline
@@ -236,5 +236,4 @@ export function SSZTrendChart({ data, targetPercent }: { data: DashboardSnapshot
     </ChartCard>
   );
 }
-
 

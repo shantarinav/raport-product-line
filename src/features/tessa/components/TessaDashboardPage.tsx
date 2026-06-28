@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
@@ -13,13 +13,16 @@ import {
 } from "lucide-react";
 import {
   DashboardHeader,
+  DashboardHeaderMark,
   DashboardSwitch,
   FilterStatusBar,
+  HeaderIconButton,
   HelpLink,
   MetricCard,
   PageShell,
   SectionCard,
 } from "../../../shared/ui";
+import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
 import { readPendingDashboardData } from "../../../shared/pendingDashboardFile";
 import type { LocalA3DraftInput } from "../../local-a3/localA3Commands";
@@ -53,11 +56,11 @@ function toneByRating(rating: number): "ok" | "warn" | "error" {
 }
 
 function rowToneClass(rating: number, riskTodayCount: number): string {
-  if (riskTodayCount > 0) return "border-amber-200 bg-amber-50/50";
+  if (riskTodayCount > 0) return "border-raport-warning-border bg-raport-warning-muted";
   const tone = toneByRating(rating);
-  if (tone === "error") return "border-rose-200 bg-rose-50/50";
-  if (tone === "warn") return "border-amber-200 bg-amber-50/50";
-  return "border-emerald-200 bg-emerald-50/40";
+  if (tone === "error") return "border-raport-danger-border bg-raport-danger-muted";
+  if (tone === "warn") return "border-raport-warning-border bg-raport-warning-muted";
+  return "border-raport-success-border bg-raport-success-muted";
 }
 
 function priorityStripClass(rating: number, riskTodayCount: number): string {
@@ -68,12 +71,12 @@ function priorityStripClass(rating: number, riskTodayCount: number): string {
   return "bg-raport-success";
 }
 
-function priorityBadgeClass(rating: number, riskTodayCount: number): string {
-  if (riskTodayCount > 0) return "border-amber-200 bg-amber-50 text-amber-900";
+function priorityBadgeVariant(rating: number, riskTodayCount: number): "success" | "warning" | "danger" {
+  if (riskTodayCount > 0) return "warning";
   const tone = toneByRating(rating);
-  if (tone === "error") return "border-rose-200 bg-rose-50 text-rose-700";
-  if (tone === "warn") return "border-amber-200 bg-amber-50 text-amber-900";
-  return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (tone === "error") return "danger";
+  if (tone === "warn") return "warning";
+  return "success";
 }
 
 function priorityLabel(maxStuckDays: number, riskTodayCount: number): string {
@@ -95,7 +98,7 @@ function PersonLoadStrip({ value }: { value: number }) {
     <progress
       max={100}
       value={safeValue}
-      className={`h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 ${toneClass}`}
+      className={`h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-raport-progress-track ${toneClass}`}
     />
   );
 }
@@ -269,11 +272,9 @@ export function TessaDashboardPage() {
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <FileSpreadsheet className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={FileSpreadsheet} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Рапорт</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
@@ -282,22 +283,12 @@ export function TessaDashboardPage() {
         actions={(themeToggle) => (
           <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
-              <Link
-                to="/"
-                title="Заменить отчет"
-                aria-label="Заменить отчет"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
+              <HeaderIconButton to="/" title="Заменить отчет">
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
-              <Link
-                to="/a3?dashboard=tessa"
-                title="Открыть журнал A3-разборов"
-                aria-label="Открыть журнал A3-разборов"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
+              </HeaderIconButton>
+              <HeaderIconButton to="/a3?dashboard=tessa" title="Открыть журнал A3-разборов">
                 <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
+              </HeaderIconButton>
               <HelpLink />
               {themeToggle}
             </div>
@@ -376,12 +367,12 @@ export function TessaDashboardPage() {
                     key={person.name}
                     type="button"
                     onClick={() => patchFilters({ responsible: person.name })}
-                    className="grid gap-1 rounded-control border border-raport-border bg-white px-3 py-2 text-left hover:bg-raport-action-bg"
+                    className="grid gap-1 rounded-control border border-raport-border bg-raport-surface px-3 py-2 text-left hover:bg-raport-action-bg"
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                      <span className="inline-flex min-h-5 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-1.5 text-[11px] font-semibold text-slate-600">
+                      <Badge variant="secondary" className="min-h-5 min-w-8 justify-center rounded-md px-1.5 text-[11px] tabular-nums">
                         #{index + 1}
-                      </span>
+                      </Badge>
                       <span className="min-w-0 truncate text-sm font-semibold text-raport-primary">{person.name}</span>
                       <span className="text-xs font-bold tabular-nums text-raport-text">{formatInteger(person.stuck)} / {formatInteger(person.open)}</span>
                     </div>
@@ -389,7 +380,7 @@ export function TessaDashboardPage() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-raport-muted">
                       <span>{formatPercent(person.stuckRate)} просрочено</span>
                       <span>максимум {formatNumber(person.maxStuckDays)} дн.</span>
-                      {person.riskToday > 0 ? <span className="text-amber-900">{formatInteger(person.riskToday)} сегодня</span> : null}
+                      {person.riskToday > 0 ? <span className="text-raport-warning">{formatInteger(person.riskToday)} сегодня</span> : null}
                     </div>
                   </button>
                   ))}
@@ -441,17 +432,18 @@ export function TessaDashboardPage() {
                             />
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <span
-                              className={`inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-xs font-bold tabular-nums ${priorityBadgeClass(problem.rating, problem.riskTodayCount)}`}
+                            <Badge
+                              variant={priorityBadgeVariant(problem.rating, problem.riskTodayCount)}
+                              className="min-h-6 px-2.5 py-1 text-xs font-bold tabular-nums"
                               title={problem.maxStuckDays > 0 ? "Максимальная просрочка" : "Срок истекает сегодня"}
                             >
                               {priorityLabel(problem.maxStuckDays, problem.riskTodayCount)}
-                            </span>
+                            </Badge>
                             <button
                               type="button"
                               onClick={() => toggleProblem(problem.key)}
                               aria-expanded={isExpanded}
-                              className="inline-flex min-h-7 items-center gap-1 rounded-control border border-raport-border bg-white/70 px-2 py-1 text-xs font-semibold text-raport-muted hover:bg-white"
+                              className="inline-flex min-h-7 items-center gap-1 rounded-control border border-raport-border bg-raport-surface px-2 py-1 text-xs font-semibold text-raport-muted hover:bg-raport-surface-soft"
                             >
                               Детали
                               <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} strokeWidth={2} />
@@ -462,7 +454,7 @@ export function TessaDashboardPage() {
                           <span>{formatInteger(problem.stuckCount)} {declineAgreement(problem.stuckCount)}</span>
                           <span>ответственные: {problem.responsibles}</span>
                           {problem.riskTodayCount > 0 ? (
-                            <span className="text-amber-900">{formatInteger(problem.riskTodayCount)} {declineRisk(problem.riskTodayCount)} сегодня</span>
+                            <span className="text-raport-warning">{formatInteger(problem.riskTodayCount)} {declineRisk(problem.riskTodayCount)} сегодня</span>
                           ) : null}
                         </div>
                         {isExpanded ? (
@@ -474,7 +466,7 @@ export function TessaDashboardPage() {
                               {problem.records.slice(0, 6).map((record) => (
                                 <div
                                   key={record.id}
-                                  className="grid gap-1 rounded-control bg-white/70 px-2 py-1.5 text-xs text-raport-muted md:grid-cols-[minmax(0,1fr)_auto]"
+                                  className="grid gap-1 rounded-control bg-raport-surface-soft px-2 py-1.5 text-xs text-raport-muted md:grid-cols-[minmax(0,1fr)_auto]"
                                 >
                                   <span className="min-w-0 truncate">
                                     {record.responsible} · срок: {formatDate(record.deadline) || "не указан"}

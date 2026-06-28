@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Archive, Download, Eye, EyeOff, FileSpreadsheet, RefreshCcw, Upload, UploadCloud } from "lucide-react";
-import { DashboardHeader, ErrorState, HelpLink, PageShell, SectionCard } from "../../../shared/ui";
+import { DashboardHeader, DashboardHeaderMark, ErrorState, HeaderIconButton, HelpLink, PageShell, SectionCard } from "../../../shared/ui";
 import { Alert, AlertDescription, AlertTitle } from "../../../shared/ui/shadcn/alert";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
@@ -341,11 +341,9 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <FileSpreadsheet className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={FileSpreadsheet} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Рапорт</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
@@ -354,14 +352,9 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
         actions={(themeToggle) => (
           <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="relative flex w-full items-center justify-end gap-2">
-              <Link
-                to="/"
-                title="Загрузить отчет"
-                aria-label="Загрузить отчет"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
+              <HeaderIconButton to="/" title="Загрузить отчет">
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
+              </HeaderIconButton>
               <Button
                 className={HEADER_ACTION_ICON_CLASS}
                 onClick={() => setShowBackupActions((value) => !value)}
