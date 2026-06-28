@@ -47,7 +47,7 @@ const EXTRA_FEATURES = [
 
 const SITUATION_ACTIONS = [
   {
-    situation: "Не понимаю причину",
+    situation: "Не понимаю причину проблемы",
     action: "Перейдите в режим аналитика и проверьте срезы, топы и детали.",
   },
   {
