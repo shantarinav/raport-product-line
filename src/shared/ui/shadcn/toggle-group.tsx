@@ -34,7 +34,7 @@ export function ToggleGroup({ value, onValueChange, options, className }: Toggle
             onClick={() => onValueChange(option.value)}
             className={cn(
               "relative min-h-7 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-              isActive ? "text-raport-primary" : "text-raport-muted hover:text-raport-text hover:bg-black/5 dark:hover:bg-white/5",
+              isActive ? "text-raport-primary" : "text-raport-muted hover:bg-raport-action-bg hover:text-raport-text",
             )}
           >
             {isActive && (

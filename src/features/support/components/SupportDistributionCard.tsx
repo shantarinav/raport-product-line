@@ -29,9 +29,9 @@ export function SupportDistributionCard({
   return (
     <SectionCard title={title} description={description} Icon={Icon}>
       <div className="grid gap-3">
-        <div className="rounded-full bg-slate-100 px-2 py-2">
+        <div className="rounded-full bg-raport-progress-track px-2 py-2">
           <svg viewBox="0 0 100 12" className="h-5 w-full overflow-visible" aria-hidden="true">
-            <line x1="0" y1="6" x2="100" y2="6" className="stroke-slate-200" strokeWidth="3" strokeLinecap="round" />
+            <line x1="0" y1="6" x2="100" y2="6" className="stroke-raport-border" strokeWidth="3" strokeLinecap="round" />
           {QUANTILE_KEYS.map((item) => {
             const value = quantiles[item.key];
             const x = value === null || !Number.isFinite(value) ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
@@ -41,7 +41,7 @@ export function SupportDistributionCard({
                 cx={x}
                 cy="6"
                 r="4"
-                className="fill-raport-primary stroke-white"
+                className="fill-raport-primary stroke-raport-surface"
                 strokeWidth="2"
               >
                 <title>{`${item.label}: ${formatSupportHours(value)}`}</title>
@@ -57,7 +57,7 @@ export function SupportDistributionCard({
         ) : null}
         <div className="grid gap-2 sm:grid-cols-4">
           {QUANTILE_KEYS.map((item) => (
-            <div key={item.key} className="rounded-control border border-raport-border bg-white px-3 py-2">
+            <div key={item.key} className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
               <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em] text-raport-muted">{item.label}</span>
               <strong className="mt-1 block text-sm font-extrabold tabular-nums text-raport-text">{formatSupportHours(quantiles[item.key])}</strong>
             </div>

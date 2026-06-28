@@ -10,7 +10,7 @@ function riskBadgeVariant(kind: PrintJob["riskReasons"][number]["kind"]): "dange
 
 function riskScoreClassName(score: number): string {
   if (score >= 70) return "border-raport-danger-border bg-raport-danger-muted text-raport-danger";
-  if (score >= 40) return "border-raport-warning-border bg-raport-warning-muted text-amber-900";
+  if (score >= 40) return "border-raport-warning-border bg-raport-warning-muted text-raport-warning";
   return "border-raport-border bg-raport-surface-soft text-raport-muted";
 }
 
@@ -57,7 +57,7 @@ export function BarList({ items, valueLabel = "стр." }: { items: PrintBarDatu
           <progress
             max={max}
             value={item.pages}
-            className="h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-moz-progress-bar]:bg-raport-primary [&::-webkit-progress-value]:bg-raport-primary"
+            className="h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-raport-progress-track [&::-moz-progress-bar]:bg-raport-primary [&::-webkit-progress-value]:bg-raport-primary"
           />
         </div>
       ))}
@@ -128,7 +128,7 @@ export function RiskJobList({ rows, onUserSelect, showAiClassification = false }
                 <span
                   className={
                     personalClassification?.source === "llm" && personalClassification.is_personal
-                      ? "text-amber-900"
+                      ? "text-raport-warning"
                       : "text-raport-muted"
                   }
                 >

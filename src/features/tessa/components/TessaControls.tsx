@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { FilterPanel } from "../../../shared/ui";
+import { FilterPanel, QuickFocusGroup } from "../../../shared/ui";
 import { Input } from "../../../shared/ui/shadcn/input";
 import { formatInteger } from "../logic/dashboard";
 import type { AgreementFilters, DeadlineMode } from "../types";
@@ -74,7 +74,7 @@ function AutocompleteField({
         }}
       />
       {open ? (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-white shadow-card">
+        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-raport-surface shadow-card">
           <button
             type="button"
             className="block w-full px-3 py-2 text-left text-sm text-raport-text hover:bg-raport-action-bg"
@@ -125,50 +125,37 @@ function DeadlineFocusControl({
     { value: "week", label: "7 дней", tone: "primary" },
   ];
 
-  const optionClass = (optionValue: DeadlineMode, tone: "danger" | "warning" | "primary") => {
-    const active = value === optionValue;
-    if (active && tone === "danger") return "border-rose-300 bg-rose-50 text-rose-700 shadow-[inset_0_0_0_1px_rgb(254_205_211)]";
-    if (active && tone === "warning") return "border-amber-300 bg-amber-50 text-amber-900 shadow-[inset_0_0_0_1px_rgb(253_230_138)]";
-    if (active) return "border-raport-action-border bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]";
-    return "border-raport-border bg-white text-raport-text hover:bg-raport-action-bg";
-  };
-
-  const renderOption = (option: { value: DeadlineMode; label: string; tone: "danger" | "warning" | "primary" }) => (
-    <button
-      key={option.value}
-      type="button"
-      onClick={() => onChange(option.value)}
-      className={`flex min-h-8 items-center justify-between gap-2 rounded-control border px-2 py-1 text-xs font-semibold transition-colors ${optionClass(option.value, option.tone)}`}
-    >
-      <span>{option.label}</span>
-      <span className="tabular-nums opacity-75">{formatInteger(counts[option.value])}</span>
-    </button>
-  );
-
   return (
     <div className="rounded-control border border-raport-border bg-raport-surface-soft p-2">
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-semibold text-raport-muted">Быстрый фокус</span>
-        <button
-          type="button"
-          onClick={() => onChange("all")}
-          className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${
-            value === "all"
-              ? "border-raport-action-border bg-raport-action-bg-active text-raport-primary"
-              : "border-raport-border bg-white text-raport-muted hover:bg-raport-action-bg"
-          }`}
-        >
-          Все задания
-        </button>
+        <QuickFocusGroup
+          value={value}
+          options={[{ value: "all", label: "Все задания", count: formatInteger(counts.all) }]}
+          onChange={onChange}
+          variant="plain"
+        />
       </div>
       <div className="grid gap-2">
         <div className="grid gap-1">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-raport-muted">Просрочка</span>
-          <div className="grid grid-cols-3 gap-1">{overdueOptions.map(renderOption)}</div>
+          <QuickFocusGroup
+            value={value}
+            options={overdueOptions.map((option) => ({ ...option, count: formatInteger(counts[option.value]) }))}
+            onChange={onChange}
+            columnsClassName="grid-cols-3"
+            variant="plain"
+          />
         </div>
         <div className="grid gap-1">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-raport-muted">Дедлайн</span>
-          <div className="grid grid-cols-2 gap-1">{deadlineOptions.map(renderOption)}</div>
+          <QuickFocusGroup
+            value={value}
+            options={deadlineOptions.map((option) => ({ ...option, count: formatInteger(counts[option.value]) }))}
+            onChange={onChange}
+            columnsClassName="grid-cols-2"
+            variant="plain"
+          />
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ const variantClass: Record<BadgeVariant, string> = {
   accent: "border border-raport-action-border bg-raport-action-bg text-raport-primary",
   secondary: "border border-raport-border bg-raport-surface-soft text-raport-muted",
   success: "border border-raport-success-border bg-raport-success-muted text-raport-success",
-  warning: "border border-raport-warning-border bg-raport-warning-muted text-amber-900",
+  warning: "border border-raport-warning-border bg-raport-warning-muted text-raport-warning",
   danger: "border border-raport-danger-border bg-raport-danger-muted text-raport-danger",
 };
 

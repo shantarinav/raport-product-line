@@ -5,7 +5,7 @@ import { Activity } from "lucide-react";
 
 function LegendItem({ className, label }: { className: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-raport-border bg-white px-2 py-1 text-xs font-semibold text-raport-muted">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-raport-border bg-raport-surface px-2 py-1 text-xs font-semibold text-raport-muted">
       <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
       {label}
     </span>
@@ -40,18 +40,18 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
             Столбец — сколько заявок создано. Линия — доля выполненных SLA. Цвет столбца — уровень просрочек.
           </p>
           <div className="flex flex-wrap gap-2">
-            <LegendItem className="bg-blue-600" label="Мало просрочек (<20%)" />
-            <LegendItem className="bg-amber-500" label="Заметно просрочек (20–39%)" />
-            <LegendItem className="bg-red-500" label="Много просрочек (≥40%)" />
+            <LegendItem className="bg-raport-primary" label="Мало просрочек (<20%)" />
+            <LegendItem className="bg-raport-warning" label="Заметно просрочек (20–39%)" />
+            <LegendItem className="bg-raport-danger" label="Много просрочек (≥40%)" />
             <LegendItem className="bg-raport-primary" label="SLA выполнен" />
-            <LegendItem className="bg-emerald-500" label="Норма 95%" />
-            <LegendItem className="bg-amber-500" label={`Контроль ${controlPercent}%`} />
+            <LegendItem className="bg-raport-success" label="Норма 95%" />
+            <LegendItem className="bg-raport-warning" label={`Контроль ${controlPercent}%`} />
           </div>
-          <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-control bg-white">
+          <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-control bg-raport-surface">
             <text x={padding.left} y="18" className="fill-raport-muted text-[11px] font-bold">Заявки</text>
             <text x={width - padding.right} y="18" textAnchor="end" className="fill-raport-muted text-[11px] font-bold">SLA, %</text>
-            <line x1={padding.left} y1={padding.top + innerHeight} x2={width - padding.right} y2={padding.top + innerHeight} className="stroke-slate-200" />
-            <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerHeight} className="stroke-slate-200" />
+            <line x1={padding.left} y1={padding.top + innerHeight} x2={width - padding.right} y2={padding.top + innerHeight} className="stroke-raport-border" />
+            <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerHeight} className="stroke-raport-border" />
             <text x={padding.left - 8} y={padding.top + 4} textAnchor="end" className="fill-raport-muted text-[10px] font-semibold">{maxTotal}</text>
             <text x={padding.left - 8} y={padding.top + innerHeight + 4} textAnchor="end" className="fill-raport-muted text-[10px] font-semibold">0</text>
             {[0.5, controlRatio, healthyRatio].filter((v, i, a) => a.indexOf(v) === i).map((ratio) => (
@@ -61,12 +61,12 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
                 y1={padding.top + innerHeight - ratio * innerHeight}
                 x2={width - padding.right}
                 y2={padding.top + innerHeight - ratio * innerHeight}
-                className={ratio === healthyRatio ? "stroke-emerald-500" : ratio === controlRatio ? "stroke-amber-500" : "stroke-slate-200"}
+                className={ratio === healthyRatio ? "stroke-raport-success" : ratio === controlRatio ? "stroke-raport-warning" : "stroke-raport-border"}
                 strokeDasharray="4 4"
               />
             ))}
-            <text x={width - padding.right + 8} y={padding.top + innerHeight - healthyRatio * innerHeight + 4} className="fill-emerald-700 text-[10px] font-bold">95% норма</text>
-            <text x={width - padding.right + 8} y={padding.top + innerHeight - controlRatio * innerHeight + 4} className="fill-amber-900 text-[10px] font-bold">{controlPercent}% контроль</text>
+            <text x={width - padding.right + 8} y={padding.top + innerHeight - healthyRatio * innerHeight + 4} className="fill-raport-success text-[10px] font-bold">95% норма</text>
+            <text x={width - padding.right + 8} y={padding.top + innerHeight - controlRatio * innerHeight + 4} className="fill-raport-warning text-[10px] font-bold">{controlPercent}% контроль</text>
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + 2;
               const barHeight = (point.total / maxTotal) * innerHeight;
@@ -80,7 +80,7 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
                     width={barWidth}
                     height={barHeight}
                     rx="4"
-                    className={overdueRate >= 0.4 ? "fill-red-500" : overdueRate >= 0.2 ? "fill-amber-500" : "fill-blue-600"}
+                    className={overdueRate >= 0.4 ? "fill-raport-danger" : overdueRate >= 0.2 ? "fill-raport-warning" : "fill-raport-primary"}
                     opacity="0.82"
                   />
                   {index % labelStep === 0 || index === points.length - 1 ? (

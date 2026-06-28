@@ -17,10 +17,10 @@ export function RowNameButton({ text, onClick, className }: { text: string; onCl
 export function RankBadge({ rank, tone }: { rank: number; tone: "support" | "danger" | "warning" }) {
   const toneClass =
     tone === "support"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border-raport-success-border bg-raport-success-muted text-raport-success"
       : tone === "warning"
-        ? "border-amber-200 bg-amber-50 text-amber-900"
-        : "border-rose-200 bg-rose-50 text-rose-700";
+        ? "border-raport-warning-border bg-raport-warning-muted text-raport-warning"
+        : "border-raport-danger-border bg-raport-danger-muted text-raport-danger";
 
   return (
     <span
@@ -80,7 +80,7 @@ export function AutocompleteField({
         }}
       />
       {open && options.length > 0 ? (
-        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-white shadow-card">
+        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-control border border-raport-border bg-raport-surface shadow-card">
           {options.map((option) => (
             <button
               key={option}

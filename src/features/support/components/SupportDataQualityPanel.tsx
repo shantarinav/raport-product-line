@@ -11,7 +11,7 @@ function AnomalyList({ rows }: { rows: SupportTicket[] }) {
   return (
     <div className="grid gap-1">
       {rows.slice(0, 12).map((ticket) => (
-        <div key={ticket.id} className="grid gap-1 rounded-control border border-raport-border bg-white px-2 py-1 text-xs">
+        <div key={ticket.id} className="grid gap-1 rounded-control border border-raport-border bg-raport-surface px-2 py-1 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-bold text-raport-text">
               № {ticket.ticketNumber}
@@ -39,7 +39,7 @@ export function SupportDataQualityPanel({ summary }: { summary: SupportDataQuali
   if (issueCount === 0) {
     return (
       <SectionCard title="Аномалии и качество данных" description="Проверка обязательных SLA-полей и экстремальных значений." Icon={CheckCircle2}>
-        <div className="rounded-control border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+        <div className="rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm font-semibold text-raport-success">
           Проблем качества данных не найдено.
         </div>
       </SectionCard>
@@ -50,7 +50,7 @@ export function SupportDataQualityPanel({ summary }: { summary: SupportDataQuali
     <SectionCard title="Аномалии и качество данных" description="Строки, которые искажают расчет или требуют проверки." Icon={CircleX}>
       <div className="grid gap-3 md:grid-cols-4">
         {cards.map((card) => (
-          <div key={card.title} className="rounded-control border border-raport-border bg-white px-3 py-2">
+          <div key={card.title} className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">
             <strong className="block text-2xl font-extrabold text-raport-text">{card.rows.length}</strong>
             <span className="text-xs font-semibold text-raport-muted">{card.title}</span>
           </div>

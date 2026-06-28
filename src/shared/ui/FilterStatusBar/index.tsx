@@ -31,7 +31,7 @@ export function FilterStatusBar({ title = "Активные фильтры", chi
                 <button
                   type="button"
                   aria-label={`Убрать фильтр ${chip.label}`}
-                  className="ml-1 inline-flex rounded-full p-0.5 hover:bg-white/70"
+                  className="ml-1 inline-flex rounded-full p-0.5 hover:bg-raport-action-bg"
                   onClick={chip.onRemove}
                 >
                   <X className="h-3 w-3" strokeWidth={2} />

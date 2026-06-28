@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { BookOpen, Factory, FileSpreadsheet, Gauge, UploadCloud, Users, Wrench } from "lucide-react";
 
 import {
   DashboardHeader,
+  DashboardHeaderMark,
   DashboardSwitch,
   FilterPanel,
   FilterStatusBar,
+  HeaderIconButton,
   HelpLink,
   PageShell,
   SectionCard,
@@ -391,7 +393,7 @@ function insightStatus(ratio: number | null, targetRatio: number) {
   if (ratio === null) {
     return {
       label: "Нет расчета",
-      className: "border-slate-300 bg-slate-50 text-slate-700",
+      className: "border-raport-border bg-raport-surface-soft text-raport-muted",
     };
   }
 
@@ -399,20 +401,20 @@ function insightStatus(ratio: number | null, targetRatio: number) {
   if (tone === "high") {
     return {
       label: "Цель достигнута",
-      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      className: "border-raport-success-border bg-raport-success-muted text-raport-success",
     };
   }
 
   if (tone === "medium") {
     return {
       label: "Ниже цели",
-      className: "border-amber-200 bg-amber-50 text-amber-900",
+      className: "border-raport-warning-border bg-raport-warning-muted text-raport-warning",
     };
   }
 
   return {
     label: "Критично ниже цели",
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-raport-danger-border bg-raport-danger-muted text-raport-danger",
   };
 }
 
@@ -668,7 +670,7 @@ function SszDashboard({ report, initialViewMode, onViewModeChange }: { report: I
               <span className="text-xs font-semibold">цель: {filters.targetPercent}%</span>
               <span className="mt-1 block text-xs font-semibold">{mainInsightGap}</span>
             </div>
-            <div className="grid gap-2 rounded-control border border-raport-border bg-white px-4 py-3">
+            <div className="grid gap-2 rounded-control border border-raport-border bg-raport-surface px-4 py-3">
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Где теряется технология</p>
               {mainInsightPoints.map((point) => (
                 <div key={point} className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
@@ -864,11 +866,9 @@ export function SszDashboardPage() {
         className="mb-3"
         title={
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-              <FileSpreadsheet className="h-6 w-6" strokeWidth={2.3} />
-            </span>
+            <DashboardHeaderMark Icon={FileSpreadsheet} />
             <div className="min-w-0">
-              <span className="block truncate text-2xl font-extrabold text-slate-900 md:text-3xl">Рапорт</span>
+              <span className="block truncate text-2xl font-extrabold text-raport-text md:text-3xl">Рапорт</span>
               <span className="mt-1 block text-sm font-bold text-raport-primary">Excel докладывает главное</span>
             </div>
           </div>
@@ -877,23 +877,13 @@ export function SszDashboardPage() {
         actions={(themeToggle) => (
           <div className="grid w-full min-w-0 max-w-[430px] justify-items-end gap-2 sm:min-w-[320px]">
             <div className="flex w-full items-center justify-end gap-2">
-              <Link
-                to="/"
-                title="Заменить отчет"
-                aria-label="Заменить отчет"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-              >
+              <HeaderIconButton to="/" title="Заменить отчет">
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
-              </Link>
+              </HeaderIconButton>
               {headerViewMode === "analyst" ? (
-                <Link
-                  to="/a3?dashboard=ssz"
-                  title="Открыть журнал A3-разборов"
-                  aria-label="Открыть журнал A3-разборов"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border border-raport-action-border bg-raport-action-bg text-raport-primary transition-colors hover:bg-raport-action-bg-active"
-                >
+                <HeaderIconButton to="/a3?dashboard=ssz" title="Открыть журнал A3-разборов">
                   <BookOpen className="h-4 w-4 shrink-0" strokeWidth={2} />
-                </Link>
+                </HeaderIconButton>
               ) : null}
               <HelpLink />
               {themeToggle}
@@ -905,7 +895,7 @@ export function SszDashboardPage() {
                 </p>
                 <p className="truncate">{formatReportPeriod(report.period)} · загружен {formatImportedAt(report.importedAt)}</p>
                 {report.warnings.length > 0 ? (
-                  <p className="mt-1 text-amber-900">
+                  <p className="mt-1 text-raport-warning">
                     Предупреждений: {report.warnings.length.toLocaleString("ru-RU")}
                   </p>
                 ) : null}

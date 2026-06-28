@@ -1,5 +1,6 @@
 export { PageShell } from "./PageShell";
 export { DashboardHeader } from "./DashboardHeader";
+export { DashboardHeaderMark } from "./DashboardHeaderMark";
 export { FileDropZone } from "./FileDropZone";
 export { MetricCard } from "./MetricCard";
 export { SectionCard } from "./SectionCard";
@@ -11,3 +12,9 @@ export { ChartCard } from "./ChartCard";
 export { ErrorState } from "./ErrorState";
 export { IconLabel } from "./IconLabel";
 export { HelpLink } from "./HelpLink";
+export { HeaderIconButton } from "./HeaderIconButton";
+export { IconActionButton } from "./IconActionButton";
+export { ButtonLink } from "./ButtonLink";
+export { QuickFocusGroup } from "./QuickFocusGroup";
+export type { QuickFocusOption } from "./QuickFocusGroup";
+export { SegmentedControl } from "./SegmentedControl";

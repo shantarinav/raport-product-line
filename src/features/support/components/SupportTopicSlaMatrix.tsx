@@ -41,15 +41,15 @@ export function SupportTopicSlaMatrix({
             Каждая строка — категория обращений. Полоса показывает состав заявок: в SLA, нарушено, нет расчета.
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <span className="h-2.5 w-2.5 rounded-full bg-raport-success" />
             В SLA
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="h-2.5 w-2.5 rounded-full bg-raport-danger" />
             Нарушен SLA
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
-            <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
+            <span className="h-2.5 w-2.5 rounded-full bg-raport-neutral" />
             Нет расчета SLA
           </span>
           <span className="basis-full text-[11px] font-semibold text-raport-muted">
@@ -68,7 +68,7 @@ export function SupportTopicSlaMatrix({
             return (
               <article
                 key={row.category}
-                className="grid gap-2 rounded-control border border-raport-border bg-white px-3 py-2 text-left"
+                className="grid gap-2 rounded-control border border-raport-border bg-raport-surface px-3 py-2 text-left"
               >
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                   <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2">
@@ -103,12 +103,12 @@ export function SupportTopicSlaMatrix({
                   <svg
                     viewBox="0 0 100 14"
                     preserveAspectRatio="none"
-                    className="h-4 w-full overflow-hidden rounded-full bg-slate-500 ring-1 ring-slate-200"
+                    className="h-4 w-full overflow-hidden rounded-full bg-raport-surface-soft ring-1 ring-raport-border"
                     aria-hidden="true"
                   >
-                    <rect x="0" y="0" width="100" height="14" className="fill-slate-500" />
-                    <rect x="0" y="0" width={inSlaWidth} height="14" className="fill-emerald-500" />
-                    <rect x={overdueX} y="0" width={overdueWidth} height="14" className="fill-red-500" />
+                    <rect x="0" y="0" width="100" height="14" className="fill-raport-neutral" />
+                    <rect x="0" y="0" width={inSlaWidth} height="14" className="fill-raport-success" />
+                    <rect x={overdueX} y="0" width={overdueWidth} height="14" className="fill-raport-danger" />
                   </svg>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-raport-muted">
                     <span>
@@ -116,13 +116,13 @@ export function SupportTopicSlaMatrix({
                       <strong className="text-raport-text">{row.applicable}</strong>
                       {row.dataProblems > 0 ? (
                         <>
-                          {" "}· без расчета: <strong className="text-slate-700">{row.dataProblems}</strong>
+                          {" "}· без расчета: <strong className="text-raport-muted">{row.dataProblems}</strong>
                         </>
                       ) : null}
                     </span>
                     <span>
-                      В SLA: <strong className="text-emerald-700">{row.inSla}</strong> · Нарушено:{" "}
-                      <strong className="text-red-700">{row.overdue}</strong>
+                      В SLA: <strong className="text-raport-success">{row.inSla}</strong> · Нарушено:{" "}
+                      <strong className="text-raport-danger">{row.overdue}</strong>
                     </span>
                   </div>
                 </div>

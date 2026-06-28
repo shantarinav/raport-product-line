@@ -36,6 +36,7 @@ import {
   usePrintAiSettings,
 } from "../../../shared/lib/printAiSettings";
 import { cn } from "../../../shared/ui/cn";
+import { IconActionButton, SegmentedControl } from "../../../shared/ui";
 
 const DASHBOARD_TYPES: DashboardType[] = ["ssz", "tessa", "print", "support"];
 
@@ -54,6 +55,12 @@ type HistoryState = {
 };
 
 type SettingsTab = "user" | "admin" | "history";
+
+const SETTINGS_TAB_OPTIONS = [
+  { value: "user", label: "Пользователь", Icon: ShieldCheck },
+  { value: "admin", label: "Администратор", Icon: Server },
+  { value: "history", label: "История", Icon: Database },
+] as const;
 
 function formatDate(value: string): string {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -129,7 +136,7 @@ function SettingCard({
                 className={cn(
                   "rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]",
                   isEnabled
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    ? "border-raport-success-border bg-raport-success-muted text-raport-success"
                     : "border-raport-border bg-raport-surface text-raport-muted",
                 )}
               >
@@ -140,48 +147,31 @@ function SettingCard({
           </div>
         </div>
       </div>
-      <div
-        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-raport-border bg-raport-surface p-1 justify-self-start sm:justify-self-end"
-        role="group"
-        aria-label={title}
-        title={isEnabled ? disableLabel : enableLabel}
-      >
-        <button
-          type="button"
-          className={cn(
-            "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
-            !isEnabled && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-          )}
-          aria-label={disableLabel}
-          aria-pressed={!isEnabled}
-          onClick={onDisable}
-        >
-          <CircleOff className="h-4 w-4" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex h-7 w-8 items-center justify-center rounded-full text-raport-muted transition-colors hover:bg-raport-surface-elevated hover:text-raport-text",
-            isEnabled && "bg-raport-action-bg-active text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)]",
-          )}
-          aria-label={enableLabel}
-          aria-pressed={isEnabled}
-          onClick={onEnable}
-        >
-          {icon}
-        </button>
-      </div>
+      <SegmentedControl
+        value={isEnabled ? "enabled" : "disabled"}
+        options={[
+          { value: "disabled", label: "", Icon: CircleOff, title: disableLabel },
+          { value: "enabled", label: "", Icon: Bot, title: enableLabel },
+        ]}
+        onChange={(value) => {
+          if (value === "enabled") onEnable();
+          else onDisable();
+        }}
+        ariaLabel={title}
+        size="sm"
+        className="shrink-0 justify-self-start sm:justify-self-end"
+      />
     </div>
   );
 }
 
 function healthBadgeClass(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
-  if (isChecking) return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-300";
+  if (isChecking) return "border-raport-action-border bg-raport-action-bg text-raport-primary";
   if (!isEnabled) return "border-raport-border bg-raport-surface text-raport-muted";
-  if (!result) return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300";
-  if (result.status === "available") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300";
-  if (result.status === "disabled") return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300";
-  return "border-red-200 bg-red-50 text-red-700 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-300";
+  if (!result) return "border-raport-warning-border bg-raport-warning-muted text-raport-warning";
+  if (result.status === "available") return "border-raport-success-border bg-raport-success-muted text-raport-success";
+  if (result.status === "disabled") return "border-raport-warning-border bg-raport-warning-muted text-raport-warning";
+  return "border-raport-danger-border bg-raport-danger-muted text-raport-danger";
 }
 
 function healthLabel(result: PrintAiHealthResult | null, isChecking: boolean, isEnabled: boolean): string {
@@ -400,50 +390,23 @@ export function HistoryManager() {
 
             <CardContent className="max-h-[calc(86vh-92px)] overflow-auto px-4 pb-4 pt-5">
               <div className="grid gap-4">
-                <div className="inline-flex w-full flex-wrap gap-1 rounded-control border border-raport-border bg-raport-surface-soft p-1 sm:w-fit">
-                  <button
-                    type="button"
-                    className={cn(
-                      "inline-flex min-h-9 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors",
-                      activeSettingsTab === "user"
-                        ? "bg-white text-raport-primary shadow-sm dark:bg-raport-surface-elevated"
-                        : "text-raport-muted hover:bg-white/70 hover:text-raport-text dark:hover:bg-raport-surface-elevated",
-                    )}
-                    onClick={() => setActiveSettingsTab("user")}
-                  >
-                    <ShieldCheck className="h-4 w-4" strokeWidth={2} />
-                    Пользователь
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "inline-flex min-h-9 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors",
-                      activeSettingsTab === "admin"
-                        ? "bg-white text-raport-primary shadow-sm dark:bg-raport-surface-elevated"
-                        : "text-raport-muted hover:bg-white/70 hover:text-raport-text dark:hover:bg-raport-surface-elevated",
-                    )}
-                    onClick={() => setActiveSettingsTab("admin")}
-                  >
-                    <Server className="h-4 w-4" strokeWidth={2} />
-                    Администратор
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "inline-flex min-h-9 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors",
-                      activeSettingsTab === "history"
-                        ? "bg-white text-raport-primary shadow-sm dark:bg-raport-surface-elevated"
-                        : "text-raport-muted hover:bg-white/70 hover:text-raport-text dark:hover:bg-raport-surface-elevated",
-                    )}
-                    onClick={() => setActiveSettingsTab("history")}
-                  >
-                    <Database className="h-4 w-4" strokeWidth={2} />
-                    История
-                    <Badge variant="secondary" className="min-h-4 px-1.5 py-0 text-[10px]">
-                      {totalSnapshots}
-                    </Badge>
-                  </button>
-                </div>
+                <SegmentedControl
+                  value={activeSettingsTab}
+                  options={SETTINGS_TAB_OPTIONS.map((option) =>
+                    option.value === "history"
+                      ? {
+                          ...option,
+                          badge: (
+                            <Badge variant="secondary" className="min-h-4 px-1.5 py-0 text-[10px]">
+                              {totalSnapshots}
+                            </Badge>
+                          ),
+                        }
+                      : option,
+                  )}
+                  onChange={(value) => setActiveSettingsTab(value)}
+                  ariaLabel="Раздел настроек Рапорта"
+                />
 
                 {activeSettingsTab === "user" ? (
                   <section className="rounded-control border border-raport-border bg-raport-surface p-4 shadow-sm">
@@ -590,7 +553,7 @@ export function HistoryManager() {
                       </div>
 
                       {printAiHealth && printAiHealth.status !== "available" ? (
-                        <p className="flex items-start gap-2 rounded-control border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300">
+                        <p className="flex items-start gap-2 rounded-control border border-raport-warning-border bg-raport-warning-muted px-3 py-2 text-xs font-semibold text-raport-warning">
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
                           {printAiUserMessage(printAiHealth, isCheckingPrintAi, printAiSettings.enabled)}
                         </p>
@@ -612,50 +575,44 @@ export function HistoryManager() {
                         Здесь можно проверить, какие месячные KPI сохранены локально, удалить отдельный период или очистить историю дашборда.
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="h-9 w-9 rounded-full border-raport-action-border bg-raport-action-bg px-0 py-0 text-raport-primary shadow-[inset_0_0_0_1px_var(--raport-action-border)] hover:bg-raport-action-bg-active hover:text-raport-primary"
+                    <IconActionButton
                       aria-label="Обновить месячные снимки KPI"
                       title="Обновить месячные снимки KPI"
                       onClick={() => void loadHistory()}
                     >
                       <RefreshCcw className="h-4 w-4" strokeWidth={2} />
-                    </Button>
+                    </IconActionButton>
                   </div>
 
-                  <div className="inline-flex w-full flex-wrap gap-1 rounded-control border border-raport-border bg-raport-surface p-1 sm:w-fit">
-                    {DASHBOARD_TYPES.map((dashboardType) => (
-                      <button
-                        key={dashboardType}
-                        type="button"
-                        className={cn(
-                          "inline-flex min-h-8 items-center gap-2 rounded-control px-3 text-sm font-semibold transition-colors",
-                          activeType === dashboardType
-                            ? "bg-white text-raport-primary shadow-sm dark:bg-raport-surface-elevated"
-                            : "text-raport-muted hover:bg-white/70 hover:text-raport-text dark:hover:bg-raport-surface-elevated",
-                        )}
-                        onClick={() => setActiveType(dashboardType)}
-                      >
-                        {DASHBOARD_LABELS[dashboardType]}
+                  <SegmentedControl
+                    value={activeType}
+                    options={DASHBOARD_TYPES.map((dashboardType) => ({
+                      value: dashboardType,
+                      label: DASHBOARD_LABELS[dashboardType],
+                      badge: (
                         <Badge variant="secondary" className="min-h-4 px-1.5 py-0 text-[10px]">
                           {grouped[dashboardType].length}
                         </Badge>
-                      </button>
-                    ))}
-                  </div>
+                      ),
+                    }))}
+                    onChange={setActiveType}
+                    ariaLabel="Дашборд локальной истории"
+                    size="sm"
+                    className="bg-raport-surface"
+                  />
 
-                  {state.error ? <p className="text-sm font-semibold text-red-700">{state.error}</p> : null}
+                  {state.error ? <p className="text-sm font-semibold text-raport-danger">{state.error}</p> : null}
                   {state.isLoading ? <p className="text-sm text-raport-muted">Проверяем сохраненные месячные KPI...</p> : null}
 
                   {!state.isLoading && state.hasLoaded && activeSnapshots.length === 0 ? (
-                    <div className="rounded-control border border-dashed border-raport-border bg-white px-3 py-4 text-sm text-raport-muted dark:bg-raport-surface">
+                    <div className="rounded-control border border-dashed border-raport-border bg-raport-surface px-3 py-4 text-sm text-raport-muted">
                       Для {DASHBOARD_LABELS[activeType]} пока нет сохраненных месячных KPI.
                     </div>
                   ) : null}
 
                   {!state.isLoading && activeSnapshots.length > 0 ? (
                     <div className="grid gap-2">
-                      <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white dark:bg-raport-surface">
+                      <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-raport-surface">
                         {visibleSnapshots.map((snapshot) => (
                           <div key={snapshot.id} className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                             <div className="grid min-w-0 gap-1 sm:grid-cols-[minmax(150px,220px)_minmax(0,1fr)_auto] sm:items-center">
@@ -664,8 +621,8 @@ export function HistoryManager() {
                               <p className="text-xs font-semibold text-raport-muted sm:text-right">{formatDateTime(snapshot.meta.savedAt)}</p>
                             </div>
                             <Button
-                              variant="ghost"
-                              className="h-9 w-9 justify-self-start px-0 py-0 text-red-600 hover:bg-red-50 sm:justify-self-end dark:hover:bg-red-950/30"
+                              variant="destructive"
+                              className="h-9 w-9 justify-self-start px-0 py-0 sm:justify-self-end"
                               aria-label={`Удалить снимок ${periodLabel(snapshot)}`}
                               onClick={() => void handleDeleteSnapshot(snapshot.id)}
                             >
@@ -677,7 +634,7 @@ export function HistoryManager() {
                           <div className="bg-raport-surface-soft p-1">
                             <Button
                               variant="ghost"
-                              className="h-8 w-full text-xs text-raport-muted hover:bg-white hover:text-raport-text dark:hover:bg-raport-surface-elevated"
+                              className="h-8 w-full text-xs text-raport-muted hover:bg-raport-surface-elevated hover:text-raport-text"
                               onClick={() => setShowAll(true)}
                             >
                               Показать еще {hiddenCount}

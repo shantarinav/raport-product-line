@@ -39,8 +39,8 @@ const targetMarkerClassByStep: Record<number, string> = {
 };
 
 const deltaTextClass: Record<MetricDelta["variant"], string> = {
-  success: "text-emerald-700",
-  danger: "text-red-700",
+  success: "text-raport-success",
+  danger: "text-raport-danger",
   secondary: "text-raport-muted",
 };
 
@@ -177,11 +177,11 @@ function ProgressStrip({
         <progress
           max={100}
           value={safeValue}
-          className={`h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 ${barClass}`}
+          className={`h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-raport-progress-track ${barClass}`}
         />
         {showTargetMarker ? (
           <span
-            className={`absolute top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-slate-500/70 ${targetMarkerClassByStep[targetStep] ?? "left-[70%]"}`}
+            className={`absolute top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-raport-muted ${targetMarkerClassByStep[targetStep] ?? "left-[70%]"}`}
             aria-hidden
           />
         ) : null}
@@ -288,7 +288,7 @@ export function MasterLeaderboardCard({
       {visibleRows.length === 0 ? (
         <p className="text-sm text-raport-muted">Нет данных для текущей выборки.</p>
       ) : (
-        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white px-3">
+        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-raport-surface px-3">
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px_86px_74px] items-center gap-2 py-1.5 text-[10px] font-semibold leading-3 text-raport-muted">
             <span className="pl-10">ФИО</span>
             <span className="text-right">{ratioHeader}</span>
@@ -387,7 +387,7 @@ export function TechnologyBoardCard({
       {visibleRows.length === 0 ? (
         <p className="text-sm text-raport-muted">Нет данных для текущей выборки.</p>
       ) : layout === "compact-list" ? (
-        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-white px-3">
+        <div className="divide-y divide-raport-border rounded-control border border-raport-border bg-raport-surface px-3">
           {visibleRows.map((row) => (
             <div key={row.key} className="py-1.5">
               <div className="grid gap-1">
