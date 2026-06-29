@@ -6,7 +6,7 @@ import type { SupportFilters } from "../supportTypes";
 
 function ControlTarget({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   function applyValue(nextValue: number) {
-    onChange(Math.max(0, Math.min(95, Math.round(nextValue))));
+    onChange(Math.max(0, Math.min(90, Math.round(nextValue))));
   }
 
   return (
@@ -14,7 +14,7 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
       <Input
         type="number"
         min={0}
-        max={95}
+        max={90}
         value={value}
         className="min-h-10 !w-14 px-1 text-center text-base font-semibold"
         aria-label="Цель контроля SLA в процентах"
@@ -23,7 +23,7 @@ function ControlTarget({ value, onChange }: { value: number; onChange: (value: n
       <input
         type="range"
         min={0}
-        max={95}
+        max={90}
         step={5}
         value={value}
         className="h-2 w-full min-w-0 cursor-pointer accent-raport-primary"
@@ -47,6 +47,7 @@ export function SupportFiltersPanel({
   dateMax,
   onChange,
   onReset,
+  priorityOptions = [],
   showAdvancedFilters = true,
 }: {
   filters: SupportFilters;
@@ -54,6 +55,7 @@ export function SupportFiltersPanel({
   dateMax: string;
   onChange: (patch: Partial<SupportFilters>) => void;
   onReset: () => void;
+  priorityOptions?: string[];
   showAdvancedFilters?: boolean;
 }) {
   return (
@@ -103,6 +105,17 @@ export function SupportFiltersPanel({
         </label>
         {showAdvancedFilters ? (
           <>
+            {priorityOptions.length > 0 ? (
+              <label className="grid gap-1">
+                <span className="text-xs text-raport-muted">Приоритет</span>
+                <Select value={filters.priorityLabel} onChange={(event) => onChange({ priorityLabel: event.target.value })}>
+                  <option value="">Все приоритеты</option>
+                  {priorityOptions.map((priority) => (
+                    <option key={priority} value={priority}>{priority}</option>
+                  ))}
+                </Select>
+              </label>
+            ) : null}
             <label className="grid gap-1">
               <span className="text-xs text-raport-muted">Плановый срок SLA</span>
               <Select value={filters.planBucket} onChange={(event) => onChange({ planBucket: event.target.value as SupportFilters["planBucket"] })}>

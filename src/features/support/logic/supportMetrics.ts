@@ -6,6 +6,7 @@ import type {
   SupportKpis,
   SupportPlanBucketStat,
   SupportQuantiles,
+  SupportTimeFlowQuantiles,
   SupportTicket,
   SupportTopicSlaStat,
 } from "../supportTypes";
@@ -39,6 +40,10 @@ export function formatSupportHours(value: number | null): string {
   return `${value.toLocaleString("ru-RU", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} ч`;
 }
 
+function hasVisibleOverdueHours(ticket: SupportTicket): boolean {
+  return ticket.slaStatus === "Нарушен SLA" && Math.round(ticket.overdueHours * 10) / 10 > 0;
+}
+
 export function dateInputValue(date: Date | null): string {
   if (!date) return "";
   const year = date.getFullYear();
@@ -65,6 +70,7 @@ export function initialSupportFilters(tickets: SupportTicket[] = []): SupportFil
     dateTo: dateInputValue(maxDate),
     controlPercent: SUPPORT_THRESHOLDS.controlSlaPercent,
     slaStatus: "",
+    priorityLabel: "",
     planBucket: "",
     category: "",
     query: "",
@@ -92,6 +98,7 @@ export function applySupportFilters(tickets: SupportTicket[], filters: SupportFi
     if (dateFrom && (!ticket.createdAt || ticket.createdAt.getTime() < dateFrom.getTime())) return false;
     if (dateTo && (!ticket.createdAt || ticket.createdAt.getTime() > dateTo.getTime())) return false;
     if (filters.slaStatus && ticket.slaStatus !== filters.slaStatus) return false;
+    if (filters.priorityLabel && ticket.priorityLabel !== filters.priorityLabel) return false;
     if (filters.planBucket && ticket.planBucket !== filters.planBucket) return false;
     if (filters.category && ticket.category !== filters.category) return false;
     if (query) {
@@ -106,6 +113,7 @@ export function calculateSupportKpis(tickets: SupportTicket[]): SupportKpis {
   const applicable = tickets.filter((ticket) => ticket.slaApplicable);
   const inSlaTickets = applicable.filter((ticket) => ticket.slaStatus === "В SLA").length;
   const overdueTickets = applicable.filter((ticket) => ticket.slaStatus === "Нарушен SLA").length;
+  const openTickets = tickets.filter((ticket) => ticket.slaStatus === "В работе").length;
   const dataProblems = tickets.filter((ticket) => ticket.slaStatus === "Нет SLA_plan" || ticket.slaStatus === "Нет SLA_fact").length;
 
   return {
@@ -113,6 +121,7 @@ export function calculateSupportKpis(tickets: SupportTicket[]): SupportKpis {
     applicableTickets: applicable.length,
     inSlaTickets,
     overdueTickets,
+    openTickets,
     dataProblems,
     slaRate: applicable.length > 0 ? inSlaTickets / applicable.length : 0,
     overdueRate: applicable.length > 0 ? overdueTickets / applicable.length : 0,
@@ -148,8 +157,17 @@ export function resolutionQuantiles(tickets: SupportTicket[]): SupportQuantiles 
   );
 }
 
+export function supportTimeFlowQuantiles(tickets: SupportTicket[]): SupportTimeFlowQuantiles {
+  const closedTickets = tickets.filter((ticket) => ticket.slaFact);
+  return {
+    totalResolution: calculateQuantiles(closedTickets.flatMap((ticket) => (ticket.fullTimeHours !== null ? [ticket.fullTimeHours] : []))),
+    workTime: calculateQuantiles(closedTickets.flatMap((ticket) => (ticket.slaWorkHours !== null ? [ticket.slaWorkHours] : []))),
+    waiting: calculateQuantiles(closedTickets.flatMap((ticket) => (ticket.waitingHours !== null ? [ticket.waitingHours] : []))),
+  };
+}
+
 export function overdueQuantiles(tickets: SupportTicket[]): SupportQuantiles {
-  return calculateQuantiles(tickets.flatMap((ticket) => (ticket.slaStatus === "Нарушен SLA" ? [ticket.overdueHours] : [])));
+  return calculateQuantiles(tickets.flatMap((ticket) => (hasVisibleOverdueHours(ticket) ? [ticket.overdueHours] : [])));
 }
 
 function dateKey(date: Date): string {
@@ -175,6 +193,7 @@ export function buildDailySla(tickets: SupportTicket[]): SupportDailyPoint[] {
         applicable: kpis.applicableTickets,
         inSla: kpis.inSlaTickets,
         overdue: kpis.overdueTickets,
+        open: kpis.openTickets,
         slaRate: kpis.slaRate,
       };
     });
@@ -193,6 +212,8 @@ export function buildTopicSlaStats(tickets: SupportTicket[]): SupportTopicSlaSta
       const applicable = items.filter((ticket) => ticket.slaApplicable).length;
       const overdue = items.filter((ticket) => ticket.slaStatus === "Нарушен SLA").length;
       const inSla = items.filter((ticket) => ticket.slaStatus === "В SLA").length;
+      const open = items.filter((ticket) => ticket.slaStatus === "В работе").length;
+      const dataProblems = items.filter((ticket) => ticket.slaStatus === "Нет SLA_plan" || ticket.slaStatus === "Нет SLA_fact").length;
       const intensityRate = total / maxTotal;
       const intensity: SupportTopicSlaStat["intensity"] = intensityRate >= 0.67 ? "высокая" : intensityRate >= 0.34 ? "средняя" : "низкая";
 
@@ -202,7 +223,8 @@ export function buildTopicSlaStats(tickets: SupportTicket[]): SupportTopicSlaSta
         applicable,
         inSla,
         overdue,
-        dataProblems: total - applicable,
+        open,
+        dataProblems,
         slaRate: applicable > 0 ? inSla / applicable : 0,
         violationRate: applicable > 0 ? overdue / applicable : 0,
         intensity,
@@ -234,7 +256,7 @@ export function buildPlanBucketStats(tickets: SupportTicket[]): SupportPlanBucke
 
 export function buildOverdueTail(tickets: SupportTicket[], limit = 10): SupportTicket[] {
   return tickets
-    .filter((ticket) => ticket.slaStatus === "Нарушен SLA")
+    .filter(hasVisibleOverdueHours)
     .sort((a, b) => b.overdueHours - a.overdueHours)
     .slice(0, limit);
 }
@@ -244,6 +266,7 @@ export function buildDataQualitySummary(tickets: SupportTicket[], filters: Suppo
   return {
     missingPlan: tickets.filter((ticket) => ticket.slaStatus === "Нет SLA_plan"),
     missingFact: tickets.filter((ticket) => ticket.slaStatus === "Нет SLA_fact"),
+    openTickets: tickets.filter((ticket) => ticket.slaStatus === "В работе"),
     extremeOverdue: tickets.filter((ticket) => ticket.overdueHours > SUPPORT_THRESHOLDS.extremeOverdueHours),
     closedAfterPeriod: tickets.filter((ticket) => Boolean(periodEnd && ticket.slaFact && ticket.slaFact.getTime() > periodEnd.getTime())),
   };

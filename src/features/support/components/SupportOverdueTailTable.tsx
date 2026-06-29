@@ -16,8 +16,8 @@ export function SupportOverdueTailTable({
 }) {
   return (
     <SectionCard
-      title="Хвост просрочек"
-      description={`Самые тяжелые нарушения SLA по времени просрочки. Показано: ${limit}.`}
+      title="Самые долгие нарушения SLA"
+      description="Где срок закрытия был превышен сильнее всего."
       Icon={AlertTriangle}
       actions={
         <DashboardSwitch
@@ -31,45 +31,55 @@ export function SupportOverdueTailTable({
         />
       }
     >
-      <p className="mb-3 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2 text-xs font-semibold text-raport-muted">
-        Критично = просрочка выше установленного порога.
-      </p>
       <DataTable
         rows={rows}
         rowKey={(row) => row.id}
         emptyText="Нет просроченных заявок по выбранным фильтрам."
         columns={[
           {
-            key: "ticketNumber",
-            header: "№",
-            cell: (row) => <span className="font-bold tabular-nums text-raport-text">{row.ticketNumber}</span>,
-            className: "whitespace-nowrap",
-          },
-          {
             key: "topic",
-            header: "Тема",
+            header: "Проблема",
             cell: (row) => (
-              <div className="grid max-w-[320px] gap-1">
-                <span className="truncate font-semibold text-raport-text" title={row.topic}>
+              <div className="grid max-w-[460px] gap-1">
+                <span className="line-clamp-2 font-semibold leading-snug text-raport-text" title={row.topic}>
                   {row.topic}
                 </span>
-                <span className="truncate text-xs text-raport-muted" title={row.category}>
-                  {row.category}
+                <span className="truncate text-xs font-semibold text-raport-muted" title={`${row.category} · № ${row.ticketNumber}`}>
+                  {row.category} · № {row.ticketNumber}
                 </span>
               </div>
             ),
           },
-          { key: "createdAt", header: "Создана", cell: (row) => formatSupportDateTime(row.createdAt), className: "whitespace-nowrap text-xs" },
-          { key: "plan", header: "SLA_plan", cell: (row) => formatSupportDateTime(row.slaPlan), className: "whitespace-nowrap text-xs" },
-          { key: "fact", header: "SLA_fact", cell: (row) => formatSupportDateTime(row.slaFact), className: "whitespace-nowrap text-xs" },
-          { key: "bucket", header: "SLA-срок", cell: (row) => row.planBucket ?? "нет", className: "whitespace-nowrap" },
+          { key: "priority", header: "Приоритет", cell: (row) => row.priorityLabel ?? row.planBucket ?? "нет", className: "whitespace-nowrap" },
+          {
+            key: "planFact",
+            header: "План / факт",
+            cell: (row) => (
+              <div className="grid gap-1 text-xs">
+                <span className="whitespace-nowrap text-raport-muted">план: {formatSupportDateTime(row.slaPlan)}</span>
+                <span className="whitespace-nowrap text-raport-text">факт: {formatSupportDateTime(row.slaFact)}</span>
+              </div>
+            ),
+            className: "whitespace-nowrap",
+          },
+          {
+            key: "time",
+            header: "Время решения",
+            cell: (row) => (
+              <div className="grid gap-1 text-right text-xs">
+                <span className="whitespace-nowrap text-raport-text">всего {formatSupportHours(row.fullTimeHours)}</span>
+                <span className="whitespace-nowrap text-raport-muted">чистое {formatSupportHours(row.slaWorkHours)}</span>
+              </div>
+            ),
+            className: "whitespace-nowrap text-right",
+          },
           {
             key: "overdue",
             header: "Просрочка",
             cell: (row) => (
-              <div className="flex items-center justify-end gap-1">
+              <div className="grid justify-items-end gap-1">
+                <strong className="text-base font-extrabold tabular-nums text-raport-danger">{formatSupportHours(row.overdueHours)}</strong>
                 {row.overdueHours > SUPPORT_THRESHOLDS.extremeOverdueHours ? <Badge variant="danger">Критично</Badge> : null}
-                <strong className="tabular-nums">{formatSupportHours(row.overdueHours)}</strong>
               </div>
             ),
             className: "whitespace-nowrap text-right",

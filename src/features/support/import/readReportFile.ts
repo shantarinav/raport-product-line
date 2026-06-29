@@ -1,6 +1,15 @@
 import { classifySupportTopic } from "../logic/supportClassifier";
 import { SUPPORT_MAX_PARSE_ROWS, SUPPORT_OVERDUE_BUCKETS, SUPPORT_PLAN_BUCKETS, SUPPORT_REQUIRED_COLUMNS } from "../supportConfig";
-import type { SupportImportResult, SupportOverdueBucket, SupportPlanBucket, SupportRawRecord, SupportSlaStatus, SupportTicket } from "../supportTypes";
+import type {
+  SupportImportResult,
+  SupportOverdueBucket,
+  SupportPlanBucket,
+  SupportRawRecord,
+  SupportReportFormat,
+  SupportSlaStatus,
+  SupportSourceSlaStatus,
+  SupportTicket,
+} from "../supportTypes";
 import { readFileArrayBuffer, readFileText } from "../../../shared/fileReadCache";
 
 type HeaderMap = Partial<Record<keyof SupportRawRecord, number>>;
@@ -23,6 +32,10 @@ function headerKey(value: string): keyof SupportRawRecord | null {
   if (["датасоздания", "создана", "createdat", "created", "createddate"].includes(normalized)) return "createdAtRaw";
   if (["slaplan", "slaplanned", "plan", "планsla"].includes(normalized)) return "slaPlanRaw";
   if (["slafact", "slafactual", "fact", "фактsla"].includes(normalized)) return "slaFactRaw";
+  if (["slaworktime", "worktime", "рабочеевремяsla", "чистоевремяsla"].includes(normalized)) return "slaWorkTimeRaw";
+  if (["приоритет", "priority"].includes(normalized)) return "priorityRaw";
+  if (["выполнениеsla", "статусsla", "slaresolution", "slastatus"].includes(normalized)) return "sourceSlaStatusRaw";
+  if (["fulltime", "общевремя", "полноевремя"].includes(normalized)) return "fullTimeRaw";
   return null;
 }
 
@@ -102,6 +115,62 @@ function hoursBetween(from: Date | null, to: Date | null): number | null {
   return Math.round(((to.getTime() - from.getTime()) / 3_600_000) * 10) / 10;
 }
 
+function nullLike(value: unknown): boolean {
+  const raw = String(value ?? "").trim().toLowerCase();
+  return raw === "" || raw === "null" || raw === "(null)";
+}
+
+function roundHours(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function parseDurationHours(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return roundHours(value * 24);
+  if (nullLike(value)) return null;
+
+  const raw = String(value ?? "").trim().replace(",", ".");
+  const timeMatch = raw.match(/^(-)?(\d{1,4}):(\d{2})(?::(\d{2}))?$/);
+  if (timeMatch) {
+    const sign = timeMatch[1] ? -1 : 1;
+    const hours = Number(timeMatch[2]);
+    const minutes = Number(timeMatch[3]);
+    const seconds = Number(timeMatch[4] ?? "0");
+    return roundHours(sign * (hours + minutes / 60 + seconds / 3600));
+  }
+
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? roundHours(numeric) : null;
+}
+
+function normalizeSourceSlaStatus(value: unknown): SupportSourceSlaStatus | null {
+  if (nullLike(value)) return null;
+  const normalized = String(value).trim().toLowerCase().replace(/ё/g, "е");
+  if (normalized.includes("в работе")) return "В работе";
+  if (normalized.includes("превыш")) return "Превышен";
+  if (normalized.includes("выполн")) return "Выполнен";
+  return null;
+}
+
+function slaStatusFromSource(sourceSlaStatus: SupportSourceSlaStatus | null, slaPlan: Date | null, slaFact: Date | null): SupportSlaStatus {
+  if (sourceSlaStatus === "В работе") return "В работе";
+  if (sourceSlaStatus === "Превышен") return "Нарушен SLA";
+  if (sourceSlaStatus === "Выполнен") return "В SLA";
+  return slaStatus(slaPlan, slaFact);
+}
+
+function parsePriority(value: unknown): { label: string | null; level: number | null; hours: number | null } {
+  if (nullLike(value)) return { label: null, level: null, hours: null };
+  const label = String(value).trim();
+  const normalized = label.toLowerCase().replace(",", ".").replace(/ё/g, "е");
+  const levelMatch = normalized.match(/приоритет\s*(\d+)/);
+  const hoursMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:ч|час)/);
+  return {
+    label,
+    level: levelMatch ? Number(levelMatch[1]) : null,
+    hours: hoursMatch ? Number(hoursMatch[1]) : null,
+  };
+}
+
 function planBucket(planHours: number | null): SupportPlanBucket | null {
   if (planHours === null) return null;
   return SUPPORT_PLAN_BUCKETS.find((bucket) => planHours <= bucket.maxHours)?.value ?? "4+ дня";
@@ -117,42 +186,66 @@ function slaStatus(slaPlan: Date | null, slaFact: Date | null): SupportSlaStatus
   return slaFact.getTime() <= slaPlan.getTime() ? "В SLA" : "Нарушен SLA";
 }
 
-function normalizeTicket(record: SupportRawRecord, index: number): SupportTicket {
+function normalizeTicket(record: SupportRawRecord, index: number, format: SupportReportFormat): SupportTicket {
   const createdAt = parseSupportDate(record.createdAtRaw);
   const slaPlan = parseSupportDate(record.slaPlanRaw);
   const slaFact = parseSupportDate(record.slaFactRaw);
-  const status = slaStatus(slaPlan, slaFact);
+  const sourceSlaStatus = normalizeSourceSlaStatus(record.sourceSlaStatusRaw);
+  const status = slaStatusFromSource(sourceSlaStatus, slaPlan, slaFact);
   const planHours = hoursBetween(createdAt, slaPlan);
-  const rawResolutionHours = hoursBetween(createdAt, slaFact);
+  const calendarResolutionHours = hoursBetween(createdAt, slaFact);
+  const fullTimeHours = calendarResolutionHours;
+  const slaWorkHours = parseDurationHours(record.slaWorkTimeRaw);
+  const priority = parsePriority(record.priorityRaw);
   const rawOverdueHours = hoursBetween(slaPlan, slaFact);
   const rawReserveHours = hoursBetween(slaFact, slaPlan);
-  const overdueHours = Math.max(0, rawOverdueHours ?? 0);
+  const calendarOverdueHours = Math.max(0, rawOverdueHours ?? 0);
+  const workOverdueHours = slaWorkHours !== null && priority.hours !== null ? Math.max(0, roundHours(slaWorkHours - priority.hours)) : null;
+  const overdueHours = status === "Нарушен SLA" ? (workOverdueHours ?? calendarOverdueHours) : 0;
   const reserveHours = Math.max(0, rawReserveHours ?? 0);
+  const waitingHours = calendarResolutionHours !== null && slaWorkHours !== null ? Math.max(0, roundHours(calendarResolutionHours - slaWorkHours)) : null;
 
   return {
     id: `support-${index}-${String(record.ticketNumber ?? "").trim()}`,
+    format,
     ticketNumber: String(record.ticketNumber ?? "").trim() || `строка ${index + 1}`,
     topic: String(record.topic ?? "").trim() || "Без темы",
     createdAt,
     slaPlan,
     slaFact,
+    sourceSlaStatus,
     category: classifySupportTopic(String(record.topic ?? "")),
-    slaApplicable: Boolean(slaPlan && slaFact),
+    slaApplicable: status === "В SLA" || status === "Нарушен SLA",
     slaStatus: status,
-    resolutionHours: slaFact ? rawResolutionHours : null,
+    calendarResolutionHours,
+    resolutionHours: fullTimeHours,
+    fullTimeHours,
+    slaWorkHours,
+    waitingHours,
     planHours,
+    priorityLabel: priority.label,
+    priorityLevel: priority.level,
+    priorityHours: priority.hours,
+    workOverdueHours,
+    calendarOverdueHours,
     overdueHours,
     reserveHours,
-    planBucket: planBucket(planHours),
+    planBucket: planBucket(priority.hours ?? planHours),
     overdueBucket: overdueBucket(overdueHours),
     sourceRow: index + 1,
   };
 }
 
-function rowsToRecords(rows: unknown[][]): { records: SupportRawRecord[]; missingRequiredColumns: string[] } {
+function rowsToRecords(rows: unknown[][]): { records: SupportRawRecord[]; missingRequiredColumns: string[]; format: SupportReportFormat } {
   const header = findHeaderRow(rows);
   const missingRequiredColumns = missingColumns(header.map);
-  if (header.index < 0 || missingRequiredColumns.length > 0) return { records: [], missingRequiredColumns };
+  const hasWorktimeColumns =
+    header.map.slaWorkTimeRaw !== undefined ||
+    header.map.priorityRaw !== undefined ||
+    header.map.sourceSlaStatusRaw !== undefined ||
+    header.map.fullTimeRaw !== undefined;
+  const format: SupportReportFormat = hasWorktimeColumns ? "worktime" : "legacy";
+  if (header.index < 0 || missingRequiredColumns.length > 0) return { records: [], missingRequiredColumns, format };
 
   const records = rows.slice(header.index + 1).flatMap((row) => {
     if (!row.some((cell) => String(cell ?? "").trim().length > 0)) return [];
@@ -166,10 +259,14 @@ function rowsToRecords(rows: unknown[][]): { records: SupportRawRecord[]; missin
       createdAtRaw: row[header.map.createdAtRaw ?? -1] ?? "",
       slaPlanRaw: row[header.map.slaPlanRaw ?? -1] ?? "",
       slaFactRaw: row[header.map.slaFactRaw ?? -1] ?? "",
+      slaWorkTimeRaw: header.map.slaWorkTimeRaw !== undefined ? row[header.map.slaWorkTimeRaw] : "",
+      priorityRaw: header.map.priorityRaw !== undefined ? row[header.map.priorityRaw] : "",
+      sourceSlaStatusRaw: header.map.sourceSlaStatusRaw !== undefined ? row[header.map.sourceSlaStatusRaw] : "",
+      fullTimeRaw: header.map.fullTimeRaw !== undefined ? row[header.map.fullTimeRaw] : "",
     }];
   });
 
-  return { records, missingRequiredColumns };
+  return { records, missingRequiredColumns, format };
 }
 
 function detectCsvDelimiter(line: string) {
@@ -279,10 +376,11 @@ async function readRows(file: File): Promise<unknown[][]> {
 
 export async function readSupportReportFile(file: File): Promise<SupportImportResult> {
   const rows = await readRows(file);
-  const { records, missingRequiredColumns } = rowsToRecords(rows);
-  const tickets = records.map(normalizeTicket);
+  const { records, missingRequiredColumns, format } = rowsToRecords(rows);
+  const tickets = records.map((record, index) => normalizeTicket(record, index, format));
 
   return {
+    format,
     rawRecords: records,
     tickets: missingRequiredColumns.length === 0 ? tickets : [],
     file: {
@@ -294,7 +392,7 @@ export async function readSupportReportFile(file: File): Promise<SupportImportRe
       rows: records.length,
       invalidCreatedAt: tickets.filter((ticket) => !ticket.createdAt).length,
       invalidSlaPlan: tickets.filter((ticket) => ticket.slaPlan === null && String(records[ticket.sourceRow - 1]?.slaPlanRaw ?? "").trim().length > 0).length,
-      invalidSlaFact: tickets.filter((ticket) => ticket.slaFact === null && String(records[ticket.sourceRow - 1]?.slaFactRaw ?? "").trim().length > 0).length,
+      invalidSlaFact: tickets.filter((ticket) => ticket.slaStatus !== "В работе" && ticket.slaFact === null && !nullLike(records[ticket.sourceRow - 1]?.slaFactRaw)).length,
     },
   };
 }

@@ -28,26 +28,32 @@ function AnomalyList({ rows }: { rows: SupportTicket[] }) {
 }
 
 export function SupportDataQualityPanel({ summary }: { summary: SupportDataQualitySummary }) {
-  const cards = [
+  const issueCards = [
     { title: "Нет SLA_plan", rows: summary.missingPlan },
     { title: "Нет SLA_fact", rows: summary.missingFact },
     { title: "Экстремальные просрочки", rows: summary.extremeOverdue },
     { title: "Закрыто за пределами периода", rows: summary.closedAfterPeriod },
   ];
-  const issueCount = cards.reduce((sum, card) => sum + card.rows.length, 0);
+  const cards = summary.openTickets.length > 0 ? [...issueCards, { title: "В работе", rows: summary.openTickets }] : issueCards;
+  const issueCount = issueCards.reduce((sum, card) => sum + card.rows.length, 0);
 
   if (issueCount === 0) {
     return (
-      <SectionCard title="Аномалии и качество данных" description="Проверка обязательных SLA-полей и экстремальных значений." Icon={CheckCircle2}>
+      <SectionCard title="Проверка отчета" description="Данные пригодны для расчета SLA." Icon={CheckCircle2}>
         <div className="rounded-control border border-raport-success-border bg-raport-success-muted px-3 py-2 text-sm font-semibold text-raport-success">
-          Проблем качества данных не найдено.
+          <span>
+            Ошибок в ключевых полях не найдено.
+            {summary.openTickets.length > 0 ? (
+              <span className="text-raport-muted"> Открытые заявки: {summary.openTickets.length}, в SLA не входят.</span>
+            ) : null}
+          </span>
         </div>
       </SectionCard>
     );
   }
 
   return (
-    <SectionCard title="Аномалии и качество данных" description="Строки, которые искажают расчет или требуют проверки." Icon={CircleX}>
+    <SectionCard title="Проверка отчета" description="Строки, которые искажают расчет или требуют проверки." Icon={CircleX}>
       <div className="grid gap-3 md:grid-cols-4">
         {cards.map((card) => (
           <div key={card.title} className="rounded-control border border-raport-border bg-raport-surface px-3 py-2">

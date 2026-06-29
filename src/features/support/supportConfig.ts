@@ -31,7 +31,7 @@ export const SUPPORT_CATEGORY_ORDER = [
   "Прочее / нужен классификатор",
 ] as const;
 
-export const SUPPORT_SLA_STATUSES = ["В SLA", "Нарушен SLA", "Нет SLA_plan", "Нет SLA_fact"] as const;
+export const SUPPORT_SLA_STATUSES = ["В SLA", "Нарушен SLA", "В работе", "Нет SLA_plan", "Нет SLA_fact"] as const;
 
 export const SUPPORT_THRESHOLDS = {
   healthySlaPercent: 95,

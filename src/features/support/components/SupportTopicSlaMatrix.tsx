@@ -34,11 +34,11 @@ export function SupportTopicSlaMatrix({
   onCategorySelect?: (category: SupportCategory) => void;
 }) {
   return (
-    <ChartCard title="SLA по темам" description="Соблюдение SLA и интенсивность обращений по категориям." Icon={Activity}>
+    <ChartCard title="SLA по темам обращений" description="Какие темы дают больше нарушений и нагрузки." Icon={Activity}>
       <div className="grid gap-3">
         <div className="flex flex-wrap gap-2 rounded-control border border-raport-border bg-raport-surface-soft px-3 py-2">
           <span className="basis-full text-xs font-semibold text-raport-muted">
-            Каждая строка — категория обращений. Полоса показывает состав заявок: в SLA, нарушено, нет расчета.
+            Темы отсортированы по нагрузке и риску SLA.
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-raport-success" />
@@ -46,14 +46,15 @@ export function SupportTopicSlaMatrix({
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-raport-danger" />
-            Нарушен SLA
+            Нарушено
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
+            <span className="h-2.5 w-2.5 rounded-full bg-raport-warning" />
+            В работе
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-raport-muted">
             <span className="h-2.5 w-2.5 rounded-full bg-raport-neutral" />
-            Нет расчета SLA
-          </span>
-          <span className="basis-full text-[11px] font-semibold text-raport-muted">
-            Сортировка: больше заявок → хуже SLA → больше нарушений.
+            Нет расчета
           </span>
         </div>
 
@@ -63,7 +64,9 @@ export function SupportTopicSlaMatrix({
           {rows.map((row, index) => {
             const inSlaWidth = row.total > 0 ? (row.inSla / row.total) * 100 : 0;
             const overdueWidth = row.total > 0 ? (row.overdue / row.total) * 100 : 0;
+            const openWidth = row.total > 0 ? (row.open / row.total) * 100 : 0;
             const overdueX = inSlaWidth;
+            const openX = inSlaWidth + overdueWidth;
 
             return (
               <article
@@ -72,14 +75,14 @@ export function SupportTopicSlaMatrix({
               >
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                   <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2">
-                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-raport-border bg-raport-surface-soft px-2 text-xs font-extrabold tabular-nums text-raport-muted">
+                    <span className="inline-flex h-7 min-w-8 shrink-0 items-center justify-center rounded-full border border-raport-border bg-raport-surface-soft px-2 text-xs font-bold tabular-nums text-raport-muted">
                       #{index + 1}
                     </span>
                     <div className="min-w-0">
                       <button
                         type="button"
                         onClick={() => onCategorySelect?.(row.category)}
-                        className="block max-w-full truncate text-left text-sm font-extrabold text-raport-primary hover:underline"
+                        className="block max-w-full truncate text-left text-sm font-bold text-raport-primary hover:underline"
                         title={row.category}
                       >
                         {row.category}
@@ -109,6 +112,7 @@ export function SupportTopicSlaMatrix({
                     <rect x="0" y="0" width="100" height="14" className="fill-raport-neutral" />
                     <rect x="0" y="0" width={inSlaWidth} height="14" className="fill-raport-success" />
                     <rect x={overdueX} y="0" width={overdueWidth} height="14" className="fill-raport-danger" />
+                    <rect x={openX} y="0" width={openWidth} height="14" className="fill-raport-warning" />
                   </svg>
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-raport-muted">
                     <span>
@@ -117,6 +121,11 @@ export function SupportTopicSlaMatrix({
                       {row.dataProblems > 0 ? (
                         <>
                           {" "}· без расчета: <strong className="text-raport-muted">{row.dataProblems}</strong>
+                        </>
+                      ) : null}
+                      {row.open > 0 ? (
+                        <>
+                          {" "}· в работе: <strong className="text-raport-muted">{row.open}</strong>
                         </>
                       ) : null}
                     </span>

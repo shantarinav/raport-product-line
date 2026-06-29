@@ -3,13 +3,37 @@ import type { SupportDailyPoint } from "../supportTypes";
 import { formatSupportPercent } from "../logic/supportMetrics";
 import { Activity } from "lucide-react";
 
-function LegendItem({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-raport-border bg-raport-surface px-2 py-1 text-xs font-semibold text-raport-muted">
-      <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
-      {label}
-    </span>
-  );
+function dayStatus(point: SupportDailyPoint, controlRatio: number): "norm" | "control" | "risk" | "none" {
+  if (point.applicable === 0) return "none";
+  if (point.slaRate >= 0.95) return "norm";
+  if (point.slaRate >= controlRatio) return "control";
+  return "risk";
+}
+
+function dayStatusLabel(status: ReturnType<typeof dayStatus>): string {
+  if (status === "norm") return "норма";
+  if (status === "control") return "контроль";
+  if (status === "risk") return "риск";
+  return "нет закрытых заявок";
+}
+
+function dayStatusCount(points: SupportDailyPoint[], controlRatio: number, status: ReturnType<typeof dayStatus>): number {
+  return points.filter((point) => dayStatus(point, controlRatio) === status).length;
+}
+
+function dayWord(value: number): string {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
+}
+
+function dayDotClass(status: ReturnType<typeof dayStatus>): string {
+  if (status === "risk") return "fill-raport-danger";
+  if (status === "control") return "fill-raport-warning";
+  if (status === "norm") return "fill-raport-success";
+  return "fill-raport-muted";
 }
 
 export function SupportDailySlaChart({ points, controlPercent }: { points: SupportDailyPoint[]; controlPercent: number }) {
@@ -29,6 +53,10 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
     const y = padding.top + innerHeight - point.slaRate * innerHeight;
     return `${x},${y}`;
   });
+  const normDays = dayStatusCount(points, controlRatio, "norm");
+  const controlDays = dayStatusCount(points, controlRatio, "control");
+  const riskDays = dayStatusCount(points, controlRatio, "risk");
+  const showPointLabels = points.length <= 10;
 
   return (
     <ChartCard title="SLA по дням" description="Динамика нагрузки и выполнения SLA по датам создания заявок." Icon={Activity}>
@@ -37,16 +65,8 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
       ) : (
         <div className="grid gap-2 overflow-hidden rounded-control border border-raport-border bg-raport-surface-soft p-3">
           <p className="text-xs font-semibold text-raport-muted">
-            Столбец — сколько заявок создано. Линия — доля выполненных SLA. Цвет столбца — уровень просрочек.
+            Столбец — созданные заявки. Линия — выполнение SLA по закрытым заявкам. Открытые заявки учитываются отдельно.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <LegendItem className="bg-raport-primary" label="Мало просрочек (<20%)" />
-            <LegendItem className="bg-raport-warning" label="Заметно просрочек (20–39%)" />
-            <LegendItem className="bg-raport-danger" label="Много просрочек (≥40%)" />
-            <LegendItem className="bg-raport-primary" label="SLA выполнен" />
-            <LegendItem className="bg-raport-success" label="Норма 95%" />
-            <LegendItem className="bg-raport-warning" label={`Контроль ${controlPercent}%`} />
-          </div>
           <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[300px] w-full rounded-control bg-raport-surface">
             <text x={padding.left} y="18" className="fill-raport-muted text-[11px] font-bold">Заявки</text>
             <text x={width - padding.right} y="18" textAnchor="end" className="fill-raport-muted text-[11px] font-bold">SLA, %</text>
@@ -70,17 +90,17 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + 2;
               const barHeight = (point.total / maxTotal) * innerHeight;
-              const overdueRate = point.applicable > 0 ? point.overdue / point.applicable : 0;
+              const status = dayStatus(point, controlRatio);
               return (
                 <g key={point.dateKey}>
-                  <title>{`${point.label}\nВсего: ${point.total}\nС расчетом SLA: ${point.applicable}\nВ SLA: ${point.inSla}\nПросрочено: ${point.overdue}\nSLA: ${formatSupportPercent(point.slaRate)}`}</title>
+                  <title>{`${point.label}\nВсего: ${point.total}\nС расчетом SLA: ${point.applicable}\nВ SLA: ${point.inSla}\nПросрочено: ${point.overdue}\nВ работе: ${point.open}\nВыполнение SLA: ${formatSupportPercent(point.slaRate)}\nСтатус: ${dayStatusLabel(status)}`}</title>
                   <rect
                     x={x}
                     y={padding.top + innerHeight - barHeight}
                     width={barWidth}
                     height={barHeight}
                     rx="4"
-                    className={overdueRate >= 0.4 ? "fill-raport-danger" : overdueRate >= 0.2 ? "fill-raport-warning" : "fill-raport-primary"}
+                    className="fill-raport-neutral"
                     opacity="0.82"
                   />
                   {index % labelStep === 0 || index === points.length - 1 ? (
@@ -100,9 +120,29 @@ export function SupportDailySlaChart({ points, controlPercent }: { points: Suppo
             {points.map((point, index) => {
               const x = padding.left + slotWidth * index + slotWidth / 2;
               const y = padding.top + innerHeight - point.slaRate * innerHeight;
-              return <circle key={`${point.dateKey}-dot`} cx={x} cy={y} r="4" className="fill-raport-primary stroke-raport-surface" strokeWidth="2" />;
+              const status = dayStatus(point, controlRatio);
+              return (
+                <g key={`${point.dateKey}-dot`}>
+                  {showPointLabels ? (
+                    <text
+                      x={x}
+                      y={Math.max(16, y - 10)}
+                      textAnchor="middle"
+                      className="fill-raport-primary text-[10px] font-bold"
+                    >
+                      {point.applicable > 0 ? formatSupportPercent(point.slaRate).replace(",0%", "%") : "—"}
+                    </text>
+                  ) : null}
+                  <circle cx={x} cy={y} r="4.5" className={`${dayDotClass(status)} stroke-raport-surface`} strokeWidth="2" />
+                </g>
+              );
             })}
           </svg>
+          <p className="rounded-control border border-raport-border bg-raport-surface px-3 py-2 text-xs font-semibold text-raport-muted">
+            Статус дней по SLA: норма ≥95% — <span className="text-raport-success">{normDays} {dayWord(normDays)}</span> · контроль {controlPercent}–94,9% —{" "}
+            <span className="text-raport-warning">{controlDays} {dayWord(controlDays)}</span> · ниже цели &lt;{controlPercent}% —{" "}
+            <span className="text-raport-danger">{riskDays} {dayWord(riskDays)}</span>
+          </p>
         </div>
       )}
     </ChartCard>

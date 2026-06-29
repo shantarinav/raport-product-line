@@ -28,11 +28,13 @@ import {
   buildTopicSlaStats,
   calculateSupportKpis,
   formatSupportDateTime,
+  formatSupportHours,
   formatSupportPercent,
   initialSupportFilters,
   overdueQuantiles,
   periodLabel,
   resolutionQuantiles,
+  supportTimeFlowQuantiles,
 } from "../logic/supportMetrics";
 import { SupportDistributionCard } from "./SupportDistributionCard";
 import { SupportDailySlaChart } from "./SupportDailySlaChart";
@@ -105,8 +107,8 @@ function formatPercentageGap(value: number): string {
   return `${(value * 100).toLocaleString("ru-RU", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} п.п.`;
 }
 
-function normalizeControlPercent(value: number): number {
-  return Math.max(0, Math.min(95, Math.round(value)));
+export function normalizeControlPercent(value: number): number {
+  return Math.max(0, Math.min(90, Math.round(value)));
 }
 
 function insightPoints(text: string): string[] {
@@ -136,6 +138,7 @@ export function SupportDashboardPage() {
   const filteredTickets = useMemo(() => applySupportFilters(tickets, filters), [tickets, filters]);
   const kpis = useMemo(() => calculateSupportKpis(filteredTickets), [filteredTickets]);
   const resolution = useMemo(() => resolutionQuantiles(filteredTickets), [filteredTickets]);
+  const timeFlow = useMemo(() => supportTimeFlowQuantiles(filteredTickets), [filteredTickets]);
   const overdue = useMemo(() => overdueQuantiles(filteredTickets), [filteredTickets]);
   const daily = useMemo(() => buildDailySla(filteredTickets), [filteredTickets]);
   const topicSla = useMemo(() => buildTopicSlaStats(filteredTickets), [filteredTickets]);
@@ -149,6 +152,10 @@ export function SupportDashboardPage() {
         .filter((item) => item.applicable > 0 && item.slaRate < controlRatio)
         .sort((a, b) => a.slaRate - b.slaRate || b.overdue - a.overdue || b.total - a.total)[0],
     [topicSla, controlRatio],
+  );
+  const priorityOptions = useMemo(
+    () => [...new Set(tickets.flatMap((ticket) => (ticket.priorityLabel ? [ticket.priorityLabel] : [])))].sort((a, b) => a.localeCompare(b, "ru")),
+    [tickets],
   );
 
   if (!report) return null;
@@ -191,6 +198,7 @@ export function SupportDashboardPage() {
         }
       : null,
     filters.slaStatus ? { label: filters.slaStatus, onRemove: () => patchFilters({ slaStatus: "" }) } : null,
+    filters.priorityLabel ? { label: `Приоритет: ${filters.priorityLabel}`, onRemove: () => patchFilters({ priorityLabel: "" }) } : null,
     {
       label: `Цель контроля: ${filters.controlPercent}%`,
       ...(filters.controlPercent !== defaultFilters.controlPercent
@@ -284,6 +292,7 @@ export function SupportDashboardPage() {
             dateMax={defaultFilters.dateTo}
             onChange={patchFilters}
             onReset={resetFilters}
+            priorityOptions={priorityOptions}
             showAdvancedFilters={viewMode === "analyst"}
           />
         </div>
@@ -304,48 +313,35 @@ export function SupportDashboardPage() {
             }
           />
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <MetricCard
-              label="Всего заявок"
+              label="Заявки"
               value={formatInteger(kpis.totalTickets)}
-              note={`с расчетом SLA: ${formatInteger(kpis.applicableTickets)} · без расчета: ${formatInteger(kpis.dataProblems)}`}
+              note={`${formatInteger(kpis.applicableTickets)} закрыто · ${formatInteger(kpis.openTickets)} в работе`}
               Icon={LifeBuoy}
               tone="neutral"
             />
-            <MetricCard label="SLA выполнен" value={formatSupportPercent(kpis.slaRate)} note={`${formatInteger(kpis.inSlaTickets)} из ${formatInteger(kpis.applicableTickets)}`} Icon={CheckCircle2} tone={kpis.slaRate >= controlRatio ? "success" : "warning"} />
-            <MetricCard label="Просрочено" value={formatInteger(kpis.overdueTickets)} note={formatSupportPercent(kpis.overdueRate)} Icon={AlertTriangle} tone="danger" />
+            <MetricCard label="Выполнение SLA" value={formatSupportPercent(kpis.slaRate)} note={`${formatInteger(kpis.inSlaTickets)} из ${formatInteger(kpis.applicableTickets)} закрытых`} Icon={CheckCircle2} tone={kpis.slaRate >= controlRatio ? "success" : "warning"} />
+            <MetricCard label="Нарушено SLA" value={formatInteger(kpis.overdueTickets)} note={`${formatSupportPercent(kpis.overdueRate)} закрытых заявок`} Icon={AlertTriangle} tone="danger" />
+            <MetricCard
+              label="Общее время решения"
+              value={formatSupportHours(timeFlow.totalResolution.q2)}
+              note={
+                timeFlow.waiting.p90 === null
+                  ? `медиана · P90 ${formatSupportHours(timeFlow.totalResolution.p90)}`
+                  : `медиана · паузы до ${formatSupportHours(timeFlow.waiting.p90)}`
+              }
+              Icon={Clock}
+              tone="neutral"
+            />
+            <MetricCard
+              label="Чистое рабочее время"
+              value={formatSupportHours(timeFlow.workTime.q2)}
+              note={timeFlow.workTime.q2 === null ? "нет в формате файла" : "медиана"}
+              Icon={BarChart3}
+              tone="neutral"
+            />
           </div>
-
-          <AnimatePresence mode="popLayout" initial={false}>
-            {viewMode === "analyst" ? (
-              <motion.div
-                key="analyst-distributions"
-                layout="position"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-              >
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <SupportDistributionCard
-                    title="Скорость решения"
-                    description="Квартили времени решения по текущим фильтрам."
-                    explanation="Медиана показывает типовое время решения, P90 — тяжелый хвост самых долгих заявок."
-                    quantiles={resolution}
-                    Icon={Clock}
-                  />
-                  <SupportDistributionCard
-                    title="Длительность просрочки"
-                    description="Квартили просрочки среди нарушенных SLA."
-                    explanation="P90 показывает 10% самых тяжелых нарушений и помогает увидеть хвост просрочек."
-                    quantiles={overdue}
-                    Icon={BarChart3}
-                  />
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
 
           <motion.div layout="position" className="grid gap-4">
             <SectionCard
@@ -381,6 +377,36 @@ export function SupportDashboardPage() {
                 </div>
               </div>
             </SectionCard>
+
+            <AnimatePresence mode="popLayout" initial={false}>
+              {viewMode === "analyst" ? (
+                <motion.div
+                  key="analyst-distributions"
+                  layout="position"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full"
+                >
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <SupportDistributionCard
+                      title="Общее время решения"
+                      description="Сколько заявка жила от создания до закрытия."
+                      quantiles={timeFlow.totalResolution}
+                      Icon={Clock}
+                    />
+                    <SupportDistributionCard
+                      title="Чистое время работы"
+                      description="Рабочее время обработки заявки без ожиданий и пауз."
+                      explanation={timeFlow.workTime.q2 === null ? "В старом формате файла чистое рабочее время отсутствует." : undefined}
+                      quantiles={timeFlow.workTime}
+                      Icon={BarChart3}
+                    />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <AnimatePresence mode="popLayout" initial={false}>
               {viewMode === "analyst" && a3Draft ? (
