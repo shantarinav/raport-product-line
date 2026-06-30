@@ -335,13 +335,42 @@ export function TessaDashboardPage() {
             </div>
 
             <SectionCard
+              title="Главный вывод"
+              description="Статус согласований и ключевая зона внимания."
+              Icon={ClipboardCheck}
+              actions={canCreateA3 ? <A3ReviewButton deviation={createTessaA3Deviation} onCreateDraft={setA3Draft} /> : undefined}
+            >
+              <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+                <div className={`rounded-control border px-4 py-3 ${kpis.stuck > 0 ? "border-raport-danger-border bg-raport-danger-muted text-raport-danger" : "border-raport-success-border bg-raport-success-muted text-raport-success"}`}>
+                  <span className="block text-xs font-extrabold uppercase tracking-[0.12em]">{kpis.stuck > 0 ? "Зона внимания" : "Норма"}</span>
+                  <strong className="mt-2 block text-3xl font-extrabold tabular-nums">{formatInteger(kpis.stuck)}</strong>
+                  <span className="text-xs font-semibold">застрявших согласований</span>
+                  <span className="mt-1 block text-xs font-semibold">{formatPercent(kpis.stuckRate)} от открытых</span>
+                </div>
+                <div className="grid gap-2 rounded-control border border-raport-border bg-raport-surface px-4 py-3">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-raport-muted">Что проверить в первую очередь</p>
+                  <div className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-raport-primary" />
+                    <span>{kpis.attentionPeople > 0 ? `${formatInteger(kpis.attentionPeople)} исполнителей держат просрочки.` : "Исполнителей с просрочками не найдено."}</span>
+                  </div>
+                  <div className="flex gap-2 text-sm font-semibold leading-relaxed text-raport-text">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-raport-primary" />
+                    <span>{kpis.riskToday > 0 ? `${formatInteger(kpis.riskToday)} согласований рискуют застрять сегодня.` : "Срочных рисков на сегодня нет."}</span>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+            {a3Draft ? (
+              <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshTessaA3Draft} onClose={() => setA3Draft(null)} />
+            ) : null}
+
+            <SectionCard
               title="Исполнители с застрявшими договорами"
               description="Выберите ФИО для просмотра застрявших договоров."
               Icon={Users}
               actions={
-                canCreateA3 || attentionPeople.length > 5 ? (
+                attentionPeople.length > 5 ? (
                   <>
-                    {canCreateA3 ? <A3ReviewButton deviation={createTessaA3Deviation} onCreateDraft={setA3Draft} /> : null}
                     {attentionPeople.length > 5 ? (
                       <DashboardSwitch
                         value={peopleMode}
@@ -388,9 +417,6 @@ export function TessaDashboardPage() {
               )}
             </SectionCard>
 
-            {a3Draft ? (
-              <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshTessaA3Draft} onClose={() => setA3Draft(null)} />
-            ) : null}
 
             {quality && quality.invalidDeadlines + quality.invalidDocumentDates > 0 ? (
               <SectionCard title="Качество данных" description="Часть строк содержит некорректные даты.">

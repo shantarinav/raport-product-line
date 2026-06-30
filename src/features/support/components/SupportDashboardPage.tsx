@@ -377,6 +377,21 @@ export function SupportDashboardPage() {
                 </div>
               </div>
             </SectionCard>
+            <AnimatePresence mode="popLayout" initial={false}>
+              {viewMode === "analyst" && a3Draft ? (
+                <motion.div
+                  key="support-a3-editor"
+                  layout="position"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full"
+                >
+                  <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshSupportA3Draft} onClose={() => setA3Draft(null)} />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <AnimatePresence mode="popLayout" initial={false}>
               {viewMode === "analyst" ? (
@@ -408,21 +423,6 @@ export function SupportDashboardPage() {
               ) : null}
             </AnimatePresence>
 
-            <AnimatePresence mode="popLayout" initial={false}>
-              {viewMode === "analyst" && a3Draft ? (
-                <motion.div
-                  key="support-a3-editor"
-                  layout="position"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full"
-                >
-                  <A3DashboardDraftPanel draft={a3Draft} onRefreshDraft={refreshSupportA3Draft} onClose={() => setA3Draft(null)} />
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
 
             <SupportDailySlaChart points={daily} controlPercent={filters.controlPercent} />
 

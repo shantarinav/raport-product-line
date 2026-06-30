@@ -6,6 +6,7 @@ import {
   changeLocalA3Owner,
   changeLocalA3Status,
   createLocalA3ProtocolDraft,
+  deleteLocalA3Protocol,
   getLocalA3Timeline,
   saveLocalA3Protocol,
 } from "./localA3Commands";
@@ -229,5 +230,24 @@ describe("localA3Commands", () => {
         expect.objectContaining({ type: "due_date_changed", payload: { type: "due_date_changed", from: "2026-06-30", to: "2026-07-05" } }),
       ]),
     );
+  });
+
+  it("deletes a protocol with its events and snapshot", async () => {
+    const repo = repository();
+    repos.push(repo);
+    const protocol = complete();
+    await saveLocalA3Protocol(protocol, { repository: repo, now, createId: ids });
+    await addLocalA3Comment(protocol.id, "Временная заметка", {
+      repository: repo,
+      now: later,
+      actorName: "Аналитик",
+      createId: (prefix) => `${prefix}-comment`,
+    });
+
+    await deleteLocalA3Protocol(protocol.id, { repository: repo });
+
+    await expect(repo.getProtocol(protocol.id)).resolves.toBeNull();
+    await expect(repo.listEvents(protocol.id)).resolves.toHaveLength(0);
+    await expect(repo.listSnapshots()).resolves.toHaveLength(0);
   });
 });
