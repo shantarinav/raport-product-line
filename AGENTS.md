@@ -68,7 +68,7 @@ src/
   pages/
     landing/
 backend/
-  print-llm/
+  raport-llm/
 ```
 
 Правила разделения:
@@ -337,8 +337,8 @@ Local A3 — локальный журнал облегченных проток
 - режим «Руководитель» не должен перегружаться фильтрами документа и детальными трендами;
 - тренды показывать в режиме «Аналитик»;
 - ИИ-проверка личной печати является optional extension и выключена по умолчанию;
-- frontend Print должен работать без `backend/print-llm` и скрывать ИИ-артефакты, если пользователь не включил ИИ-возможность;
-- локальный ИИ-backend для Print находится в `backend/print-llm`;
+- frontend Print должен работать без `backend/raport-llm` и скрывать ИИ-артефакты, если пользователь не включил ИИ-возможность;
+- локальный ИИ-backend для Print и A3 Assist находится в `backend/raport-llm`;
 - если ИИ-backend недоступен, Print остается работоспособным в словарном режиме.
 
 ## ССЗ
@@ -388,8 +388,8 @@ npm run typecheck
 Если задача затрагивает optional backend, дополнительно проверять релевантный backend-сценарий или smoke-start на свободном порту. Для Print LLM:
 
 ```bash
-npm run backend:print-llm
-npm run backend:print-llm:evaluate -- --input <csv>
+npm run backend:raport-llm
+npm run backend:raport-llm:evaluate -- --input <csv>
 ```
 
 Перед завершением сообщать:

@@ -1,6 +1,12 @@
 import { useCallback, useSyncExternalStore } from "react";
+import {
+  DEFAULT_RAPORT_AI_SERVICE_URL,
+  getRaportAiSettings,
+  setRaportAiSettings,
+  useRaportAiSettings,
+} from "./raportAiSettings";
 
-export const DEFAULT_PRINT_AI_BACKEND_URL = "http://127.0.0.1:8787";
+export const DEFAULT_PRINT_AI_BACKEND_URL = DEFAULT_RAPORT_AI_SERVICE_URL;
 
 const PRINT_AI_ENABLED_KEY = "raport-print-ai-enabled";
 const PRINT_AI_BACKEND_URL_KEY = "raport-print-ai-backend-url";
@@ -110,10 +116,11 @@ export function setPrintAiStoredHealth(settings: PrintAiSettings, result: PrintA
 }
 
 export function getPrintAiSettings(): PrintAiSettings {
+  const shared = getRaportAiSettings();
   const next = {
-    enabled: readStorageValue(PRINT_AI_ENABLED_KEY) === "true",
-    backendUrl: normalizeBackendUrl(readStorageValue(PRINT_AI_BACKEND_URL_KEY) ?? DEFAULT_PRINT_AI_BACKEND_URL),
-    apiKey: readStorageValue(PRINT_AI_API_KEY_KEY) ?? "",
+    enabled: shared.enabled && shared.printPersonalCheckEnabled,
+    backendUrl: normalizeBackendUrl(shared.serviceUrl),
+    apiKey: shared.apiKey,
   };
 
   if (sameSettings(cachedSettings, next)) return cachedSettings as PrintAiSettings;
@@ -123,6 +130,7 @@ export function getPrintAiSettings(): PrintAiSettings {
 
 export function setPrintAiSettings(nextSettings: Partial<PrintAiSettings>): void {
   const current = getPrintAiSettings();
+  const shared = getRaportAiSettings();
   const next: PrintAiSettings = {
     enabled: nextSettings.enabled ?? current.enabled,
     backendUrl: normalizeBackendUrl(nextSettings.backendUrl ?? current.backendUrl),
@@ -132,6 +140,12 @@ export function setPrintAiSettings(nextSettings: Partial<PrintAiSettings>): void
   writeStorageValue(PRINT_AI_ENABLED_KEY, next.enabled ? "true" : "false");
   writeStorageValue(PRINT_AI_BACKEND_URL_KEY, next.backendUrl);
   writeStorageValue(PRINT_AI_API_KEY_KEY, next.apiKey);
+  setRaportAiSettings({
+    enabled: nextSettings.enabled === undefined ? shared.enabled : next.enabled || shared.a3AssistEnabled,
+    serviceUrl: next.backendUrl,
+    apiKey: next.apiKey,
+    printPersonalCheckEnabled: nextSettings.enabled ?? shared.printPersonalCheckEnabled,
+  });
   cachedSettings = next;
   dispatchSettingsChange();
 }
@@ -163,6 +177,7 @@ function subscribe(callback: () => void): () => void {
 }
 
 export function usePrintAiSettings(): [PrintAiSettings, (nextSettings: Partial<PrintAiSettings>) => void] {
+  useRaportAiSettings();
   const settings = useSyncExternalStore(subscribe, getPrintAiSettings, () => ({
     enabled: false,
     backendUrl: DEFAULT_PRINT_AI_BACKEND_URL,

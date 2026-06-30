@@ -9,6 +9,7 @@ import {
   setPrintAiSettings,
   setPrintAiStoredHealth,
 } from "./printAiSettings";
+import { getRaportAiSettings, setRaportAiSettings } from "./raportAiSettings";
 
 function installMockWindow() {
   const storage = new Map<string, string>();
@@ -71,6 +72,35 @@ describe("print AI settings", () => {
       enabled: true,
       backendUrl: "http://server:8787",
       apiKey: "secret",
+    });
+  });
+
+  it("does not disable shared AI when only Print personal check is turned off", () => {
+    installMockWindow();
+
+    setRaportAiSettings({ enabled: true, printPersonalCheckEnabled: true, a3AssistEnabled: true });
+    setPrintAiSettings({ enabled: false });
+
+    expect(getPrintAiSettings().enabled).toBe(false);
+    expect(getRaportAiSettings()).toMatchObject({
+      enabled: true,
+      printPersonalCheckEnabled: false,
+      a3AssistEnabled: true,
+    });
+  });
+
+  it("keeps feature flags when only service connection settings are changed", () => {
+    installMockWindow();
+
+    setRaportAiSettings({ enabled: true, printPersonalCheckEnabled: false, a3AssistEnabled: true });
+    setPrintAiSettings({ backendUrl: "http://server:8787/", apiKey: "secret" });
+
+    expect(getRaportAiSettings()).toMatchObject({
+      enabled: true,
+      serviceUrl: "http://server:8787",
+      apiKey: "secret",
+      printPersonalCheckEnabled: false,
+      a3AssistEnabled: true,
     });
   });
 

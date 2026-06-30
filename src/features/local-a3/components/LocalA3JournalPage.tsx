@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Archive, Download, Eye, EyeOff, FileSpreadsheet, RefreshCcw, Upload, UploadCloud } from "lucide-react";
-import { DashboardHeader, DashboardHeaderMark, ErrorState, HeaderIconButton, HelpLink, PageShell, SectionCard } from "../../../shared/ui";
+import { Archive, Download, Eye, EyeOff, FileSpreadsheet, RefreshCcw, Trash2, Upload, UploadCloud } from "lucide-react";
+import { DashboardHeader, DashboardHeaderMark, ErrorState, HeaderIconButton, HelpLink, IconActionButton, PageShell, QuickFocusGroup, SectionCard } from "../../../shared/ui";
 import { Alert, AlertDescription, AlertTitle } from "../../../shared/ui/shadcn/alert";
 import { Badge } from "../../../shared/ui/shadcn/badge";
 import { Button } from "../../../shared/ui/shadcn/button";
@@ -19,6 +19,7 @@ import {
   type LocalA3SortKey,
   type LocalA3StatusFilter,
 } from "../localA3Journal";
+import { deleteLocalA3Protocol } from "../localA3Commands";
 import { localA3Repository, type LocalA3Repository } from "../localA3Repository";
 import { LOCAL_A3_DASHBOARD_TYPES, type LocalA3DashboardType, type LocalA3Protocol, type LocalA3Status } from "../localA3Types";
 import { LOCAL_A3_DASHBOARD_LABEL, LOCAL_A3_STATUS_BADGE_VARIANT, LOCAL_A3_STATUS_FILTER_LABEL, LOCAL_A3_STATUS_LABEL } from "../localA3Ui";
@@ -28,8 +29,6 @@ type LocalA3JournalViewFilter = LocalA3StatusFilter | "attention";
 const STATUS_FILTERS: LocalA3JournalViewFilter[] = ["all", "attention", "open", "in_progress", "waiting_review", "closed"];
 const DASHBOARD_FILTERS = ["all", ...LOCAL_A3_DASHBOARD_TYPES] as const;
 type LocalA3DashboardFilter = (typeof DASHBOARD_FILTERS)[number];
-
-const HEADER_ACTION_ICON_CLASS = "h-9 w-9 shrink-0 px-0 py-0";
 
 const SORT_OPTIONS: Array<{ value: string; key: LocalA3SortKey; direction: LocalA3SortDirection; label: string }> = [
   { value: "priority", key: "updatedAt", direction: "desc", label: "По приоритету" },
@@ -174,11 +173,11 @@ function getProtocolStripeClass(protocol: LocalA3Protocol, overdue: boolean): st
 type ProtocolCardProps = {
   item: LocalA3JournalItem;
   displayCode: string;
-  repository: LocalA3Repository;
   onOpen: (protocol: LocalA3Protocol) => void;
+  onDelete: (protocol: LocalA3Protocol) => void;
 };
 
-function ProtocolCard({ item, displayCode, onOpen }: ProtocolCardProps) {
+function ProtocolCard({ item, displayCode, onOpen, onDelete }: ProtocolCardProps) {
   const overdue = isLocalA3Overdue(item.protocol);
   const title = buildProtocolTitle(item.protocol);
   const hasOwner = Boolean(item.protocol.form.owner.trim());
@@ -190,7 +189,7 @@ function ProtocolCard({ item, displayCode, onOpen }: ProtocolCardProps) {
   return (
     <article className={overdue ? "relative rounded-card border border-raport-danger-border bg-raport-danger-muted px-4 py-3 pl-5" : "relative rounded-card border border-raport-border bg-raport-surface px-4 py-3 pl-5"}>
       <span className={`absolute inset-y-0 left-0 w-1 ${stripeClass}`} aria-hidden="true" />
-      <div className="grid gap-3 xl:grid-cols-[82px_minmax(320px,1.7fr)_210px_minmax(150px,0.8fr)_130px_155px_118px] xl:items-center">
+      <div className="grid gap-3 xl:grid-cols-[82px_minmax(320px,1.7fr)_210px_minmax(150px,0.8fr)_130px_155px_170px] xl:items-center">
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{displayCode}</Badge>
         </div>
@@ -220,10 +219,19 @@ function ProtocolCard({ item, displayCode, onOpen }: ProtocolCardProps) {
           <span className="block whitespace-nowrap">{formatDateTime(item.protocol.updatedAt)}</span>
         </div>
 
-        <div className="flex justify-start xl:justify-end">
+        <div className="flex justify-start gap-2 xl:justify-end">
           <Button className="h-9 gap-2 px-3 py-0" onClick={() => onOpen(item.protocol)} title="Открыть разбор" aria-label="Открыть разбор">
             <Eye className="h-4 w-4" strokeWidth={2} />
             Открыть
+          </Button>
+          <Button
+            className="h-9 w-9 px-0 py-0 text-raport-muted hover:bg-raport-danger-muted hover:text-raport-danger"
+            variant="ghost"
+            onClick={() => onDelete(item.protocol)}
+            title="Удалить разбор"
+            aria-label="Удалить разбор"
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
           </Button>
         </div>
       </div>
@@ -243,6 +251,7 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
   const [query, setQuery] = useState("");
   const [sortValue, setSortValue] = useState("priority");
   const [selectedProtocol, setSelectedProtocol] = useState<LocalA3Protocol | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<LocalA3Protocol | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBackupActions, setShowBackupActions] = useState(false);
@@ -335,6 +344,22 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
     await refresh();
   }
 
+  async function confirmDeleteProtocol() {
+    if (!deleteCandidate) return;
+    setMessage(null);
+    setError(null);
+    try {
+      await deleteLocalA3Protocol(deleteCandidate.id, { repository });
+      if (selectedProtocol?.id === deleteCandidate.id) {
+        setSelectedProtocol(null);
+      }
+      setDeleteCandidate(null);
+      await refresh();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Не удалось удалить A3-разбор.");
+    }
+  }
+
   return (
     <PageShell>
       <DashboardHeader
@@ -355,14 +380,13 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
               <HeaderIconButton to="/" title="Загрузить отчет">
                 <UploadCloud className="h-4 w-4 shrink-0" strokeWidth={2} />
               </HeaderIconButton>
-              <Button
-                className={HEADER_ACTION_ICON_CLASS}
+              <HeaderIconButton
                 onClick={() => setShowBackupActions((value) => !value)}
                 title="Резервная копия журнала"
                 aria-label="Резервная копия журнала"
               >
                 <Archive className="h-4 w-4" strokeWidth={2} />
-              </Button>
+              </HeaderIconButton>
               {showBackupActions ? (
                 <div className="absolute right-10 top-11 z-20 w-80 rounded-card border border-raport-border bg-raport-surface p-2 shadow-lg">
                   <Button className="grid w-full grid-cols-[1.25rem_1fr] justify-start gap-3 px-3 text-left" variant="ghost" onClick={exportAll}>
@@ -406,9 +430,9 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
           className="mb-4"
           title="Открытый разбор"
           actions={(
-            <Button className={HEADER_ACTION_ICON_CLASS} onClick={() => setSelectedProtocol(null)} title="Скрыть разбор" aria-label="Скрыть разбор">
+            <IconActionButton onClick={() => setSelectedProtocol(null)} title="Скрыть разбор" aria-label="Скрыть разбор">
               <EyeOff className="h-4 w-4" strokeWidth={2} />
-            </Button>
+            </IconActionButton>
           )}
         >
           <LocalA3ProtocolEditor initialProtocol={selectedProtocol} repository={repository} onSaved={refresh} />
@@ -418,31 +442,26 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
       <SectionCard
         title={`Журнал разборов · ${dashboardItems.length}`}
         actions={(
-          <Button
-            className={HEADER_ACTION_ICON_CLASS}
+          <IconActionButton
             onClick={refresh}
             title="Обновить журнал"
             aria-label="Обновить журнал"
           >
             <RefreshCcw className="h-4 w-4" strokeWidth={2} />
-          </Button>
+          </IconActionButton>
         )}
       >
         <div className="mb-4">
           <div className="rounded-card border border-raport-border bg-raport-surface-soft p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                {STATUS_FILTERS.map((item) => (
-                  <Button
-                    key={item}
-                    variant={status === item ? "default" : "ghost"}
-                    className="min-h-8 px-3 py-1.5 text-xs"
-                    onClick={() => setStatus(item)}
-                  >
-                    {getStatusFilterLabel(item)}
-                  </Button>
-                ))}
-              </div>
+              <QuickFocusGroup
+                value={status}
+                options={STATUS_FILTERS.map((item) => ({ value: item, label: getStatusFilterLabel(item) }))}
+                onChange={setStatus}
+                columnsClassName="grid-cols-2 sm:grid-cols-3 xl:grid-cols-6"
+                className="min-w-0 flex-1"
+                variant="plain"
+              />
               <div className="flex flex-wrap items-center gap-2">
                 {journalSummary.overdue > 0 ? <Badge variant="danger">Просрочено: {journalSummary.overdue}</Badge> : null}
                 {journalSummary.withoutOwner > 0 ? <Badge variant="warning">Без исполнителя: {journalSummary.withoutOwner}</Badge> : null}
@@ -467,7 +486,7 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
         </div>
         {visibleItems.length > 0 ? (
           <div className="space-y-2">
-            <div className="hidden rounded-control border border-raport-border bg-raport-surface-soft px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-raport-muted xl:grid xl:grid-cols-[82px_minmax(320px,1.7fr)_210px_minmax(150px,0.8fr)_130px_155px_118px]">
+            <div className="hidden rounded-control border border-raport-border bg-raport-surface-soft px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-raport-muted xl:grid xl:grid-cols-[82px_minmax(320px,1.7fr)_210px_minmax(150px,0.8fr)_130px_155px_170px]">
               <span>№</span>
               <span>Разбор</span>
               <span>Статус</span>
@@ -477,13 +496,40 @@ export function LocalA3JournalPage({ repository = localA3Repository }: LocalA3Jo
               <span className="text-right">Действие</span>
             </div>
             {visibleItems.map((item) => (
-              <ProtocolCard key={item.protocol.id} displayCode={protocolCodeById.get(item.protocol.id) ?? "A3"} item={item} repository={repository} onOpen={openProtocol} />
+              <ProtocolCard
+                key={item.protocol.id}
+                displayCode={protocolCodeById.get(item.protocol.id) ?? "A3"}
+                item={item}
+                onOpen={openProtocol}
+                onDelete={setDeleteCandidate}
+              />
             ))}
           </div>
         ) : (
           <ErrorState title="Разборы не найдены" message={items.length === 0 ? "Загрузите отчет, откройте дашборд и нажмите «Разобрать» рядом с отклонением." : "По текущим фильтрам разборы не найдены."} />
         )}
       </SectionCard>
+      {deleteCandidate ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-labelledby="local-a3-delete-title">
+          <div className="w-full max-w-lg rounded-card border border-raport-border bg-raport-surface p-5 shadow-xl">
+            <h2 id="local-a3-delete-title" className="text-lg font-semibold text-raport-text">
+              Удалить A3-разбор?
+            </h2>
+            <p className="mt-2 text-sm text-raport-muted">
+              Разбор «{buildProtocolTitle(deleteCandidate)}» будет удален из локального журнала этого браузера вместе с историей. Отменить действие нельзя.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteCandidate(null)}>
+                Отмена
+              </Button>
+              <Button variant="destructive" onClick={() => void confirmDeleteProtocol()}>
+                <Trash2 className="h-4 w-4" strokeWidth={2} />
+                Удалить
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageShell>
   );
 }

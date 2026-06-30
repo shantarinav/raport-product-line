@@ -247,7 +247,7 @@ npm run preview
 
 ## Локальная LLM-классификация Print
 
-Frontend Рапорта остается самостоятельным статическим приложением: production-публикация `dist/` не требует Node backend, Ollama или SQLite. Локальная LLM-классификация — optional backend extension для Print и находится в `backend/print-llm/`.
+Frontend Рапорта остается самостоятельным статическим приложением: production-публикация `dist/` не требует Node backend, Ollama или SQLite. Локальная LLM-классификация — optional backend extension для Print и находится в `backend/raport-llm/`.
 
 В дашборде Print есть опциональный локальный слой классификации потенциально личной тематики печати. По умолчанию он выключен, поэтому базовая работа дашборда остается прежней и использует словарные правила.
 
@@ -262,27 +262,34 @@ Frontend Рапорта остается самостоятельным стат
 Локальный запуск:
 
 ```bash
-npm run backend:print-llm
+npm run backend:raport-llm
 ```
 
-Backend-переменные окружения см. в `backend/print-llm/.env.example`. Адрес сервиса ИИ и ключ доступа можно задать без пересборки frontend: главная страница → `Настройки` → `Личная печать с ИИ`. Там же отображаются состояние сервиса, модель, очередь и кэш.
+Backend-переменные окружения см. в `backend/raport-llm/.env.example`. Адрес сервиса ИИ и ключ доступа можно задать без пересборки frontend: главная страница → `Настройки` → `ИИ-помощник`. Там же отображаются состояние сервиса, модель, очередь и кэш.
 
-Backend можно запускать локально на ПК пользователя или как небольшой сервис в корпоративной сети для 2-5 пользователей. Для сетевого режима настрой `PRINT_LLM_HOST`, `PRINT_LLM_ALLOWED_ORIGINS` и опциональный `PRINT_LLM_API_KEY`; пользователи указывают URL/API-ключ в интерфейсе. Подробности см. в `backend/print-llm/README.md`.
+Backend можно запускать локально на ПК пользователя или как небольшой сервис в корпоративной сети для 2-5 пользователей. Для сетевого режима настрой `RAPORT_LLM_HOST`, `RAPORT_LLM_ALLOWED_ORIGINS` и опциональный `RAPORT_LLM_API_KEY`; пользователи указывают URL/API-ключ в интерфейсе. Подробности см. в `backend/raport-llm/README.md`.
 
 ### Развертывание ИИ-backend
 
-Backend для ИИ-проверки Print можно запустить локально или разместить на небольшом сервере в корпоративной сети. Автоматизация запуска, проверка состояния и сценарий автозапуска Windows описаны в `backend/print-llm/DEPLOYMENT.md`.
+Backend для ИИ-проверки Print можно запустить локально или разместить на небольшом сервере в корпоративной сети. Автоматизация запуска, проверка состояния и сценарий автозапуска Windows описаны в `backend/raport-llm/DEPLOYMENT.md`.
 
 Быстрый локальный сценарий:
 
 ```bash
-npm run backend:print-llm:init:local
-npm run backend:print-llm:start
-npm run backend:print-llm:status
+npm run backend:raport-llm:setup
+npm run backend:raport-llm:doctor
+```
+
+Для ежедневного управления сервисом:
+
+```bash
+npm run backend:raport-llm:start
+npm run backend:raport-llm:status
+npm run backend:raport-llm:stop
 ```
 
 Для оценки качества на размеченной выборке:
 
 ```bash
-npm run backend:print-llm:evaluate -- --input path/to/labeled.csv --proxy http://127.0.0.1:8787/api/print/classify-personal
+npm run backend:raport-llm:evaluate -- --input path/to/labeled.csv --proxy http://127.0.0.1:8787/api/print/classify-personal
 ```

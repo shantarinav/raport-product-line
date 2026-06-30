@@ -318,6 +318,11 @@ export async function addLocalA3Comment(
   return { success: true, protocol: validation.protocol, events: [event] };
 }
 
+export async function deleteLocalA3Protocol(protocolId: string, context: LocalA3CommandContext = {}): Promise<void> {
+  const repository = context.repository ?? localA3Repository;
+  await repository.deleteProtocol(protocolId);
+}
+
 export async function getLocalA3Timeline(protocolId: string, repository: LocalA3Repository = localA3Repository) {
   const protocol = await repository.getProtocol(protocolId);
   if (!protocol) return null;

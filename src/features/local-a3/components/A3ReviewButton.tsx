@@ -20,7 +20,7 @@ export function A3ReviewButton({ deviation, onCreateDraft, label = "Разобр
 
   return (
     <Button
-      className={cn("min-h-9 border-raport-action-border bg-raport-action-bg text-raport-primary hover:bg-raport-action-bg-active", className)}
+      className={cn("min-h-9", className)}
       disabled={disabled}
       onClick={handleClick}
       title="Создать A3-разбор по этому отклонению"
