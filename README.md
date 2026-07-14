@@ -56,6 +56,20 @@
 6. A3 хранится локально в браузере и может быть экспортирован в JSON.
 7. Опционально пользователь включает Raport LLM для локальных ИИ-подсказок.
 
+## Как это выглядит
+
+Скриншоты сняты на синтетических данных из `demo-data/`.
+
+| Сценарий | Скриншот |
+| --- | --- |
+| Главная загрузка отчета | <img src="docs/screenshots/01-landing-upload.png" alt="Главная загрузка отчета" width="420"> |
+| ССЗ: главный вывод и зона внимания | <img src="docs/screenshots/02-ssz-main-insight.png" alt="ССЗ: главный вывод и зона внимания" width="420"> |
+| A3-разбор отклонения | <img src="docs/screenshots/03-a3-review-ssz.png" alt="A3-разбор отклонения" width="420"> |
+| Журнал A3-разборов | <img src="docs/screenshots/04-a3-journal.png" alt="Журнал A3-разборов" width="420"> |
+| Support: SLA и поток заявок | <img src="docs/screenshots/05-support-sla-overview.png" alt="Support: SLA и поток заявок" width="420"> |
+| Support: самые долгие нарушения SLA | <img src="docs/screenshots/06-support-overdue-tail.png" alt="Support: самые долгие нарушения SLA" width="420"> |
+| Настройки возможностей | <img src="docs/screenshots/07-settings-ai-history.png" alt="Настройки возможностей" width="420"> |
+
 ## Архитектурная идея
 
 Базовый Рапорт — статический фронтенд. Он должен работать без обязательного backend, авторизации, серверной базы данных и сетевой отправки исходных отчетов.
