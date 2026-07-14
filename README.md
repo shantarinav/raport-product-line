@@ -6,7 +6,7 @@
 
 Рапорт не пытается заменить BI-платформу. Это управляемый класс browser-only дашбордов, который помогает быстро проверить продуктовую или управленческую гипотезу: загрузить отчет, увидеть отклонения, найти зону внимания и оформить A3-разбор без отправки исходных данных на сервер.
 
-[Открыть демо](https://shantarinav.github.io/raport-product-line/) · [Архитектура](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Архитектурные решения](docs/adr/README.md) · [Чему научил проект](docs/LESSONS_LEARNED.md)
+[Открыть демо](https://shantarinav.github.io/raport-product-line/) · [Кейс проекта](docs/SHOWCASE.md) · [Архитектура](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Архитектурные решения](docs/adr/README.md) · [Чему научил проект](docs/LESSONS_LEARNED.md)
 
 ## Бизнес-проблема
 
@@ -327,6 +327,7 @@ https://site/folder/#/support
 
 ## Документы проекта
 
+- [Кейс проекта](docs/SHOWCASE.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Журнал архитектурных решений](docs/adr/README.md)
 - [Roadmap](docs/ROADMAP.md)
