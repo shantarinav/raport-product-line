@@ -2,8 +2,8 @@
 
 Этот журнал фиксирует ключевые решения Рапорта: не как историю кода, а как историю управленческих и архитектурных компромиссов.
 
-- [ADR-001: Сначала браузерная Local-версия](ADR-001-browser-only-first.md)
-- [ADR-002: Статическая публикация и hash-маршрутизация](ADR-002-static-hash-routing.md)
+- [ADR-001: Сначала браузерная локальная версия](ADR-001-browser-only-first.md)
+- [ADR-002: Статическая публикация и маршруты через #](ADR-002-static-hash-routing.md)
 - [ADR-003: Не сохранять исходные строки отчетов](ADR-003-no-raw-data-persistence.md)
 - [ADR-004: Raport LLM как необязательное ИИ-расширение](ADR-004-optional-llm-backend.md)
-- [ADR-005: Сначала Local A3, потом командный режим](ADR-005-local-a3-before-team-mode.md)
+- [ADR-005: Сначала локальный A3, потом командный режим](ADR-005-local-a3-before-team-mode.md)
