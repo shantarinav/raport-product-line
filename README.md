@@ -6,7 +6,7 @@
 
 Рапорт помогает быстро загрузить отчет, увидеть отклонения, найти зону внимания и оформить A3-разбор. Это не замена BI-платформы, а промежуточный слой для проверки управленческой гипотезы до тяжелой автоматизации.
 
-[Открыть демо](https://shantarinav.github.io/raport-product-line/) · [Кейс проекта](docs/SHOWCASE.md) · [Архитектура](docs/ARCHITECTURE.md) · [Выпуск](https://github.com/shantarinav/raport-product-line/releases/tag/raport-local-v1.1.0)
+[Открыть демо](https://shantarinav.github.io/raport-product-line/) · [Кейс проекта](docs/SHOWCASE.md) · [Архитектура](docs/ARCHITECTURE.md) · [Релиз](https://github.com/shantarinav/raport-product-line/releases/tag/raport-local-v1.1.0)
 
 ## Что внутри
 
