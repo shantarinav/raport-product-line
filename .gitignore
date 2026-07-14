@@ -1,7 +1,6 @@
 node_modules/
 dist/
 .tools/
-load_file/
 .tmp-*/
 
 *.log
